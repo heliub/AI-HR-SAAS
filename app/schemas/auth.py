@@ -1,6 +1,8 @@
 """
 Authentication schemas
 """
+from uuid import UUID
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -10,19 +12,29 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=6)
 
 
+class UserInfo(BaseModel):
+    """用户信息"""
+    id: UUID
+    name: str
+    email: EmailStr
+    role: str
+    avatar: Optional[str] = None
+
+
 class LoginResponse(BaseModel):
     """登录响应"""
-    access_token: str
-    token_type: str = "bearer"
-    user_id: int
-    tenant_id: int
-    username: str
-    role: str
+    token: str
+    user: UserInfo
+
+
+class LogoutRequest(BaseModel):
+    """登出请求"""
+    token: str
 
 
 class TokenPayload(BaseModel):
     """Token载荷"""
-    sub: int  # user_id
-    tenant_id: int
+    sub: UUID  # user_id
+    tenant_id: UUID
     role: str
 

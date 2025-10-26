@@ -1392,6 +1392,9 @@ requires-dist = [
 ]
 provides-extras = ["dev"]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "httpcore"
 version = "1.0.9"

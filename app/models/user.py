@@ -4,8 +4,8 @@ User model
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, BigInteger, String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -16,37 +16,26 @@ class User(Base):
     
     __tablename__ = "users"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
-    username = Column(String(100), nullable=False, comment="用户名")
-    email = Column(String(255), nullable=False, index=True, comment="邮箱")
-    password_hash = Column(String(255), nullable=False, comment="密码哈希")
-    full_name = Column(String(255), comment="全名")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False, comment="用户姓名")
+    email = Column(String(255), nullable=False, index=True, comment="邮箱地址")
+    password_hash = Column(String(255), nullable=False, comment="密码哈希值（bcrypt加密）")
     role = Column(
-        String(50), 
-        nullable=False, 
-        default="hr", 
-        comment="角色: admin, hr"
-    )
-    language = Column(
-        String(10), 
-        default="en", 
-        comment="用户语言: en, zh, id"
-    )
-    status = Column(
         String(20), 
         nullable=False, 
-        default="active",
-        comment="状态: active, inactive, suspended"
+        default="hr", 
+        comment="用户角色: admin-管理员, hr-人力资源, recruiter-招聘专员"
     )
-    settings = Column(JSONB, comment="用户个人配置")
-    last_login_at = Column(DateTime, nullable=True, comment="最后登录时间")
-    deleted_at = Column(DateTime, nullable=True, comment="删除时间")
+    avatar_url = Column(Text, comment="头像URL")
+    last_login_at = Column(DateTime(timezone=True), nullable=True, comment="最后登录时间")
+    is_active = Column(Boolean, default=True, comment="是否激活")
     
     # 关系
     tenant = relationship("Tenant", back_populates="users")
-    conversations = relationship("Conversation", back_populates="user", lazy="selectin")
-    jobs = relationship("Job", back_populates="created_by_user", lazy="selectin")
+    settings = relationship("UserSetting", back_populates="user", uselist=False, lazy="selectin")
+    jobs = relationship("Job", back_populates="created_by_user", lazy="dynamic")
+    chat_sessions = relationship("ChatSession", back_populates="user", lazy="dynamic")
     
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, username={self.username}, email={self.email})>"
+        return f"<User(id={self.id}, name={self.name}, email={self.email})>"
 

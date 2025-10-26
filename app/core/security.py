@@ -5,18 +5,44 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHash
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
 
 from app.core.config import settings
 
 
-# 密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 使用 Argon2 作为密码哈希算法（现代且安全的选择）
+pwd_hasher = PasswordHasher(
+    time_cost=2,       # 迭代次数
+    memory_cost=65536, # 内存使用量 (64 MB)
+    parallelism=2,     # 并行度
+    hash_len=32,       # 哈希长度
+    salt_len=16        # 盐长度
+)
+
+
+class HTTPBearerAuth(HTTPBearer):
+    """自定义HTTPBearer，返回401而不是403"""
+    
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+        try:
+            return await super().__call__(request)
+        except HTTPException as e:
+            # 将403转换为401
+            if e.status_code == status.HTTP_403_FORBIDDEN:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            raise
+
 
 # HTTP Bearer认证
-security = HTTPBearer()
+security = HTTPBearerAuth()
 
 
 class SecurityManager:
@@ -83,7 +109,7 @@ class SecurityManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """
-        哈希密码
+        哈希密码（使用 Argon2）
         
         Args:
             password: 明文密码
@@ -91,12 +117,12 @@ class SecurityManager:
         Returns:
             哈希后的密码
         """
-        return pwd_context.hash(password)
+        return pwd_hasher.hash(password)
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
-        验证密码
+        验证密码（使用 Argon2）
         
         Args:
             plain_password: 明文密码
@@ -105,7 +131,11 @@ class SecurityManager:
         Returns:
             密码是否匹配
         """
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            pwd_hasher.verify(hashed_password, plain_password)
+            return True
+        except (VerifyMismatchError, InvalidHash):
+            return False
 
 
 # 全局安全管理器实例

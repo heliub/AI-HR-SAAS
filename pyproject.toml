@@ -97,3 +97,6 @@ python_functions = ["test_*"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = []
+

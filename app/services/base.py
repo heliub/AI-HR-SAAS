@@ -26,6 +26,15 @@ class BaseService(Generic[ModelType]):
         """根据ID获取"""
         return await self.repository.get_by_id(db, id, tenant_id)
     
+    async def get(
+        self, 
+        db: AsyncSession, 
+        id: int, 
+        tenant_id: Optional[int] = None
+    ) -> Optional[ModelType]:
+        """根据ID获取（get_by_id的别名）"""
+        return await self.get_by_id(db, id, tenant_id)
+    
     async def get_multi(
         self,
         db: AsyncSession,
@@ -39,6 +48,19 @@ class BaseService(Generic[ModelType]):
             db,
             skip=skip,
             limit=limit,
+            tenant_id=tenant_id
+        )
+    
+    async def delete(
+        self,
+        db: AsyncSession,
+        id: int,
+        tenant_id: Optional[int] = None
+    ) -> bool:
+        """删除记录"""
+        return await self.repository.delete(
+            db,
+            id=id,
             tenant_id=tenant_id
         )
 

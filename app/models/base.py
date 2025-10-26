@@ -3,8 +3,10 @@ Base model with common fields
 """
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
-from sqlalchemy import Column, BigInteger, DateTime, func
+from sqlalchemy import Column, DateTime, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import DeclarativeBase
 
@@ -18,10 +20,10 @@ class Base(DeclarativeBase):
         return cls.__name__.lower() + 's'
     
     # 通用字段
-    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, server_default=func.now())
     updated_at = Column(
-        DateTime, 
+        DateTime(timezone=True), 
         nullable=False, 
         default=datetime.utcnow, 
         onupdate=datetime.utcnow,

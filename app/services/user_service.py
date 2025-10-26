@@ -2,6 +2,7 @@
 User service
 """
 from typing import Optional
+from uuid import UUID
 from datetime import datetime
 
 from sqlalchemy import select
@@ -23,13 +24,26 @@ class UserService(BaseService[User]):
         self,
         db: AsyncSession,
         email: str,
-        tenant_id: int
+        tenant_id: UUID
     ) -> Optional[User]:
         """根据邮箱获取用户"""
         query = select(User).where(
             User.email == email,
             User.tenant_id == tenant_id,
-            User.deleted_at.is_(None)
+            User.is_active == True
+        )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+    
+    async def get_by_email_any_tenant(
+        self,
+        db: AsyncSession,
+        email: str
+    ) -> Optional[User]:
+        """根据邮箱获取用户（不限制租户）"""
+        query = select(User).where(
+            User.email == email,
+            User.is_active == True
         )
         result = await db.execute(query)
         return result.scalar_one_or_none()
@@ -38,8 +52,8 @@ class UserService(BaseService[User]):
         self,
         db: AsyncSession,
         *,
-        tenant_id: int,
-        username: str,
+        tenant_id: UUID,
+        name: str,
         email: str,
         password: str,
         **kwargs
@@ -55,13 +69,14 @@ class UserService(BaseService[User]):
         
         user_data = {
             "tenant_id": tenant_id,
-            "username": username,
+            "name": name,
             "email": email,
             "password_hash": hashed_password,
             **kwargs
         }
         
-        user = await self.repository.create(db, user_data)
+        user = User(**user_data)
+        db.add(user)
         await db.commit()
         await db.refresh(user)
         
@@ -72,7 +87,7 @@ class UserService(BaseService[User]):
         db: AsyncSession,
         email: str,
         password: str,
-        tenant_id: int
+        tenant_id: UUID
     ) -> Optional[User]:
         """认证用户"""
         user = await self.get_by_email(db, email, tenant_id)
@@ -88,4 +103,26 @@ class UserService(BaseService[User]):
         await db.commit()
         
         return user
+    
+    async def update_password(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        current_password: str,
+        new_password: str
+    ) -> bool:
+        """更新密码"""
+        user = await self.get(db, user_id)
+        if not user:
+            raise NotFoundException("User not found")
+        
+        # 验证当前密码
+        if not security_manager.verify_password(current_password, user.password_hash):
+            raise BadRequestException("Current password is incorrect")
+        
+        # 更新密码
+        user.password_hash = security_manager.hash_password(new_password)
+        await db.commit()
+        
+        return True
 

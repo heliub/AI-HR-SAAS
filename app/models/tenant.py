@@ -4,8 +4,8 @@ Tenant model
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, BigInteger, String, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, DateTime, Integer
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -16,22 +16,27 @@ class Tenant(Base):
     
     __tablename__ = "tenants"
     
-    name = Column(String(255), nullable=False, comment="租户名称")
-    code = Column(String(50), unique=True, nullable=False, index=True, comment="租户标识码")
+    name = Column(String(200), nullable=False, comment="租户名称")
+    company_name = Column(String(200), comment="公司名称")
+    contact_name = Column(String(100), comment="联系人姓名")
+    contact_email = Column(String(255), comment="联系人邮箱")
+    contact_phone = Column(String(50), comment="联系人电话")
+    plan_type = Column(String(50), default='basic', comment="套餐类型: basic-基础版, pro-专业版, enterprise-企业版")
     status = Column(
         String(20), 
         nullable=False, 
         default="active", 
         index=True,
-        comment="状态: active, suspended, deleted"
+        comment="状态: active-激活, inactive-停用, suspended-暂停"
     )
-    settings = Column(JSONB, comment="租户配置")
-    deleted_at = Column(DateTime, nullable=True, comment="删除时间")
+    max_users = Column(Integer, default=10, comment="最大用户数")
+    max_jobs = Column(Integer, default=50, comment="最大职位数")
+    expires_at = Column(DateTime(timezone=True), nullable=True, comment="到期时间")
     
     # 关系
-    users = relationship("User", back_populates="tenant", lazy="selectin")
-    jobs = relationship("Job", back_populates="tenant", lazy="selectin")
+    users = relationship("User", back_populates="tenant", lazy="dynamic")
+    jobs = relationship("Job", back_populates="tenant", lazy="dynamic")
     
     def __repr__(self) -> str:
-        return f"<Tenant(id={self.id}, name={self.name}, code={self.code})>"
+        return f"<Tenant(id={self.id}, name={self.name})>"
 

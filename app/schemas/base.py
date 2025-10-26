@@ -2,7 +2,8 @@
 Base schemas
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
@@ -19,26 +20,26 @@ class TimestampSchema(BaseSchema):
 
 class IDSchema(BaseSchema):
     """ID Schema"""
-    id: int
+    id: UUID
 
 
 class PaginationParams(BaseModel):
     """分页参数"""
-    skip: int = 0
-    limit: int = 100
+    page: int = 1
+    pageSize: int = 10
 
 
 class PaginatedResponse(BaseModel):
     """分页响应"""
     total: int
-    skip: int
-    limit: int
-    items: list
+    page: int
+    pageSize: int
+    list: list[Any]
 
 
-class MessageResponse(BaseModel):
-    """通用消息响应"""
-    message: str
-    code: Optional[str] = None
-    details: Optional[dict] = None
+class APIResponse(BaseModel):
+    """统一API响应格式"""
+    code: int = 200
+    message: str = "成功"
+    data: Optional[Any] = None
 

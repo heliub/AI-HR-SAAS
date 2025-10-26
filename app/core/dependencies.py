@@ -2,6 +2,7 @@
 FastAPI dependencies
 """
 from typing import Generator, Optional
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
@@ -36,19 +37,28 @@ async def get_current_user(
     # 验证Token
     payload = security_manager.verify_token(token)
     
-    user_id: Optional[int] = payload.get("sub")
-    tenant_id: Optional[int] = payload.get("tenant_id")
+    user_id_str: Optional[str] = payload.get("sub")
+    tenant_id_str: Optional[str] = payload.get("tenant_id")
     
-    if user_id is None or tenant_id is None:
+    if user_id_str is None or tenant_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    try:
+        user_id = UUID(user_id_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     # 获取用户
     user_service = UserService()
-    user = await user_service.get_by_id(db, user_id, tenant_id)
+    user = await user_service.get(db, user_id)
     
     if user is None:
         raise HTTPException(
@@ -57,7 +67,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if user.status != "active":
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is not active",
@@ -70,7 +80,7 @@ async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """获取当前活跃用户"""
-    if current_user.status != "active":
+    if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
