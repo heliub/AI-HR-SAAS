@@ -60,10 +60,12 @@ class Settings(BaseSettings):
     # Jaeger配置
     JAEGER_HOST: str = "localhost"
     JAEGER_PORT: int = 6831
-    JAEGER_ENABLED: bool = True
+    JAEGER_ENABLED: bool = False
+    JAEGER_OTLP_ENDPOINT_HTTP: str = "http://localhost:4318/v1/traces"
     
     # 日志配置
     LOG_LEVEL: str = "INFO"
+    LOG_RENDERER: str = "json"  # console or json
     
     # RPA配置
     RPA_HEADLESS: bool = True

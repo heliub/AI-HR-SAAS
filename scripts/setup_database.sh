@@ -36,7 +36,7 @@ echo "  Database: $DB_NAME"
 echo ""
 
 # Check if reset flag is provided
-RESET_DB=false
+RESET_DB=true
 if [ "$1" == "--reset" ]; then
     RESET_DB=true
     echo -e "${YELLOW}⚠️  Reset mode enabled - This will drop all existing data!${NC}"

@@ -110,7 +110,8 @@ CREATE TABLE auth_tokens (
     token VARCHAR(500) NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    is_revoked BOOLEAN DEFAULT FALSE
+    is_revoked BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE auth_tokens IS '认证Token表';
@@ -121,6 +122,7 @@ COMMENT ON COLUMN auth_tokens.token IS 'JWT Token字符串';
 COMMENT ON COLUMN auth_tokens.expires_at IS 'Token过期时间';
 COMMENT ON COLUMN auth_tokens.created_at IS '创建时间';
 COMMENT ON COLUMN auth_tokens.is_revoked IS '是否已撤销';
+COMMENT ON COLUMN auth_tokens.updated_at IS '更新时间';
 
 -- ==============================================
 -- 3. 职位管理表
@@ -230,7 +232,9 @@ CREATE TABLE job_channels (
     external_id VARCHAR(100),
     external_url TEXT,
     views_count INTEGER DEFAULT 0,
-    clicks_count INTEGER DEFAULT 0
+    clicks_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE job_channels IS '职位发布渠道关联表';
@@ -243,7 +247,8 @@ COMMENT ON COLUMN job_channels.external_id IS '外部平台的职位ID';
 COMMENT ON COLUMN job_channels.external_url IS '外部平台的职位URL';
 COMMENT ON COLUMN job_channels.views_count IS '浏览次数';
 COMMENT ON COLUMN job_channels.clicks_count IS '点击次数';
-
+COMMENT ON COLUMN job_channels.created_at IS '创建时间';
+COMMENT ON COLUMN job_channels.updated_at IS '更新时间';
 -- ==============================================
 -- 5. 简历管理表
 -- ==============================================
@@ -311,7 +316,8 @@ CREATE TABLE work_experiences (
     end_date VARCHAR(20),
     description TEXT,
     sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE work_experiences IS '工作经历表';
@@ -325,7 +331,7 @@ COMMENT ON COLUMN work_experiences.end_date IS '结束日期，如：至今、20
 COMMENT ON COLUMN work_experiences.description IS '工作描述';
 COMMENT ON COLUMN work_experiences.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN work_experiences.created_at IS '创建时间';
-
+COMMENT ON COLUMN work_experiences.updated_at IS '更新时间';
 -- 项目经历表（优化：合并技术栈）
 CREATE TABLE project_experiences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -338,7 +344,8 @@ CREATE TABLE project_experiences (
     description TEXT,
     technologies TEXT[],
     sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE project_experiences IS '项目经历表（已合并技术栈）';
@@ -353,7 +360,7 @@ COMMENT ON COLUMN project_experiences.description IS '项目描述';
 COMMENT ON COLUMN project_experiences.technologies IS '技术栈列表（TEXT数组），如：{"React","TypeScript","Next.js"}';
 COMMENT ON COLUMN project_experiences.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN project_experiences.created_at IS '创建时间';
-
+COMMENT ON COLUMN project_experiences.updated_at IS '更新时间';
 -- 教育经历表
 CREATE TABLE education_histories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -365,7 +372,8 @@ CREATE TABLE education_histories (
     start_date VARCHAR(20),
     end_date VARCHAR(20),
     sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE education_histories IS '教育经历表';
@@ -379,7 +387,7 @@ COMMENT ON COLUMN education_histories.start_date IS '开始日期';
 COMMENT ON COLUMN education_histories.end_date IS '结束日期';
 COMMENT ON COLUMN education_histories.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN education_histories.created_at IS '创建时间';
-
+COMMENT ON COLUMN education_histories.updated_at IS '更新时间'; 
 -- 求职意向表（优化：合并期望地点）
 CREATE TABLE job_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -389,7 +397,8 @@ CREATE TABLE job_preferences (
     preferred_locations TEXT[],
     job_type VARCHAR(50),
     available_date DATE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE job_preferences IS '求职意向表（已合并期望地点）';
@@ -401,6 +410,7 @@ COMMENT ON COLUMN job_preferences.preferred_locations IS '期望工作地点列�
 COMMENT ON COLUMN job_preferences.job_type IS '期望工作类型，如：全职、兼职';
 COMMENT ON COLUMN job_preferences.available_date IS '最早到岗日期';
 COMMENT ON COLUMN job_preferences.created_at IS '创建时间';
+COMMENT ON COLUMN job_preferences.updated_at IS '更新时间';
 
 -- AI匹配结果表（优化：合并优势和劣势）
 CREATE TABLE ai_match_results (
@@ -414,7 +424,9 @@ CREATE TABLE ai_match_results (
     strengths TEXT[],
     weaknesses TEXT[],
     recommendation TEXT,
-    analyzed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    analyzed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE ai_match_results IS 'AI简历匹配结果表（已合并优势和劣势）';
@@ -429,7 +441,8 @@ COMMENT ON COLUMN ai_match_results.strengths IS '优势列表（TEXT数组），
 COMMENT ON COLUMN ai_match_results.weaknesses IS '劣势列表（TEXT数组），如：{"缺少移动端经验"}';
 COMMENT ON COLUMN ai_match_results.recommendation IS 'AI推荐意见';
 COMMENT ON COLUMN ai_match_results.analyzed_at IS 'AI分析时间';
-
+COMMENT ON COLUMN ai_match_results.created_at IS '创建时间';
+COMMENT ON COLUMN ai_match_results.updated_at IS '更新时间';
 -- ==============================================
 -- 6. AI招聘任务表
 -- ==============================================
@@ -452,7 +465,9 @@ CREATE TABLE recruitment_tasks (
     interviews_scheduled INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMPTZ
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE recruitment_tasks IS 'AI招聘任务表';
@@ -555,7 +570,8 @@ CREATE TABLE chat_messages (
     content TEXT NOT NULL,
     message_type VARCHAR(50) DEFAULT 'text',
     metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE chat_messages IS 'AI聊天消息表（支持多种消息类型）';
@@ -567,7 +583,7 @@ COMMENT ON COLUMN chat_messages.content IS '消息内容';
 COMMENT ON COLUMN chat_messages.message_type IS '消息类型: text-普通文本, tool_call-工具调用请求, tool_result-工具执行结果, thinking-AI思考过程, code-代码, image-图片, file-文件';
 COMMENT ON COLUMN chat_messages.metadata IS '消息元数据（JSONB格式），用于存储工具调用参数、结果、思考标记等扩展信息，如：{"tool_name":"search_resumes","tool_args":{"keyword":"前端"},"execution_time":1.2}';
 COMMENT ON COLUMN chat_messages.created_at IS '消息发送时间';
-
+COMMENT ON COLUMN chat_messages.updated_at IS '更新时间';
 -- 候选人AI聊天历史表（增强：支持多种消息类型）
 CREATE TABLE candidate_chat_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -577,7 +593,8 @@ CREATE TABLE candidate_chat_history (
     message TEXT NOT NULL,
     message_type VARCHAR(50) DEFAULT 'text',
     metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE candidate_chat_history IS '候选人AI聊天历史表（支持多种消息类型）';
@@ -589,7 +606,7 @@ COMMENT ON COLUMN candidate_chat_history.message IS '消息内容';
 COMMENT ON COLUMN candidate_chat_history.message_type IS '消息类型: text-普通文本, greeting-问候, question-提问, answer-回答, document_request-文档请求, schedule-日程安排';
 COMMENT ON COLUMN candidate_chat_history.metadata IS '消息元数据（JSONB格式），如：{"document_type":"resume","status":"sent","scheduled_time":"2025-01-15 14:00"}';
 COMMENT ON COLUMN candidate_chat_history.created_at IS '消息发送时间';
-
+COMMENT ON COLUMN candidate_chat_history.updated_at IS '更新时间';
 -- ==============================================
 -- 9. 系统日志表
 -- ==============================================
@@ -605,7 +622,8 @@ CREATE TABLE activity_logs (
     details JSONB,
     ip_address INET,
     user_agent TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE activity_logs IS '操作日志表';
@@ -619,7 +637,7 @@ COMMENT ON COLUMN activity_logs.details IS '详细信息（JSON格式）';
 COMMENT ON COLUMN activity_logs.ip_address IS '操作IP地址';
 COMMENT ON COLUMN activity_logs.user_agent IS '浏览器User-Agent';
 COMMENT ON COLUMN activity_logs.created_at IS '操作时间';
-
+COMMENT ON COLUMN activity_logs.updated_at IS '更新时间';
 -- 邮件发送记录表
 CREATE TABLE email_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -633,7 +651,8 @@ CREATE TABLE email_logs (
     resume_id UUID,
     sent_by UUID,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    sent_at TIMESTAMPTZ
+    sent_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE email_logs IS '邮件发送记录表';
@@ -649,7 +668,7 @@ COMMENT ON COLUMN email_logs.resume_id IS '关联简历ID';
 COMMENT ON COLUMN email_logs.sent_by IS '发送人用户ID';
 COMMENT ON COLUMN email_logs.created_at IS '创建时间';
 COMMENT ON COLUMN email_logs.sent_at IS '实际发送时间';
-
+COMMENT ON COLUMN email_logs.updated_at IS '更新时间';
 -- ==============================================
 -- 10. 索引
 -- ==============================================

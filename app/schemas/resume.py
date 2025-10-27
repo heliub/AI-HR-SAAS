@@ -38,10 +38,15 @@ class EducationHistoryBase(BaseModel):
 
 class JobPreferenceBase(BaseModel):
     """求职意向基础Schema"""
-    expectedSalary: Optional[str] = None
-    preferredLocations: Optional[List[str]] = None
-    jobType: Optional[str] = None
-    availableDate: Optional[date] = None
+    expectedSalary: Optional[str] = Field(None, alias="expected_salary", serialization_alias="expectedSalary")
+    preferredLocations: Optional[List[str]] = Field(None, alias="preferred_locations", serialization_alias="preferredLocations")
+    jobType: Optional[str] = Field(None, alias="job_type", serialization_alias="jobType")
+    availableDate: Optional[date] = Field(None, alias="available_date", serialization_alias="availableDate")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
 
 
 class AIMatchBase(BaseModel):

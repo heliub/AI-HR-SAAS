@@ -3,8 +3,8 @@ OpenTelemetry tracing setup
 """
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from fastapi import FastAPI
@@ -14,9 +14,6 @@ from app.core.config import settings
 
 def setup_tracing(app: FastAPI) -> None:
     """配置OpenTelemetry追踪"""
-    
-    if not settings.JAEGER_ENABLED:
-        return
     
     # 创建Resource
     resource = Resource.create({
@@ -29,15 +26,17 @@ def setup_tracing(app: FastAPI) -> None:
     provider = TracerProvider(resource=resource)
     trace.set_tracer_provider(provider)
     
-    # 配置Jaeger Exporter
-    jaeger_exporter = JaegerExporter(
-        agent_host_name=settings.JAEGER_HOST,
-        agent_port=settings.JAEGER_PORT,
-    )
-    
-    # 添加Span Processor
-    provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
-    
+    if settings.JAEGER_ENABLED:
+        # 配置OTLP Exporter
+        otlp_exporter = OTLPSpanExporter(
+            endpoint=settings.JAEGER_OTLP_ENDPOINT_HTTP
+        )
+        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    else:
+        # 配置控制台Exporter，用于本地调试
+        console_exporter = ConsoleSpanExporter()
+        provider.add_span_processor(BatchSpanProcessor(console_exporter))
+
     # 自动instrumentation
     FastAPIInstrumentor.instrument_app(app)
 
