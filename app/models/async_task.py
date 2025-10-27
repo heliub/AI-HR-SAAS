@@ -3,8 +3,8 @@ Async Task model
 """
 from datetime import datetime
 
-from sqlalchemy import Column, BigInteger, String, Text, ForeignKey, DateTime, Integer
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Integer
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -14,7 +14,7 @@ class AsyncTask(Base):
     
     __tablename__ = "async_tasks"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     task_type = Column(
         String(50), 
         nullable=False,

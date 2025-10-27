@@ -3,8 +3,8 @@ Email Account model
 """
 from datetime import datetime
 
-from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -14,8 +14,8 @@ class EmailAccount(Base):
     
     __tablename__ = "email_accounts"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     email = Column(String(255), nullable=False, index=True, comment="邮箱地址")
     protocol = Column(
         String(20), 

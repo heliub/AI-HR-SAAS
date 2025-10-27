@@ -3,7 +3,6 @@ User Setting model
 """
 from sqlalchemy import Column, String, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
@@ -19,8 +18,6 @@ class UserSetting(Base):
     email_notifications = Column(Boolean, default=True, comment="是否开启邮件通知")
     task_reminders = Column(Boolean, default=True, comment="是否开启任务提醒")
     
-    # 关系
-    user = relationship("User", back_populates="settings")
     
     def __repr__(self) -> str:
         return f"<UserSetting(id={self.id}, user_id={self.user_id})>"

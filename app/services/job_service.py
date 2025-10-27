@@ -1,24 +1,29 @@
 """
-Job service
+Job service for handling job-related database operations
 """
 import re
-from typing import Optional, List
+from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, select, func, text
 
 from app.models.job import Job
-from app.services.base import BaseService
-from app.core.exceptions import NotFoundException
+from app.models.resume import Resume
+from app.models.ai_match_result import AIMatchResult
+from app.models.recruitment_task import RecruitmentTask
+from app.models.job_channel import JobChannel
+from app.models.user import User
+from app.models.tenant import Tenant
+from app.services.base_service import BaseService
 
 
-class JobService(BaseService[Job]):
-    """职位服务"""
-    
-    def __init__(self):
-        super().__init__(Job)
-    
+class JobService(BaseService):
+    """职位服务类，处理职位相关的数据库操作"""
+
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+
     @staticmethod
     def parse_salary(salary_str: str) -> tuple[Optional[int], Optional[int]]:
         """
@@ -27,81 +32,264 @@ class JobService(BaseService[Job]):
         """
         if not salary_str:
             return None, None
-        
+
         # 匹配 "30K-50K" 格式
         match = re.match(r'(\d+)K?-(\d+)K?', salary_str, re.IGNORECASE)
         if match:
             min_k = int(match.group(1))
             max_k = int(match.group(2))
             return min_k * 1000, max_k * 1000
-        
+
         # 匹配 "30K+" 格式
         match = re.match(r'(\d+)K?\+', salary_str, re.IGNORECASE)
         if match:
             min_k = int(match.group(1))
             return min_k * 1000, None
-        
+
         # 匹配纯数字 "30K" 格式
         match = re.match(r'(\d+)K?', salary_str, re.IGNORECASE)
         if match:
             k = int(match.group(1))
             return k * 1000, k * 1000
-        
+
         return None, None
-    
-    async def get_jobs(
-        self,
-        db: AsyncSession,
-        tenant_id: UUID,
-        *,
-        page: int = 1,
-        page_size: int = 10,
-        search: Optional[str] = None,
-        status: Optional[str] = None,
-        department: Optional[str] = None
-    ) -> tuple[List[Job], int]:
-        """获取职位列表"""
-        query = select(Job).where(Job.tenant_id == tenant_id)
-        
-        # 搜索条件
-        if search:
-            query = query.where(
-                or_(
-                    Job.title.ilike(f"%{search}%"),
-                    Job.description.ilike(f"%{search}%")
+
+    async def get_job_with_details(self, job_id: UUID, tenant_id: UUID) -> Optional[Dict]:
+        """
+        获取职位完整信息，包括统计数据
+
+        Args:
+            job_id: 职位ID
+            tenant_id: 租户ID
+
+        Returns:
+            包含职位完整信息的字典
+        """
+        job = await self.get_by_id(Job, job_id, tenant_id)
+        if not job:
+            return None
+
+        # 获取简历统计
+        resume_query = select(Resume).where(
+            and_(
+                Resume.job_id == job_id,
+                Resume.tenant_id == tenant_id
+            )
+        )
+        resume_result = await self.db.execute(resume_query)
+        resumes = resume_result.scalars().all()
+
+        # 计算简历状态统计
+        resume_stats = {"total": len(resumes), "by_status": {}}
+        for resume in resumes:
+            status = resume.status
+            resume_stats["by_status"][status] = resume_stats["by_status"].get(status, 0) + 1
+
+        # 获取AI匹配结果
+        match_query = select(AIMatchResult).where(
+            and_(
+                AIMatchResult.job_id == job_id,
+                AIMatchResult.tenant_id == tenant_id
+            )
+        )
+        match_result = await self.db.execute(match_query)
+        match_results = match_result.scalars().all()
+
+        # 获取招聘任务
+        task_query = select(RecruitmentTask).where(
+            and_(
+                RecruitmentTask.job_id == job_id,
+                RecruitmentTask.tenant_id == tenant_id
+            )
+        )
+        task_result = await self.db.execute(task_query)
+        recruitment_tasks = task_result.scalars().all()
+
+        # 获取发布渠道
+        channel_query = select(JobChannel).where(
+            and_(
+                JobChannel.job_id == job_id,
+                JobChannel.tenant_id == tenant_id
+            )
+        )
+        channel_result = await self.db.execute(channel_query)
+        job_channels = channel_result.scalars().all()
+
+        return {
+            "job": job,
+            "resume_stats": resume_stats,
+            "match_results": match_results,
+            "recruitment_tasks": recruitment_tasks,
+            "job_channels": job_channels
+        }
+
+    async def get_job_with_creator(self, job_id: UUID, tenant_id: UUID) -> Optional[Dict]:
+        """
+        获取职位及其创建者信息
+
+        Args:
+            job_id: 职位ID
+            tenant_id: 租户ID
+
+        Returns:
+            包含职位和创建者信息的字典
+        """
+        job = await self.get_by_id(Job, job_id, tenant_id)
+        if not job:
+            return None
+
+        result = {"job": job}
+
+        # 获取创建者信息
+        if job.created_by:
+            creator_query = select(User).where(
+                and_(
+                    User.id == job.created_by,
+                    User.tenant_id == tenant_id
                 )
             )
-        
-        # 状态筛选
-        if status:
-            query = query.where(Job.status == status)
-        
-        # 部门筛选
-        if department:
-            query = query.where(Job.department == department)
-        
-        # 计算总数
-        count_query = select(func.count()).select_from(query.subquery())
-        total = await db.scalar(count_query)
-        
-        # 分页
-        query = query.order_by(Job.created_at.desc())
-        query = query.offset((page - 1) * page_size).limit(page_size)
-        
-        result = await db.execute(query)
-        jobs = result.scalars().all()
-        
-        return list(jobs), total or 0
-    
-    async def create_job(
+            creator_result = await self.db.execute(creator_query)
+            creator = creator_result.scalar()
+            result["creator"] = creator
+
+        # 获取租户信息
+        if job.tenant_id:
+            tenant_query = select(Tenant).where(Tenant.id == job.tenant_id)
+            tenant_result = await self.db.execute(tenant_query)
+            tenant = tenant_result.scalar()
+            result["tenant"] = tenant
+
+        return result
+
+    async def get_jobs_with_resume_count(self, tenant_id: UUID, skip: int = 0, limit: int = 100) -> List[Dict]:
+        """
+        获取职位列表及其简历数量统计
+
+        Args:
+            tenant_id: 租户ID
+            skip: 跳过记录数
+            limit: 返回记录数
+
+        Returns:
+            包含职位和简历数量的字典列表
+        """
+        jobs = await self.get_all(Job, tenant_id, skip, limit)
+
+        result = []
+        for job in jobs:
+            resume_query = select(func.count(Resume.id)).where(
+                and_(
+                    Resume.job_id == job.id,
+                    Resume.tenant_id == tenant_id
+                )
+            )
+            resume_result = await self.db.execute(resume_query)
+            resume_count = resume_result.scalar()
+
+            result.append({
+                "job": job,
+                "resume_count": resume_count
+            })
+
+        return result
+
+    async def search_jobs(
         self,
-        db: AsyncSession,
-        *,
         tenant_id: UUID,
-        created_by: UUID,
-        **job_data
-    ) -> Job:
-        """创建职位"""
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        department: Optional[str] = None,
+        location: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Job]:
+        """
+        搜索职位
+
+        Args:
+            tenant_id: 租户ID
+            keyword: 搜索关键词（搜索标题、部门）
+            status: 职位状态
+            department: 部门
+            location: 工作地点
+            skip: 跳过记录数
+            limit: 返回记录数
+
+        Returns:
+            职位列表
+        """
+        # 构建基础查询
+        conditions = [Job.tenant_id == tenant_id]
+
+        if status:
+            conditions.append(Job.status == status)
+
+        if department:
+            conditions.append(Job.department == department)
+
+        if location:
+            conditions.append(Job.location == location)
+
+        if keyword:
+            conditions.append(
+                or_(
+                    Job.title.ilike(f"%{keyword}%"),
+                    Job.department.ilike(f"%{keyword}%"),
+                    Job.description.ilike(f"%{keyword}%")
+                )
+            )
+
+        query = select(Job).where(and_(*conditions)).offset(skip).limit(limit)
+
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def get_job_statistics(self, tenant_id: UUID) -> Dict:
+        """
+        获取职位统计信息
+
+        Args:
+            tenant_id: 租户ID
+
+        Returns:
+            统计信息字典
+        """
+        # 获取总职位数
+        total_query = select(func.count(Job.id)).where(Job.tenant_id == tenant_id)
+        total_result = await self.db.execute(total_query)
+        total_jobs = total_result.scalar()
+
+        # 获取各状态的职位数
+        status_stats = {}
+        for status in ['draft', 'open', 'closed']:
+            status_query = select(func.count(Job.id)).where(
+                and_(
+                    Job.tenant_id == tenant_id,
+                    Job.status == status
+                )
+            )
+            status_result = await self.db.execute(status_query)
+            status_count = status_result.scalar()
+            status_stats[status] = status_count
+
+        return {
+            "total": total_jobs,
+            "by_status": status_stats
+        }
+
+    async def create_job(self, tenant_id: UUID, user_id: UUID, created_by: UUID, job_data: Dict) -> Job:
+        """
+        创建新职位
+
+        Args:
+            tenant_id: 租户ID
+            user_id: 用户ID
+            created_by: 创建人ID
+            job_data: 职位数据
+
+        Returns:
+            创建的职位对象
+        """
         # 处理 salary 字段
         if "salary" in job_data and job_data["salary"]:
             min_salary, max_salary = self.parse_salary(job_data["salary"])
@@ -111,63 +299,50 @@ class JobService(BaseService[Job]):
                 job_data["max_salary"] = max_salary
             # 移除 salary 字段，因为数据库中没有这个字段
             del job_data["salary"]
-        
+
         job_data.update({
             "tenant_id": tenant_id,
+            "user_id": user_id,
             "created_by": created_by
         })
-        
-        job = Job(**job_data)
-        db.add(job)
-        await db.commit()
-        await db.refresh(job)
-        
-        return job
-    
-    async def update_job(
-        self,
-        db: AsyncSession,
-        job_id: UUID,
-        **update_data
-    ) -> Job:
-        """更新职位"""
-        job = await self.get(db, job_id)
-        if not job:
-            raise NotFoundException("Job not found")
-        
-        # 处理 salary 字段
-        if "salary" in update_data and update_data["salary"]:
-            min_salary, max_salary = self.parse_salary(update_data["salary"])
-            if min_salary:
-                update_data["min_salary"] = min_salary
-            if max_salary:
-                update_data["max_salary"] = max_salary
-            # 移除 salary 字段，因为数据库中没有这个字段
-            del update_data["salary"]
-        
-        for key, value in update_data.items():
-            if value is not None:
-                setattr(job, key, value)
-        
-        await db.commit()
-        await db.refresh(job)
-        
-        return job
-    
-    async def duplicate_job(
-        self,
-        db: AsyncSession,
-        job_id: UUID,
-        created_by: UUID
-    ) -> Job:
-        """复制职位"""
-        original_job = await self.get(db, job_id)
+
+        return await self.create(Job, job_data)
+
+    async def update_job_status(self, job_id: UUID, tenant_id: UUID, status: str) -> Optional[Job]:
+        """
+        更新职位状态
+
+        Args:
+            job_id: 职位ID
+            tenant_id: 租户ID
+            status: 新状态
+
+        Returns:
+            更新后的职位对象
+        """
+        return await self.update(Job, job_id, {"status": status}, tenant_id)
+
+    async def duplicate_job(self, job_id: UUID, tenant_id: UUID, user_id: UUID, created_by: UUID) -> Optional[Job]:
+        """
+        复制职位
+
+        Args:
+            job_id: 原职位ID
+            tenant_id: 租户ID
+            user_id: 用户ID
+            created_by: 创建人ID
+
+        Returns:
+            新职位对象
+        """
+        original_job = await self.get_by_id(Job, job_id, tenant_id)
         if not original_job:
-            raise NotFoundException("Job not found")
-        
+            return None
+
         # 创建新职位
         new_job_data = {
-            "tenant_id": original_job.tenant_id,
+            "tenant_id": tenant_id,
+            "user_id": user_id,
             "title": f"{original_job.title} (副本)",
             "department": original_job.department,
             "location": original_job.location,
@@ -186,10 +361,5 @@ class JobService(BaseService[Job]):
             "job_level": original_job.job_level,
             "created_by": created_by
         }
-        
-        new_job = Job(**new_job_data)
-        db.add(new_job)
-        await db.commit()
-        await db.refresh(new_job)
-        
-        return new_job
+
+        return await self.create(Job, new_job_data)

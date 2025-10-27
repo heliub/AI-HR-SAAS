@@ -1,9 +1,9 @@
 """
 Interview model
 """
-from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, Text, Date, Time
+from sqlalchemy import Column, String, DateTime, Integer, Text, Date, Time
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from datetime import datetime
 
 from app.models.base import Base
 
@@ -13,8 +13,9 @@ class Interview(Base):
     
     __tablename__ = "interviews"
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    candidate_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=False, index=True, comment="候选人简历ID")
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="创建该面试的HR用户ID")
+    candidate_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="候选人简历ID")
     candidate_name = Column(String(100), nullable=False, comment="候选人姓名（冗余字段）")
     position = Column(String(200), nullable=False, comment="应聘职位（冗余字段）")
     interview_date = Column(Date, nullable=False, comment="面试日期")
@@ -29,12 +30,12 @@ class Interview(Base):
     notes = Column(Text, comment="面试备注")
     feedback = Column(Text, comment="面试反馈")
     rating = Column(Integer, comment="面试评分（1-5分）")
+    created_at = Column(DateTime(timezone=True), comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), comment="更新时间")
     cancelled_at = Column(DateTime(timezone=True), comment="取消时间")
     cancellation_reason = Column(Text, comment="取消原因")
-    
-    # 关系
-    candidate = relationship("Resume", back_populates="interviews")
-    
+
+
     def __repr__(self) -> str:
         return f"<Interview(id={self.id}, candidate_name={self.candidate_name}, status={self.status})>"
 

@@ -3,8 +3,8 @@ Chat Mediation Log model
 """
 from datetime import datetime
 
-from sqlalchemy import Column, BigInteger, String, Text, ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Boolean
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
 
@@ -14,14 +14,14 @@ class ChatMediationLog(Base):
     
     __tablename__ = "chat_mediation_logs"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     candidate_id = Column(
-        BigInteger, 
-        ForeignKey("candidates.id"), 
-        nullable=False, 
+        UUID(as_uuid=True),
+        ForeignKey("candidates.id"),
+        nullable=False,
         index=True
     )
-    job_id = Column(BigInteger, ForeignKey("jobs.id"), nullable=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=True)
     platform = Column(
         String(50), 
         nullable=False,
@@ -41,8 +41,6 @@ class ChatMediationLog(Base):
     ai_generated = Column(Boolean, default=False, comment="是否AI生成")
     sent_at = Column(DateTime, nullable=True, comment="发送时间")
     
-    # 关系
-    candidate = relationship("Candidate", back_populates="chat_logs")
     
     def __repr__(self) -> str:
         return f"<ChatMediationLog(id={self.id}, platform={self.platform}, type={self.message_type})>"

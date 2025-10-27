@@ -22,6 +22,15 @@ from app.models.chat_message import ChatMessage
 from app.models.candidate_chat_history import CandidateChatHistory
 from app.models.activity_log import ActivityLog
 from app.models.email_log import EmailLog
+from app.models.candidate import Candidate
+from app.models.conversation import Conversation
+from app.models.task import Task
+from app.models.message import Message
+from app.models.matching_result import MatchingResult
+from app.models.chat_log import ChatMediationLog
+from app.models.async_task import AsyncTask
+from app.models.email_account import EmailAccount
+from app.models.platform_account import PlatformAccount
 
 __all__ = [
     "Base",
@@ -45,5 +54,14 @@ __all__ = [
     "CandidateChatHistory",
     "ActivityLog",
     "EmailLog",
+    "Candidate",
+    "Conversation",
+    "Task",
+    "Message",
+    "MatchingResult",
+    "ChatMediationLog",
+    "AsyncTask",
+    "EmailAccount",
+    "PlatformAccount",
 ]
 

@@ -3,8 +3,8 @@ Platform Account model
 """
 from datetime import datetime
 
-from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -14,8 +14,8 @@ class PlatformAccount(Base):
     
     __tablename__ = "platform_accounts"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     platform = Column(
         String(50), 
         nullable=False,

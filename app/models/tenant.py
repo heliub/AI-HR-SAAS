@@ -6,7 +6,6 @@ from typing import Optional
 
 from sqlalchemy import Column, String, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
@@ -33,9 +32,6 @@ class Tenant(Base):
     max_jobs = Column(Integer, default=50, comment="最大职位数")
     expires_at = Column(DateTime(timezone=True), nullable=True, comment="到期时间")
     
-    # 关系
-    users = relationship("User", back_populates="tenant", lazy="dynamic")
-    jobs = relationship("Job", back_populates="tenant", lazy="dynamic")
     
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, name={self.name})>"

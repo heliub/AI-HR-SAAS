@@ -10,7 +10,7 @@ from app.core.config import settings
 
 def setup_logging() -> None:
     """配置结构化日志"""
-    
+
     processors = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.filter_by_level,
@@ -22,6 +22,29 @@ def setup_logging() -> None:
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
     ]
+
+    # 添加OpenTelemetry trace上下文处理器（如果启用tracing）
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import _Span
+        from structlog.processors import add_log_level
+
+        def add_trace_context(logger, method_name: str, event_dict: dict) -> dict:
+            """添加trace上下文到日志中"""
+            current_span = trace.get_current_span()
+            if current_span is not None:
+                span_context = current_span.get_span_context()
+                # 检查trace_id不为0（有效的span）
+                if span_context and hasattr(span_context, 'trace_id') and span_context.trace_id != 0:
+                    event_dict["trace_id"] = format(span_context.trace_id, "032x")
+                    event_dict["span_id"] = format(span_context.span_id, "016x")
+                    event_dict["trace_flags"] = span_context.trace_flags
+            return event_dict
+
+        processors.append(add_trace_context)
+    except ImportError:
+        # 如果OpenTelemetry不可用，跳过trace上下文
+        pass
     
     if settings.LOG_RENDERER == "json":
         # 配置JSON格式的日志

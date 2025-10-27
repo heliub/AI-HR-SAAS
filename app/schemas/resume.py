@@ -104,6 +104,7 @@ class ResumeStatusUpdate(BaseModel):
 
 class ResumeResponse(ResumeBase, IDSchema, TimestampSchema):
     """简历响应"""
+    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
     status: str
     submittedAt: Optional[datetime] = Field(None, alias="submitted_at", serialization_alias="submittedAt")
     resumeUrl: Optional[str] = Field(None, alias="resume_url", serialization_alias="resumeUrl")
@@ -114,7 +115,7 @@ class ResumeResponse(ResumeBase, IDSchema, TimestampSchema):
     aiMatch: Optional[AIMatchBase] = Field(None, alias="ai_match", serialization_alias="aiMatch")
     aiChatHistory: Optional[List[CandidateChatHistoryBase]] = Field(None, alias="ai_chat_history", serialization_alias="aiChatHistory")
     conversationSummary: Optional[str] = Field(None, alias="conversation_summary", serialization_alias="conversationSummary")
-    
+
     model_config = {
         "from_attributes": True,
         "populate_by_name": True

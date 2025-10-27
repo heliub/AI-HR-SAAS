@@ -4,9 +4,8 @@ Matching Result model
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Column, BigInteger, String, Text, ForeignKey, DateTime, DECIMAL, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, DECIMAL, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -16,10 +15,10 @@ class MatchingResult(Base):
     
     __tablename__ = "matching_results"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
-    job_id = Column(BigInteger, ForeignKey("jobs.id"), nullable=False, index=True)
-    resume_id = Column(BigInteger, ForeignKey("resumes.id"), nullable=False, index=True)
-    candidate_id = Column(BigInteger, ForeignKey("candidates.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=False, index=True)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=False, index=True)
+    candidate_id = Column(UUID(as_uuid=True), ForeignKey("candidates.id"), nullable=False, index=True)
     score = Column(DECIMAL(5, 2), comment="匹配分数 0-100")
     result = Column(
         String(20),
@@ -33,13 +32,9 @@ class MatchingResult(Base):
         index=True,
         comment="状态: pending_review, accepted, rejected"
     )
-    reviewed_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     reviewed_at = Column(DateTime, nullable=True, comment="审核时间")
     
-    # 关系
-    job = relationship("Job", back_populates="matching_results")
-    resume = relationship("Resume", back_populates="matching_results")
-    candidate = relationship("Candidate", back_populates="matching_results")
     
     # 唯一约束
     __table_args__ = (

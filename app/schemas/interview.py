@@ -10,16 +10,16 @@ from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
 
 class InterviewBase(BaseModel):
     """面试基础Schema"""
-    candidateId: UUID
-    candidateName: str
+    candidateId: UUID = Field(alias="candidate_id")
+    candidateName: str = Field(alias="candidate_name")
     position: str
-    date: date
-    time: time
+    interviewDate: date = Field(alias="interview_date")
+    interviewTime: time = Field(alias="interview_time")
     interviewer: str
-    interviewerTitle: Optional[str] = None
+    interviewerTitle: Optional[str] = Field(None, alias="interviewer_title")
     type: str
     location: Optional[str] = None
-    meetingLink: Optional[str] = None
+    meetingLink: Optional[str] = Field(None, alias="meeting_link")
     notes: Optional[str] = None
 
 
@@ -50,6 +50,6 @@ class InterviewResponse(InterviewBase, IDSchema, TimestampSchema):
     status: str
     feedback: Optional[str] = None
     rating: Optional[int] = None
-    cancelledAt: Optional[datetime] = None
-    cancellationReason: Optional[str] = None
+    cancelledAt: Optional[datetime] = Field(None, alias="cancelled_at", serialization_alias="cancelledAt")
+    cancellationReason: Optional[str] = Field(None, alias="cancellation_reason", serialization_alias="cancellationReason")
 

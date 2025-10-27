@@ -3,9 +3,8 @@ Task model
 """
 from datetime import datetime
 
-from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -15,12 +14,12 @@ class Task(Base):
     
     __tablename__ = "tasks"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     conversation_id = Column(
-        BigInteger, 
-        ForeignKey("conversations.id"), 
-        nullable=False, 
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id"),
+        nullable=False,
         index=True
     )
     task_type = Column(
@@ -31,7 +30,7 @@ class Task(Base):
     )
     task_name = Column(String(500), comment="任务名称")
     context = Column(JSONB, comment="任务上下文信息")
-    related_job_id = Column(BigInteger, nullable=True, comment="关联的职位ID")
+    related_job_id = Column(UUID(as_uuid=True), nullable=True, comment="关联的职位ID")
     status = Column(
         String(20), 
         default="active",
@@ -46,9 +45,6 @@ class Task(Base):
         comment="最后活跃时间"
     )
     
-    # 关系
-    conversation = relationship("Conversation", back_populates="tasks")
-    messages = relationship("Message", back_populates="task", lazy="selectin")
     
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, type={self.task_type}, status={self.status})>"

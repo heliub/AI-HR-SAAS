@@ -1,9 +1,8 @@
 """
 Message model
 """
-from sqlalchemy import Column, BigInteger, String, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
 
@@ -13,14 +12,14 @@ class Message(Base):
     
     __tablename__ = "messages"
     
-    tenant_id = Column(BigInteger, ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     conversation_id = Column(
-        BigInteger, 
-        ForeignKey("conversations.id"), 
-        nullable=False, 
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id"),
+        nullable=False,
         index=True
     )
-    task_id = Column(BigInteger, ForeignKey("tasks.id"), nullable=True, index=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True, index=True)
     role = Column(
         String(20), 
         nullable=False,
@@ -29,9 +28,6 @@ class Message(Base):
     content = Column(Text, nullable=False, comment="消息内容")
     meta_info = Column("metadata", JSONB, comment="附加信息（意图识别结果等）")
     
-    # 关系
-    conversation = relationship("Conversation", back_populates="messages")
-    task = relationship("Task", back_populates="messages")
     
     def __repr__(self) -> str:
         return f"<Message(id={self.id}, role={self.role})>"

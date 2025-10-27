@@ -4,9 +4,8 @@ Job model
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, ARRAY
+from sqlalchemy import Column, String, Text, DateTime, Integer, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
@@ -16,7 +15,8 @@ class Job(Base):
     
     __tablename__ = "jobs"
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="创建该职位的HR用户ID")
     title = Column(String(200), nullable=False, comment="职位标题")
     department = Column(String(100), nullable=False, comment="所属部门")
     location = Column(String(100), nullable=False, comment="工作地点")
@@ -34,18 +34,11 @@ class Job(Base):
     education = Column(String(100), comment="学历要求")
     job_level = Column(String(50), comment="职级要求，如：P6-P7")
     applicants_count = Column(Integer, default=0, comment="申请人数（冗余字段）")
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, comment="创建人用户ID")
+    created_by = Column(UUID(as_uuid=True), index=True, comment="创建人用户ID")
     published_at = Column(DateTime(timezone=True), comment="发布时间")
     closed_at = Column(DateTime(timezone=True), comment="关闭时间")
     
-    # 关系
-    tenant = relationship("Tenant", back_populates="jobs")
-    created_by_user = relationship("User", back_populates="jobs")
-    resumes = relationship("Resume", back_populates="job", lazy="dynamic")
-    ai_match_results = relationship("AIMatchResult", back_populates="job", lazy="dynamic")
-    job_channels = relationship("JobChannel", back_populates="job", lazy="dynamic")
-    recruitment_tasks = relationship("RecruitmentTask", back_populates="job", lazy="dynamic")
-    
+      
     @property
     def salary(self) -> Optional[str]:
         """将 min_salary 和 max_salary 组合成字符串格式"""

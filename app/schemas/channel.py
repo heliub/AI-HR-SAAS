@@ -40,6 +40,7 @@ class ChannelUpdate(BaseModel):
 
 class ChannelResponse(ChannelBase, IDSchema, TimestampSchema):
     """渠道响应"""
+    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
     applicants: int = 0
     lastSync: Optional[datetime] = None
 

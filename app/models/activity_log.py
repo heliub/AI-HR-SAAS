@@ -1,9 +1,8 @@
 """
 Activity Log model
 """
-from sqlalchemy import Column, String, ForeignKey, Text
+from sqlalchemy import Column, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB, INET
-from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
@@ -13,8 +12,8 @@ class ActivityLog(Base):
     
     __tablename__ = "activity_logs"
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True, comment="租户ID（可为空，系统级操作）")
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, comment="操作用户ID")
+    tenant_id = Column(UUID(as_uuid=True), index=True, comment="租户ID（可为空，系统级操作）")
+    user_id = Column(UUID(as_uuid=True), index=True, comment="操作用户ID")
     action = Column(String(100), nullable=False, comment="操作类型，如：create_job, update_resume")
     entity_type = Column(String(50), index=True, comment="实体类型，如：job, resume, interview")
     entity_id = Column(UUID(as_uuid=True), index=True, comment="实体ID")

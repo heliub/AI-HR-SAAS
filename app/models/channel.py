@@ -1,9 +1,8 @@
 """
 Channel model
 """
-from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, Numeric, Text
+from sqlalchemy import Column, String, DateTime, Integer, Numeric, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
@@ -13,7 +12,8 @@ class Channel(Base):
     
     __tablename__ = "channels"
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="创建该渠道的HR用户ID")
     name = Column(String(100), nullable=False, comment="渠道名称")
     type = Column(String(20), nullable=False, index=True, 
                  comment="渠道类型: job-board-招聘网站, social-media-社交媒体, referral-内推, agency-猎头, website-官网")
@@ -28,9 +28,6 @@ class Channel(Base):
     description = Column(Text, comment="渠道描述")
     last_sync_at = Column(DateTime(timezone=True), comment="最后同步时间")
     
-    # 关系
-    job_channels = relationship("JobChannel", back_populates="channel", lazy="dynamic")
-    resumes = relationship("Resume", back_populates="source_channel", lazy="dynamic")
     
     def __repr__(self) -> str:
         return f"<Channel(id={self.id}, name={self.name}, type={self.type})>"

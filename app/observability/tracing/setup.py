@@ -14,30 +14,30 @@ from app.core.config import settings
 
 def setup_tracing(app: FastAPI) -> None:
     """配置OpenTelemetry追踪"""
-    
+
     # 创建Resource
     resource = Resource.create({
         "service.name": settings.APP_NAME,
         "service.version": settings.VERSION,
         "deployment.environment": settings.ENVIRONMENT
     })
-    
+
     # 创建TracerProvider
     provider = TracerProvider(resource=resource)
     trace.set_tracer_provider(provider)
-    
+
     if settings.JAEGER_ENABLED:
-        # 配置OTLP Exporter
+        # 配置OTLP Exporter（发送到trace服务器）
         otlp_exporter = OTLPSpanExporter(
             endpoint=settings.JAEGER_OTLP_ENDPOINT_HTTP
         )
         provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
     else:
-        # 配置控制台Exporter，用于本地调试
+        # 仅使用控制台Exporter，不发送到外部服务器
         console_exporter = ConsoleSpanExporter()
         provider.add_span_processor(BatchSpanProcessor(console_exporter))
 
-    # 自动instrumentation
+    # 自动instrumentation（保持启用，用于生成traceid）
     FastAPIInstrumentor.instrument_app(app)
 
 

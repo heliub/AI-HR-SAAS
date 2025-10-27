@@ -12,9 +12,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
     """追踪中间件"""
     
     async def dispatch(self, request: Request, call_next):
-        if not settings.JAEGER_ENABLED:
-            return await call_next(request)
-        
+        # 即使JAEGER_ENABLED=False，也进行tracing以生成traceid用于日志
         tracer = trace.get_tracer(__name__)
         
         with tracer.start_as_current_span(

@@ -65,6 +65,7 @@ class JobStatusUpdate(BaseModel):
 
 class JobResponse(JobBase, IDSchema, TimestampSchema):
     """职位响应"""
+    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
     status: str
     salary: Optional[str] = None  # 兼容字符串格式薪资，如 "30K-50K"
     applicants: int = 0

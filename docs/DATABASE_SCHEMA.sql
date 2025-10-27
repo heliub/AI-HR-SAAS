@@ -132,6 +132,7 @@ COMMENT ON COLUMN auth_tokens.updated_at IS '更新时间';
 CREATE TABLE jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     title VARCHAR(200) NOT NULL,
     department VARCHAR(100) NOT NULL,
     location VARCHAR(100) NOT NULL,
@@ -159,6 +160,7 @@ CREATE TABLE jobs (
 COMMENT ON TABLE jobs IS '职位表（已合并职位要求和偏好学校）';
 COMMENT ON COLUMN jobs.id IS '职位ID（主键）';
 COMMENT ON COLUMN jobs.tenant_id IS '租户ID';
+COMMENT ON COLUMN jobs.user_id IS '创建该职位的HR用户ID';
 COMMENT ON COLUMN jobs.title IS '职位标题';
 COMMENT ON COLUMN jobs.department IS '所属部门';
 COMMENT ON COLUMN jobs.location IS '工作地点';
@@ -190,6 +192,7 @@ COMMENT ON COLUMN jobs.closed_at IS '关闭时间';
 CREATE TABLE channels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -208,6 +211,7 @@ CREATE TABLE channels (
 COMMENT ON TABLE channels IS '招聘渠道表';
 COMMENT ON COLUMN channels.id IS '渠道ID（主键）';
 COMMENT ON COLUMN channels.tenant_id IS '租户ID';
+COMMENT ON COLUMN channels.user_id IS '负责该渠道的HR用户ID';
 COMMENT ON COLUMN channels.name IS '渠道名称';
 COMMENT ON COLUMN channels.type IS '渠道类型: job-board-招聘网站, social-media-社交媒体, referral-内推, agency-猎头, website-官网';
 COMMENT ON COLUMN channels.status IS '渠道状态: active-激活, inactive-停用';
@@ -257,6 +261,7 @@ COMMENT ON COLUMN job_channels.updated_at IS '更新时间';
 CREATE TABLE resumes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     candidate_name VARCHAR(100) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -283,6 +288,7 @@ CREATE TABLE resumes (
 COMMENT ON TABLE resumes IS '简历表（已合并技能列表）';
 COMMENT ON COLUMN resumes.id IS '简历ID（主键）';
 COMMENT ON COLUMN resumes.tenant_id IS '租户ID';
+COMMENT ON COLUMN resumes.user_id IS '负责处理该简历的HR用户ID';
 COMMENT ON COLUMN resumes.candidate_name IS '候选人姓名';
 COMMENT ON COLUMN resumes.email IS '候选人邮箱';
 COMMENT ON COLUMN resumes.phone IS '候选人电话';
@@ -416,6 +422,7 @@ COMMENT ON COLUMN job_preferences.updated_at IS '更新时间';
 CREATE TABLE ai_match_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     resume_id UUID NOT NULL,
     job_id UUID NOT NULL,
     is_match BOOLEAN NOT NULL,
@@ -432,6 +439,7 @@ CREATE TABLE ai_match_results (
 COMMENT ON TABLE ai_match_results IS 'AI简历匹配结果表（已合并优势和劣势）';
 COMMENT ON COLUMN ai_match_results.id IS '匹配结果ID（主键）';
 COMMENT ON COLUMN ai_match_results.tenant_id IS '租户ID';
+COMMENT ON COLUMN ai_match_results.user_id IS '触发匹配的HR用户ID';
 COMMENT ON COLUMN ai_match_results.resume_id IS '简历ID';
 COMMENT ON COLUMN ai_match_results.job_id IS '职位ID';
 COMMENT ON COLUMN ai_match_results.is_match IS '是否匹配';
@@ -451,6 +459,7 @@ COMMENT ON COLUMN ai_match_results.updated_at IS '更新时间';
 CREATE TABLE recruitment_tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     job_id UUID NOT NULL,
     job_title VARCHAR(200) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -465,14 +474,13 @@ CREATE TABLE recruitment_tasks (
     interviews_scheduled INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    completed_at TIMESTAMPTZ
 );
 
 COMMENT ON TABLE recruitment_tasks IS 'AI招聘任务表';
 COMMENT ON COLUMN recruitment_tasks.id IS '任务ID（主键）';
 COMMENT ON COLUMN recruitment_tasks.tenant_id IS '租户ID';
+COMMENT ON COLUMN recruitment_tasks.user_id IS '任务负责人HR用户ID';
 COMMENT ON COLUMN recruitment_tasks.job_id IS '关联职位ID';
 COMMENT ON COLUMN recruitment_tasks.job_title IS '职位标题（冗余字段）';
 COMMENT ON COLUMN recruitment_tasks.status IS '任务状态: not-started-未开始, in-progress-进行中, paused-已暂停, completed-已完成';
@@ -497,6 +505,7 @@ COMMENT ON COLUMN recruitment_tasks.completed_at IS '任务完成时间';
 CREATE TABLE interviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     candidate_id UUID NOT NULL,
     candidate_name VARCHAR(100) NOT NULL,
     position VARCHAR(200) NOT NULL,
@@ -520,6 +529,7 @@ CREATE TABLE interviews (
 COMMENT ON TABLE interviews IS '面试表';
 COMMENT ON COLUMN interviews.id IS '面试ID（主键）';
 COMMENT ON COLUMN interviews.tenant_id IS '租户ID';
+COMMENT ON COLUMN interviews.user_id IS '安排面试的HR用户ID';
 COMMENT ON COLUMN interviews.candidate_id IS '候选人简历ID';
 COMMENT ON COLUMN interviews.candidate_name IS '候选人姓名（冗余字段）';
 COMMENT ON COLUMN interviews.position IS '应聘职位（冗余字段）';
@@ -565,6 +575,7 @@ COMMENT ON COLUMN chat_sessions.updated_at IS '最后更新时间';
 CREATE TABLE chat_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
+    user_id UUID,
     session_id UUID NOT NULL,
     role VARCHAR(20) NOT NULL,
     content TEXT NOT NULL,
@@ -577,6 +588,7 @@ CREATE TABLE chat_messages (
 COMMENT ON TABLE chat_messages IS 'AI聊天消息表（支持多种消息类型）';
 COMMENT ON COLUMN chat_messages.id IS '消息ID（主键）';
 COMMENT ON COLUMN chat_messages.tenant_id IS '租户ID';
+COMMENT ON COLUMN chat_messages.user_id IS '发送消息的用户ID';
 COMMENT ON COLUMN chat_messages.session_id IS '会话ID';
 COMMENT ON COLUMN chat_messages.role IS '消息角色: user-用户, assistant-AI助手, system-系统';
 COMMENT ON COLUMN chat_messages.content IS '消息内容';
@@ -649,7 +661,7 @@ CREATE TABLE email_logs (
     status VARCHAR(20),
     error_message TEXT,
     resume_id UUID,
-    sent_by UUID,
+    sent_by UUID NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     sent_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -696,21 +708,25 @@ CREATE INDEX idx_auth_tokens_expires_at ON auth_tokens(expires_at);
 
 -- 职位表索引
 CREATE INDEX idx_jobs_tenant_id ON jobs(tenant_id);
+CREATE INDEX idx_jobs_user_id ON jobs(user_id);
 CREATE INDEX idx_jobs_status ON jobs(status);
 CREATE INDEX idx_jobs_department ON jobs(department);
 CREATE INDEX idx_jobs_location ON jobs(location);
 CREATE INDEX idx_jobs_created_by ON jobs(created_by);
 CREATE INDEX idx_jobs_created_at ON jobs(created_at DESC);
 CREATE INDEX idx_jobs_tenant_status ON jobs(tenant_id, status);
+CREATE INDEX idx_jobs_tenant_user ON jobs(tenant_id, user_id);
 CREATE INDEX idx_jobs_title_search ON jobs USING gin(to_tsvector('simple', title));
 CREATE INDEX idx_jobs_requirements ON jobs USING gin(requirements);
 CREATE INDEX idx_jobs_preferred_schools ON jobs USING gin(preferred_schools);
 
 -- 渠道表索引
 CREATE INDEX idx_channels_tenant_id ON channels(tenant_id);
+CREATE INDEX idx_channels_user_id ON channels(user_id);
 CREATE INDEX idx_channels_status ON channels(status);
 CREATE INDEX idx_channels_type ON channels(type);
 CREATE INDEX idx_channels_tenant_status ON channels(tenant_id, status);
+CREATE INDEX idx_channels_tenant_user ON channels(tenant_id, user_id);
 
 -- 职位发布渠道表索引
 CREATE INDEX idx_job_channels_tenant_id ON job_channels(tenant_id);
@@ -719,6 +735,7 @@ CREATE INDEX idx_job_channels_channel_id ON job_channels(channel_id);
 
 -- 简历表索引
 CREATE INDEX idx_resumes_tenant_id ON resumes(tenant_id);
+CREATE INDEX idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX idx_resumes_status ON resumes(status);
 CREATE INDEX idx_resumes_job_id ON resumes(job_id);
 CREATE INDEX idx_resumes_source_channel_id ON resumes(source_channel_id);
@@ -727,6 +744,7 @@ CREATE INDEX idx_resumes_candidate_name ON resumes(candidate_name);
 CREATE INDEX idx_resumes_email ON resumes(email);
 CREATE INDEX idx_resumes_phone ON resumes(phone);
 CREATE INDEX idx_resumes_tenant_status ON resumes(tenant_id, status);
+CREATE INDEX idx_resumes_tenant_user ON resumes(tenant_id, user_id);
 CREATE INDEX idx_resumes_search ON resumes USING gin(
     to_tsvector('simple', candidate_name || ' ' || COALESCE(email, '') || ' ' || position)
 );
@@ -752,26 +770,32 @@ CREATE INDEX idx_job_preferences_locations ON job_preferences USING gin(preferre
 
 -- AI匹配结果索引
 CREATE INDEX idx_ai_match_results_tenant_id ON ai_match_results(tenant_id);
+CREATE INDEX idx_ai_match_results_user_id ON ai_match_results(user_id);
 CREATE INDEX idx_ai_match_results_resume_id ON ai_match_results(resume_id);
 CREATE INDEX idx_ai_match_results_job_id ON ai_match_results(job_id);
 CREATE INDEX idx_ai_match_results_match_score ON ai_match_results(match_score DESC);
 CREATE INDEX idx_ai_match_results_tenant_resume ON ai_match_results(tenant_id, resume_id);
+CREATE INDEX idx_ai_match_results_tenant_user ON ai_match_results(tenant_id, user_id);
 CREATE INDEX idx_ai_match_results_strengths ON ai_match_results USING gin(strengths);
 CREATE INDEX idx_ai_match_results_weaknesses ON ai_match_results USING gin(weaknesses);
 
 -- 招聘任务表索引
 CREATE INDEX idx_recruitment_tasks_tenant_id ON recruitment_tasks(tenant_id);
+CREATE INDEX idx_recruitment_tasks_user_id ON recruitment_tasks(user_id);
 CREATE INDEX idx_recruitment_tasks_job_id ON recruitment_tasks(job_id);
 CREATE INDEX idx_recruitment_tasks_status ON recruitment_tasks(status);
 CREATE INDEX idx_recruitment_tasks_created_at ON recruitment_tasks(created_at DESC);
 CREATE INDEX idx_recruitment_tasks_tenant_status ON recruitment_tasks(tenant_id, status);
+CREATE INDEX idx_recruitment_tasks_tenant_user ON recruitment_tasks(tenant_id, user_id);
 
 -- 面试表索引
 CREATE INDEX idx_interviews_tenant_id ON interviews(tenant_id);
+CREATE INDEX idx_interviews_user_id ON interviews(user_id);
 CREATE INDEX idx_interviews_candidate_id ON interviews(candidate_id);
 CREATE INDEX idx_interviews_status ON interviews(status);
 CREATE INDEX idx_interviews_date_time ON interviews(interview_date, interview_time);
 CREATE INDEX idx_interviews_tenant_status ON interviews(tenant_id, status);
+CREATE INDEX idx_interviews_tenant_user ON interviews(tenant_id, user_id);
 
 -- 聊天会话索引
 CREATE INDEX idx_chat_sessions_tenant_id ON chat_sessions(tenant_id);
@@ -780,10 +804,12 @@ CREATE INDEX idx_chat_sessions_updated_at ON chat_sessions(updated_at DESC);
 
 -- 聊天消息索引
 CREATE INDEX idx_chat_messages_tenant_id ON chat_messages(tenant_id);
+CREATE INDEX idx_chat_messages_user_id ON chat_messages(user_id);
 CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
 CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at);
 CREATE INDEX idx_chat_messages_message_type ON chat_messages(message_type);
 CREATE INDEX idx_chat_messages_metadata ON chat_messages USING gin(metadata);
+CREATE INDEX idx_chat_messages_tenant_user ON chat_messages(tenant_id, user_id);
 
 -- 候选人聊天历史索引
 CREATE INDEX idx_candidate_chat_history_tenant_id ON candidate_chat_history(tenant_id);

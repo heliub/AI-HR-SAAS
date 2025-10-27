@@ -37,6 +37,7 @@ class RecruitmentTaskProgressUpdate(BaseModel):
 
 class RecruitmentTaskResponse(RecruitmentTaskBase, IDSchema, TimestampSchema):
     """招聘任务响应"""
+    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
     status: str
     createdBy: Optional[str] = None
     channelsPublished: int = 0
