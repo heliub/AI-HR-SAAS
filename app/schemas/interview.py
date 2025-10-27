@@ -50,6 +50,6 @@ class InterviewResponse(InterviewBase, IDSchema, TimestampSchema):
     status: str
     feedback: Optional[str] = None
     rating: Optional[int] = None
-    cancelledAt: Optional[datetime] = Field(None, alias="cancelled_at", serialization_alias="cancelledAt")
-    cancellationReason: Optional[str] = Field(None, alias="cancellation_reason", serialization_alias="cancellationReason")
+    cancelledAt: Optional[datetime] = Field(alias="cancelled_at")
+    cancellationReason: Optional[str] = Field(alias="cancellation_reason")
 

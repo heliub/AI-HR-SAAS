@@ -1,0 +1,341 @@
+{
+  "info": {
+    "name": "AI HR SaaS API",
+    "description": "AI HR SaaS 系统API接口集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "认证",
+      "item": [
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"li@demo.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.data.accessToken);",
+                  "    pm.collectionVariables.set('userId', response.data.user.id);",
+                  "    pm.collectionVariables.set('userRole', response.data.user.role);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "用户管理",
+      "item": [
+        {
+          "name": "获取用户信息",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/account/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["account", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "职位管理",
+      "item": [
+        {
+          "name": "获取职位列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/jobs?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建职位",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"高级前端工程师\",\n  \"department\": \"技术部\",\n  \"location\": \"北京\",\n  \"type\": \"full-time\",\n  \"minSalary\": 25000,\n  \"maxSalary\": 45000,\n  \"description\": \"负责前端开发工作\",\n  \"requirements\": [\"React\", \"TypeScript\", \"5年经验\"],\n  \"education\": \"本科及以上\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"]
+            }
+          }
+        },
+        {
+          "name": "获取职位详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "{{jobId}}"]
+            }
+          }
+        },
+        {
+          "name": "AI生成职位描述",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"高级前端工程师\",\n  \"description\": \"负责前端开发和性能优化\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jobs/ai-generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "ai-generate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "简历管理",
+      "item": [
+        {
+          "name": "获取简历列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/resumes?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["resumes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取简历详情 ⭐",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/resumes/{{resumeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["resumes", "{{resumeId}}"]
+            }
+          },
+          "description": "获取简历完整信息，包含工作经历、项目经历、教育背景、AI匹配结果、聊天记录等所有关联数据"
+        },
+        {
+          "name": "更新简历状态",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reviewing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/resumes/{{resumeId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["resumes", "{{resumeId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "AI简历匹配",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"{{jobId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/resumes/{{resumeId}}/ai-match",
+              "host": ["{{baseUrl}}"],
+              "path": ["resumes", "{{resumeId}}", "ai-match"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "渠道管理",
+      "item": [
+        {
+          "name": "获取渠道列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/channels?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["channels"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建渠道",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"BOSS直聘\",\n  \"type\": \"job-board\",\n  \"status\": \"active\",\n  \"annualCost\": 80000,\n  \"contactPerson\": \"张经理\",\n  \"contactEmail\": \"contact@boss.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/channels",
+              "host": ["{{baseUrl}}"],
+              "path": ["channels"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "任务管理",
+      "item": [
+        {
+          "name": "获取任务列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tasks?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建任务",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"{{jobId}}\",\n  \"totalChannels\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

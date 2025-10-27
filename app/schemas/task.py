@@ -4,8 +4,9 @@ Recruitment Task schemas
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
+from app.utils.datetime_formatter import format_datetime
 
 
 class RecruitmentTaskBase(BaseModel):
@@ -49,4 +50,9 @@ class RecruitmentTaskResponse(RecruitmentTaskBase, IDSchema, TimestampSchema):
     resumesReceived: int = Field(default=0, alias="resumes_received")
     interviewsScheduled: int = Field(default=0, alias="interviews_scheduled")
     completedAt: Optional[datetime] = Field(None, alias="completed_at")
+
+    @field_serializer('completedAt')
+    def serialize_completed_at(self, value: Optional[datetime]) -> Optional[str]:
+        """格式化完成时间为可读格式"""
+        return format_datetime(value)
 

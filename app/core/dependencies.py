@@ -38,7 +38,7 @@ async def get_current_user(
     payload = security_manager.verify_token(token)
     
     user_id_str: Optional[str] = payload.get("sub")
-    tenant_id_str: Optional[str] = payload.get("tenant_id")
+    tenant_id_str: Optional[str] = payload.get("tenantId")
     
     if user_id_str is None or tenant_id_str is None:
         raise HTTPException(
@@ -58,7 +58,7 @@ async def get_current_user(
     
     # 获取用户
     user_service = UserService()
-    user = await user_service.get(db, user_id)
+    user = await user_service.get_by_id(db, user_id)
     
     if user is None:
         raise HTTPException(

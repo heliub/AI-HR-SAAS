@@ -74,7 +74,7 @@ async def upload_avatar(
     )
 
 
-@router.put("/notifications", response_model=APIResponse)
+@router.post("/notifications", response_model=APIResponse)
 async def update_notifications(
     settings_data: NotificationSettingsRequest,
     db: AsyncSession = Depends(get_db),

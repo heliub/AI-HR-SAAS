@@ -4,8 +4,9 @@ User schemas
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_serializer
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
+from app.utils.datetime_formatter import format_datetime
 
 
 class UserBase(BaseModel):
@@ -18,7 +19,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """创建用户"""
     password: str = Field(..., min_length=8)
-    tenant_id: UUID
+    tenantId: UUID = Field(alias="tenant_id")
 
 
 class UserUpdate(BaseModel):
@@ -30,10 +31,10 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase, IDSchema, TimestampSchema):
     """用户响应"""
-    tenant_id: UUID
-    avatar_url: Optional[str] = None
-    is_active: bool
-    last_login_at: Optional[datetime] = None
+    tenantId: UUID = Field(alias="tenant_id")
+    avatarUrl: Optional[str] = Field(alias="avatar_url")
+    isActive: bool = Field(alias="is_active")
+    lastLoginAt: Optional[str] = Field(alias="last_login_at")
 
 
 class ProfileUpdateRequest(BaseModel):

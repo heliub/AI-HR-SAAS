@@ -47,7 +47,7 @@ async def login(
     access_token = security_manager.create_access_token(
         data={
             "sub": str(user.id),
-            "tenant_id": str(user.tenant_id),
+            "tenantId": str(user.tenant_id),
             "role": user.role
         }
     )

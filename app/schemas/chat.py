@@ -36,7 +36,7 @@ class ChatMessageCreate(ChatMessageBase):
 
 class ChatMessageResponse(ChatMessageBase, IDSchema):
     """聊天消息响应"""
-    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
+    userId: Optional[UUID] = Field(alias="user_id")
     timestamp: datetime
 
 

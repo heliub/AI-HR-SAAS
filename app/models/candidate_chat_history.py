@@ -18,7 +18,7 @@ class CandidateChatHistory(Base):
     message = Column(Text, nullable=False, comment="消息内容")
     message_type = Column(String(50), default='text', index=True,
                          comment="消息类型: text-普通文本, greeting-问候, question-提问, answer-回答, document_request-文档请求, schedule-日程安排")
-    message_metadata = Column(JSONB, comment="消息元数据（JSONB格式）")
+    # message_metadata = Column(JSONB, comment="消息元数据（JSONB格式）")  # 暂时注释掉，数据库表中没有此字段
     
     
     def __repr__(self) -> str:

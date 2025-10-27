@@ -1,7 +1,7 @@
 """
 Base service class
 """
-from typing import Generic, TypeVar, Type, Optional
+from typing import Generic, TypeVar, Type, Optional, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,19 +18,19 @@ class BaseService(Generic[ModelType]):
         self.repository = BaseRepository(model)
     
     async def get_by_id(
-        self, 
-        db: AsyncSession, 
-        id: int, 
-        tenant_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        id: Any,
+        tenant_id: Optional[Any] = None
     ) -> Optional[ModelType]:
         """根据ID获取"""
         return await self.repository.get_by_id(db, id, tenant_id)
     
     async def get(
-        self, 
-        db: AsyncSession, 
-        id: int, 
-        tenant_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        id: Any,
+        tenant_id: Optional[Any] = None
     ) -> Optional[ModelType]:
         """根据ID获取（get_by_id的别名）"""
         return await self.get_by_id(db, id, tenant_id)

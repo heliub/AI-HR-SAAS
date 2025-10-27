@@ -18,10 +18,10 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
     
     async def get_by_id(
-        self, 
-        db: AsyncSession, 
-        id: int, 
-        tenant_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        id: Any,
+        tenant_id: Optional[Any] = None
     ) -> Optional[ModelType]:
         """根据ID获取记录"""
         query = select(self.model).where(self.model.id == id)

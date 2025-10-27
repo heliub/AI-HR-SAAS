@@ -35,6 +35,6 @@ class LogoutRequest(BaseModel):
 class TokenPayload(BaseModel):
     """Token载荷"""
     sub: UUID  # user_id
-    tenant_id: UUID
+    tenantId: UUID = Field(alias="tenant_id")
     role: str
 

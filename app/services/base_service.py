@@ -104,3 +104,20 @@ class BaseService:
         query = select(func.count(model.id)).where(and_(*conditions))
         result = await self.db.execute(query)
         return result.scalar()
+
+    async def count_without_tenant_filter(self, model: Type[Base], user_id: Optional[UUID] = None, filters: Optional[Dict[str, Any]] = None, is_admin: bool = False) -> int:
+        """统计记录数量（不限制tenant，用于管理员）"""
+        conditions = []
+
+        # 用户过滤 - 只有非管理员且模型有user_id字段时才过滤
+        if user_id and not is_admin and hasattr(model, 'user_id'):
+            conditions.append(model.user_id == user_id)
+
+        if filters:
+            for key, value in filters.items():
+                if hasattr(model, key):
+                    conditions.append(getattr(model, key) == value)
+
+        query = select(func.count(model.id)).where(and_(*conditions))
+        result = await self.db.execute(query)
+        return result.scalar()

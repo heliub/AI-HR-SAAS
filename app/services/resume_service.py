@@ -229,6 +229,56 @@ class ResumeService(BaseService):
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def search_resumes_without_tenant_filter(
+        self,
+        user_id: Optional[UUID] = None,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        job_id: Optional[UUID] = None,
+        skip: int = 0,
+        limit: int = 100,
+        is_admin: bool = False
+    ) -> List[Resume]:
+        """
+        搜索简历（不限制tenant，用于管理员查看所有数据）
+
+        Args:
+            user_id: 用户ID
+            keyword: 搜索关键词
+            status: 简历状态
+            job_id: 职位ID
+            skip: 跳过记录数
+            limit: 返回记录数
+            is_admin: 是否为管理员
+
+        Returns:
+            简历列表
+        """
+        conditions = []
+
+        # 用户过滤 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
+            conditions.append(Resume.user_id == user_id)
+
+        if status:
+            conditions.append(Resume.status == status)
+
+        if job_id:
+            conditions.append(Resume.job_id == job_id)
+
+        if keyword:
+            conditions.append(
+                or_(
+                    Resume.candidate_name.ilike(f"%{keyword}%"),
+                    Resume.email.ilike(f"%{keyword}%"),
+                    Resume.position.ilike(f"%{keyword}%")
+                )
+            )
+
+        query = select(Resume).where(and_(*conditions)).offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
     async def search_resumes_with_summary(
         self,
         tenant_id: UUID,

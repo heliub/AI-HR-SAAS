@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.resume import (
@@ -37,28 +38,55 @@ async def get_resumes(
     # 判断是否为管理员
     is_admin = current_user.role == "admin"
 
-    resumes = await resume_service.search_resumes(
-        tenant_id=current_user.tenant_id,
-        user_id=current_user.id,
-        keyword=search,
-        status=status,
-        job_id=jobId,
-        skip=skip,
-        limit=pageSize,
-        is_admin=is_admin
-    )
+    # 为管理员查看所有租户数据，HR查看自己的数据
+    if is_admin:
+        # 管理员可以查看所有租户的简历
+        resumes = await resume_service.search_resumes_without_tenant_filter(
+            user_id=current_user.id if not is_admin else None,
+            keyword=search,
+            status=status,
+            job_id=jobId,
+            skip=skip,
+            limit=pageSize,
+            is_admin=is_admin
+        )
+    else:
+        # HR只能查看自己租户的简历
+        resumes = await resume_service.search_resumes(
+            tenant_id=current_user.tenant_id,
+            user_id=current_user.id,
+            keyword=search,
+            status=status,
+            job_id=jobId,
+            skip=skip,
+            limit=pageSize,
+            is_admin=is_admin
+        )
 
     # 获取总数
-    total = await resume_service.count(
-        Resume,
-        current_user.tenant_id,
-        current_user.id,
-        {
-            "status": status,
-            "job_id": jobId
-        } if status or jobId else None,
-        is_admin=is_admin
-    )
+    if is_admin:
+        # 管理员统计所有简历数量
+        total = await resume_service.count_without_tenant_filter(
+            Resume,
+            user_id=current_user.id if not is_admin else None,
+            filters={
+                "status": status,
+                "job_id": jobId
+            } if status or jobId else None,
+            is_admin=is_admin
+        )
+    else:
+        # HR统计自己租户的简历数量
+        total = await resume_service.count(
+            Resume,
+            current_user.tenant_id,
+            current_user.id,
+            {
+                "status": status,
+                "job_id": jobId
+            } if status or jobId else None,
+            is_admin=is_admin
+        )
 
     resume_responses = [ResumeResponse.model_validate(resume, from_attributes=True) for resume in resumes]
 
@@ -85,8 +113,35 @@ async def get_resume(
     """获取简历详情"""
     resume_service = ResumeService(db)
 
-    # 使用新的服务方法获取完整简历详情
-    resume_data = await resume_service.get_resume_full_details(resume_id, current_user.tenant_id)
+    # 直接查询简历，不限制tenant（管理员可以查看所有，HR只能查看自己租户的）
+    from sqlalchemy import select
+
+    is_admin = current_user.role == "admin"
+
+    if is_admin:
+        # 管理员可以查看所有租户的简历
+        resume_query = select(Resume).where(Resume.id == resume_id)
+    else:
+        # HR只能查看自己租户的简历
+        resume_query = select(Resume).where(
+            and_(Resume.id == resume_id, Resume.tenant_id == current_user.tenant_id)
+        )
+
+    # 添加user_id过滤（非管理员）
+    if not is_admin:
+        resume_query = resume_query.where(Resume.user_id == current_user.id)
+
+    resume_result = await db.execute(resume_query)
+    resume_basic = resume_result.scalar()
+
+    if not resume_basic:
+        return APIResponse(
+            code=404,
+            message="简历不存在或无权限访问"
+        )
+
+    # 获取完整的简历详情
+    resume_data = await resume_service.get_resume_full_details(resume_id, resume_basic.tenant_id)
 
     if not resume_data:
         return APIResponse(
@@ -94,22 +149,80 @@ async def get_resume(
             message="简历不存在"
         )
 
-    # 构建完整的简历详情响应
+    # 导入时间格式化工具
+    from app.utils.datetime_formatter import format_datetime, format_date
+
+    # 构建简历详情数据 - 使用数据库原始数据，让Schema自动转换
     resume_detail_data = {
-        # 基础简历信息
-        **resume_data["resume"].__dict__,
-        # 关联数据
-        "work_experiences": resume_data["work_experiences"],
-        "project_experiences": resume_data["project_experiences"],
-        "education_histories": resume_data["education_histories"],
-        "job_preference": resume_data["job_preference"],
+        # 基础简历信息 - 直接使用数据库字段
+        "id": resume_data["resume"].id,
+        "created_at": resume_data["resume"].created_at,
+        "updated_at": resume_data["resume"].updated_at,
+        "tenant_id": resume_data["resume"].tenant_id,
+        "user_id": resume_data["resume"].user_id,
+        "candidate_name": resume_data["resume"].candidate_name,
+        "email": resume_data["resume"].email,
+        "phone": resume_data["resume"].phone,
+        "position": resume_data["resume"].position,
+        "status": resume_data["resume"].status,
+        "source": resume_data["resume"].source,
+        "source_channel_id": resume_data["resume"].source_channel_id,
+        "job_id": resume_data["resume"].job_id,
+        "experience_years": resume_data["resume"].experience_years,
+        "education_level": resume_data["resume"].education_level,
+        "age": resume_data["resume"].age,
+        "gender": resume_data["resume"].gender,
+        "location": resume_data["resume"].location,
+        "school": resume_data["resume"].school,
+        "major": resume_data["resume"].major,
+        "skills": resume_data["resume"].skills,
+        "resume_url": resume_data["resume"].resume_url,
+        "conversation_summary": resume_data["resume"].conversation_summary,
+        "submitted_at": resume_data["resume"].submitted_at,
+
+        # 关联数据 - 使用数据库原始数据
+        "work_experiences": [
+            {
+                **work.__dict__,
+                "start_date": format_date(work.start_date) if work.start_date else None,
+                "end_date": format_date(work.end_date) if work.end_date else None
+            }
+            for work in resume_data["work_experiences"]
+        ],
+        "project_experiences": [
+            {
+                **project.__dict__,
+                "start_date": format_date(project.start_date) if project.start_date else None,
+                "end_date": format_date(project.end_date) if project.end_date else None
+            }
+            for project in resume_data["project_experiences"]
+        ],
+        "education_histories": [
+            {
+                **edu.__dict__,
+                "start_date": format_date(edu.start_date) if edu.start_date else None,
+                "end_date": format_date(edu.end_date) if edu.end_date else None
+            }
+            for edu in resume_data["education_histories"]
+        ],
+        "job_preference": {
+            **resume_data["job_preference"].__dict__,
+            "available_date": format_date(resume_data["job_preference"].available_date) if resume_data["job_preference"] and resume_data["job_preference"].available_date else None
+        } if resume_data["job_preference"] else None,
         "ai_match_results": resume_data["ai_match_results"],
-        "chat_histories": resume_data["chat_histories"],
+        "chat_histories": [
+            {
+                **chat.__dict__,
+                "created_at": format_datetime(chat.created_at)
+            }
+            for chat in resume_data["chat_histories"]
+        ],
         "interviews": resume_data["interviews"],
-        "emails": resume_data["email_logs"]
+        "email_logs": resume_data["email_logs"]
     }
 
-    resume_response = ResumeDetailResponse.model_validate(resume_detail_data, from_attributes=True)
+    # 让Schema自动处理字段转换
+    resume_response = ResumeDetailResponse.model_validate(resume_detail_data, from_attributes=False)
 
     return APIResponse(
         code=200,

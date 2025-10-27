@@ -32,13 +32,13 @@ class ContactInfoValidator(BaseValidator):
 
 class SalaryValidator(BaseValidator):
     """薪资验证"""
-    min_salary: Optional[int] = Field(None, ge=0, le=1000000)
-    max_salary: Optional[int] = Field(None, ge=0, le=1000000)
+    minSalary: Optional[int] = Field(None, alias="min_salary", ge=0, le=1000000)
+    maxSalary: Optional[int] = Field(None, alias="max_salary", ge=0, le=1000000)
 
-    @validator('max_salary')
+    @validator('maxSalary')
     def validate_salary_range(cls, v, values):
-        if v is not None and 'min_salary' in values and values['min_salary'] is not None:
-            if v < values['min_salary']:
+        if v is not None and 'minSalary' in values and values['minSalary'] is not None:
+            if v < values['minSalary']:
                 raise ValueError('最高薪资不能低于最低薪资')
         return v
 

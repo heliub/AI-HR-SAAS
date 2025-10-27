@@ -4,7 +4,7 @@ Base schemas
 from datetime import datetime
 from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseSchema(BaseModel):
@@ -13,9 +13,9 @@ class BaseSchema(BaseModel):
 
 
 class TimestampSchema(BaseSchema):
-    """时间戳Schema"""
-    created_at: datetime
-    updated_at: datetime
+    """时间戳Schema - 数据库用snake_case，API用camelCase"""
+    createdAt: datetime = Field(alias="created_at")
+    updatedAt: datetime = Field(alias="updated_at")
 
 
 class IDSchema(BaseSchema):
@@ -24,7 +24,7 @@ class IDSchema(BaseSchema):
 
 
 class PaginationParams(BaseModel):
-    """分页参数"""
+    """分页参数 - 统一使用camelCase面向API"""
     page: int = 1
     pageSize: int = 10
 

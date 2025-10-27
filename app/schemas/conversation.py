@@ -9,22 +9,22 @@ from app.schemas.base import TimestampSchema, IDSchema
 class MessageCreate(BaseModel):
     """创建消息"""
     content: str = Field(..., min_length=1)
-    conversation_id: Optional[int] = None
+    conversationId: Optional[int] = Field(alias="conversation_id")
 
 
 class MessageResponse(IDSchema, TimestampSchema):
     """消息响应"""
-    conversation_id: int
-    task_id: Optional[int] = None
+    conversationId: int = Field(alias="conversation_id")
+    taskId: Optional[int] = Field(alias="task_id")
     role: str
     content: str
-    meta_info: Optional[dict] = None
+    metaInfo: Optional[dict] = Field(alias="meta_info")
 
 
 class ConversationResponse(IDSchema, TimestampSchema):
     """会话响应"""
-    tenant_id: int
-    user_id: int
+    tenantId: int = Field(alias="tenant_id")
+    userId: int = Field(alias="user_id")
     title: Optional[str] = None
 
 
@@ -35,9 +35,9 @@ class ConversationDetailResponse(ConversationResponse):
 
 class ChatResponse(BaseModel):
     """对话响应"""
-    conversation_id: int
-    task_id: int
-    task_type: str
+    conversationId: int = Field(alias="conversation_id")
+    taskId: int = Field(alias="task_id")
+    taskType: str = Field(alias="task_type")
     response: str
     intent: str
 
