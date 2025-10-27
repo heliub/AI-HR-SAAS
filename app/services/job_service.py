@@ -196,30 +196,38 @@ class JobService(BaseService):
     async def search_jobs(
         self,
         tenant_id: UUID,
+        user_id: Optional[UUID] = None,
         keyword: Optional[str] = None,
         status: Optional[str] = None,
         department: Optional[str] = None,
         location: Optional[str] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        is_admin: bool = False
     ) -> List[Job]:
         """
         搜索职位
 
         Args:
             tenant_id: 租户ID
+            user_id: 用户ID
             keyword: 搜索关键词（搜索标题、部门）
             status: 职位状态
             department: 部门
             location: 工作地点
             skip: 跳过记录数
             limit: 返回记录数
+            is_admin: 是否为管理员
 
         Returns:
             职位列表
         """
         # 构建基础查询
         conditions = [Job.tenant_id == tenant_id]
+
+        # 用户过滤 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
+            conditions.append(Job.user_id == user_id)
 
         if status:
             conditions.append(Job.status == status)

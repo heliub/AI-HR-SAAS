@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Type
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, or_, select, func, text
+from sqlalchemy import and_, select, func
 
 from app.models.base import Base
 
@@ -30,9 +30,11 @@ class BaseService:
         self,
         model: Type[Base],
         tenant_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None,
         skip: int = 0,
         limit: int = 100,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
+        is_admin: bool = False
     ) -> List[Base]:
         """获取所有记录"""
         conditions = []
@@ -40,6 +42,10 @@ class BaseService:
         # 租户过滤
         if tenant_id and hasattr(model, 'tenant_id'):
             conditions.append(model.tenant_id == tenant_id)
+
+        # 用户过滤 - 只有非管理员且模型有user_id字段时才过滤
+        if user_id and not is_admin and hasattr(model, 'user_id'):
+            conditions.append(model.user_id == user_id)
 
         # 自定义过滤
         if filters:
@@ -79,12 +85,16 @@ class BaseService:
             return True
         return False
 
-    async def count(self, model: Type[Base], tenant_id: Optional[UUID] = None, filters: Optional[Dict[str, Any]] = None) -> int:
+    async def count(self, model: Type[Base], tenant_id: Optional[UUID] = None, user_id: Optional[UUID] = None, filters: Optional[Dict[str, Any]] = None, is_admin: bool = False) -> int:
         """统计记录数量"""
         conditions = []
 
         if tenant_id and hasattr(model, 'tenant_id'):
             conditions.append(model.tenant_id == tenant_id)
+
+        # 用户过滤 - 只有非管理员且模型有user_id字段时才过滤
+        if user_id and not is_admin and hasattr(model, 'user_id'):
+            conditions.append(model.user_id == user_id)
 
         if filters:
             for key, value in filters.items():

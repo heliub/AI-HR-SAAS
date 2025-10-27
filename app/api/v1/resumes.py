@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.schemas.resume import (
     ResumeCreate, ResumeUpdate, ResumeStatusUpdate,
-    ResumeResponse, AIMatchRequest, SendEmailRequest
+    ResumeResponse, ResumeDetailResponse, AIMatchRequest, SendEmailRequest
 )
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.resume_service import ResumeService
@@ -34,38 +34,33 @@ async def get_resumes(
     resume_service = ResumeService(db)
 
     skip = (page - 1) * pageSize
-    if resume_service.is_async:
-        resumes = await resume_service.search_resumes_async(
-            tenant_id=current_user.tenant_id,
-            keyword=search,
-            status=status,
-            job_id=jobId,
-            skip=skip,
-            limit=pageSize
-        )
-    else:
-        resumes = resume_service.search_resumes(
-            tenant_id=current_user.tenant_id,
-            keyword=search,
-            status=status,
-            job_id=jobId,
-            skip=skip,
-            limit=pageSize
-        )
+    # 判断是否为管理员
+    is_admin = current_user.role == "admin"
+
+    resumes = await resume_service.search_resumes(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        keyword=search,
+        status=status,
+        job_id=jobId,
+        skip=skip,
+        limit=pageSize,
+        is_admin=is_admin
+    )
 
     # 获取总数
-    if resume_service.is_async:
-        total = await resume_service.count_async(Resume, current_user.tenant_id, {
+    total = await resume_service.count(
+        Resume,
+        current_user.tenant_id,
+        current_user.id,
+        {
             "status": status,
             "job_id": jobId
-        } if status or jobId else None)
-    else:
-        total = resume_service.count(Resume, current_user.tenant_id, {
-            "status": status,
-            "job_id": jobId
-        } if status or jobId else None)
+        } if status or jobId else None,
+        is_admin=is_admin
+    )
 
-    resume_responses = [ResumeResponse.model_validate(resume) for resume in resumes]
+    resume_responses = [ResumeResponse.model_validate(resume, from_attributes=True) for resume in resumes]
 
     paginated_data = PaginatedResponse(
         total=total,
@@ -82,16 +77,16 @@ async def get_resumes(
 
 
 @router.get("/{resume_id}", response_model=APIResponse)
-def get_resume(
+async def get_resume(
     resume_id: UUID,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """获取简历详情"""
     resume_service = ResumeService(db)
 
     # 使用新的服务方法获取完整简历详情
-    resume_data = resume_service.get_resume_full_details(resume_id, current_user.tenant_id)
+    resume_data = await resume_service.get_resume_full_details(resume_id, current_user.tenant_id)
 
     if not resume_data:
         return APIResponse(
@@ -99,7 +94,22 @@ def get_resume(
             message="简历不存在"
         )
 
-    resume_response = ResumeResponse.model_validate(resume_data["resume"])
+    # 构建完整的简历详情响应
+    resume_detail_data = {
+        # 基础简历信息
+        **resume_data["resume"].__dict__,
+        # 关联数据
+        "work_experiences": resume_data["work_experiences"],
+        "project_experiences": resume_data["project_experiences"],
+        "education_histories": resume_data["education_histories"],
+        "job_preference": resume_data["job_preference"],
+        "ai_match_results": resume_data["ai_match_results"],
+        "chat_histories": resume_data["chat_histories"],
+        "interviews": resume_data["interviews"],
+        "emails": resume_data["email_logs"]
+    }
+
+    resume_response = ResumeDetailResponse.model_validate(resume_detail_data, from_attributes=True)
 
     return APIResponse(
         code=200,
@@ -109,17 +119,17 @@ def get_resume(
 
 
 @router.patch("/{resume_id}/status", response_model=APIResponse)
-def update_resume_status(
+async def update_resume_status(
     resume_id: UUID,
     status_data: ResumeStatusUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """更新简历状态"""
     resume_service = ResumeService(db)
 
     # 使用新的服务方法更新状态
-    updated_resume = resume_service.update_resume_status(
+    updated_resume = await resume_service.update_resume_status(
         resume_id=resume_id,
         tenant_id=current_user.tenant_id,
         status=status_data.status
@@ -131,9 +141,12 @@ def update_resume_status(
             message="简历不存在"
         )
 
+    resume_response = ResumeResponse.model_validate(updated_resume, from_attributes=True)
+
     return APIResponse(
         code=200,
-        message="状态更新成功"
+        message="状态更新成功",
+        data=resume_response.model_dump()
     )
 
 

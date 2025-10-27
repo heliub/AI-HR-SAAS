@@ -35,6 +35,9 @@ async def get_channels(
 
     channel_service = ChannelService()
 
+    # 判断是否为管理员
+    is_admin = current_user.role == "admin"
+
     channels, total = await channel_service.get_channels(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -42,7 +45,8 @@ async def get_channels(
         page=page,
         page_size=pageSize,
         search=search,
-        status=status
+        status=status,
+        is_admin=is_admin
     )
 
     channel_responses = [ChannelResponse.model_validate(channel) for channel in channels]

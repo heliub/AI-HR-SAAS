@@ -104,17 +104,28 @@ class ResumeStatusUpdate(BaseModel):
 
 class ResumeResponse(ResumeBase, IDSchema, TimestampSchema):
     """简历响应"""
-    userId: Optional[UUID] = Field(None, alias="user_id", serialization_alias="userId")
+    userId: Optional[UUID] = Field(None, alias="user_id")
     status: str
-    submittedAt: Optional[datetime] = Field(None, alias="submitted_at", serialization_alias="submittedAt")
-    resumeUrl: Optional[str] = Field(None, alias="resume_url", serialization_alias="resumeUrl")
-    workHistory: Optional[List[WorkExperienceBase]] = Field(None, alias="work_history", serialization_alias="workHistory")
-    projectHistory: Optional[List[ProjectExperienceBase]] = Field(None, alias="project_history", serialization_alias="projectHistory")
-    educationHistory: Optional[List[EducationHistoryBase]] = Field(None, alias="education_history", serialization_alias="educationHistory")
-    jobPreferences: Optional[JobPreferenceBase] = Field(None, alias="job_preferences", serialization_alias="jobPreferences")
-    aiMatch: Optional[AIMatchBase] = Field(None, alias="ai_match", serialization_alias="aiMatch")
-    aiChatHistory: Optional[List[CandidateChatHistoryBase]] = Field(None, alias="ai_chat_history", serialization_alias="aiChatHistory")
-    conversationSummary: Optional[str] = Field(None, alias="conversation_summary", serialization_alias="conversationSummary")
+    submittedAt: Optional[datetime] = Field(None, alias="submitted_at")
+    resumeUrl: Optional[str] = Field(None, alias="resume_url")
+    conversationSummary: Optional[str] = Field(None, alias="conversation_summary")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }
+
+
+class ResumeDetailResponse(ResumeResponse):
+    """简历详情响应 - 包含所有关联数据"""
+    workHistory: Optional[List[WorkExperienceBase]] = Field(default=[], alias="work_experiences")
+    projectHistory: Optional[List[ProjectExperienceBase]] = Field(default=[], alias="project_experiences")
+    educationHistory: Optional[List[EducationHistoryBase]] = Field(default=[], alias="education_histories")
+    jobPreferences: Optional[JobPreferenceBase] = Field(None, alias="job_preference")
+    aiMatchResults: Optional[List[AIMatchBase]] = Field(default=[], alias="ai_match_results")
+    chatHistory: Optional[List[CandidateChatHistoryBase]] = Field(default=[], alias="chat_histories")
+    interviews: Optional[List] = Field(default=[])  # 可以后续添加面试Schema
+    emails: Optional[List] = Field(default=[])  # 可以后续添加邮件Schema
 
     model_config = {
         "from_attributes": True,

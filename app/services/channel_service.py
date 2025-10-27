@@ -27,13 +27,14 @@ class ChannelService(BaseService[Channel]):
         page: int = 1,
         page_size: int = 10,
         search: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        is_admin: bool = False
     ) -> tuple[List[Channel], int]:
         """获取渠道列表"""
         query = select(Channel).where(Channel.tenant_id == tenant_id)
 
-        # 用户级数据隔离
-        if user_id:
+        # 用户级数据隔离 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
             query = query.where(Channel.user_id == user_id)
 
         # 搜索条件

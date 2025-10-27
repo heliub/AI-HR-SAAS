@@ -29,16 +29,20 @@ async def get_tasks(
     """获取任务列表"""
     task_service = TaskService()
 
+    # 判断是否为管理员
+    is_admin = current_user.role == "admin"
+
     tasks, total = await task_service.get_tasks(
         db=db,
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
         page=page,
         page_size=pageSize,
-        status=status
+        status=status,
+        is_admin=is_admin
     )
 
-    task_responses = [RecruitmentTaskResponse.model_validate(task) for task in tasks]
+    task_responses = [RecruitmentTaskResponse.model_validate(task, from_attributes=True) for task in tasks]
 
     paginated_data = PaginatedResponse(
         total=total,

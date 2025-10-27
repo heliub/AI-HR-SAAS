@@ -20,10 +20,10 @@ class User(Base):
     email = Column(String(255), nullable=False, index=True, comment="邮箱地址")
     password_hash = Column(String(255), nullable=False, comment="密码哈希值（bcrypt加密）")
     role = Column(
-        String(20), 
-        nullable=False, 
-        default="hr", 
-        comment="用户角色: admin-管理员, hr-人力资源, recruiter-招聘专员"
+        String(20),
+        nullable=False,
+        default="hr",
+        comment="用户角色: admin-租户管理员, hr-人力资源"
     )
     avatar_url = Column(Text, comment="头像URL")
     last_login_at = Column(DateTime(timezone=True), nullable=True, comment="最后登录时间")

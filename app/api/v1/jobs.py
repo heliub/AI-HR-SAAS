@@ -33,20 +33,31 @@ async def get_jobs(
     job_service = JobService(db)
 
     skip = (page - 1) * pageSize
+    # 判断是否为管理员
+    is_admin = current_user.role == "admin"
+
     jobs = await job_service.search_jobs(
         tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
         keyword=search,
         status=status,
         department=department,
         skip=skip,
-        limit=pageSize
+        limit=pageSize,
+        is_admin=is_admin
     )
 
     # 获取总数
-    total = await job_service.count(Job, current_user.tenant_id, {
-        "status": status,
-        "department": department
-    } if status or department else None)
+    total = await job_service.count(
+        Job,
+        current_user.tenant_id,
+        current_user.id,
+        {
+            "status": status,
+            "department": department
+        } if status or department else None,
+        is_admin=is_admin
+    )
 
     job_responses = [JobResponse.model_validate(job) for job in jobs]
 

@@ -26,13 +26,14 @@ class TaskService(BaseService[RecruitmentTask]):
         *,
         page: int = 1,
         page_size: int = 10,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        is_admin: bool = False
     ) -> tuple[List[RecruitmentTask], int]:
         """获取任务列表"""
         query = select(RecruitmentTask).where(RecruitmentTask.tenant_id == tenant_id)
 
-        # 用户级数据隔离
-        if user_id:
+        # 用户级数据隔离 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
             query = query.where(RecruitmentTask.user_id == user_id)
 
         # 状态筛选
