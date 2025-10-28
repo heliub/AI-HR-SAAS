@@ -32,6 +32,10 @@ class ChannelService(BaseService[Channel]):
     ) -> tuple[List[Channel], int]:
         """获取渠道列表"""
         query = select(Channel).where(Channel.tenant_id == tenant_id)
+        
+        # 默认过滤掉已删除的渠道
+        if status != "deleted":
+            query = query.where(Channel.status != "deleted")
 
         # 用户级数据隔离 - 只有非管理员才过滤user_id
         if user_id and not is_admin:
@@ -129,3 +133,49 @@ class ChannelService(BaseService[Channel]):
             "newResumes": new_resumes,
             "syncedAt": channel.last_sync_at
         }
+
+    async def delete_channel(
+        self,
+        db: AsyncSession,
+        channel_id: UUID
+    ) -> bool:
+        """逻辑删除渠道（将状态设置为deleted）"""
+        channel = await self.get(db, channel_id)
+        if not channel:
+            raise NotFoundException("Channel not found")
+        
+        # 逻辑删除：将状态设置为deleted
+        channel.status = "deleted"
+        await db.commit()
+        
+        return True
+    
+    async def hard_delete_channel(
+        self,
+        db: AsyncSession,
+        channel_id: UUID
+    ) -> bool:
+        """物理删除渠道"""
+        return await self.delete(db, channel_id)
+    
+    async def update_channel_status(
+        self,
+        db: AsyncSession,
+        channel_id: UUID,
+        status: str
+    ) -> Channel:
+        """更新渠道状态"""
+        channel = await self.get(db, channel_id)
+        if not channel:
+            raise NotFoundException("Channel not found")
+        
+        # 验证状态值
+        valid_statuses = ["active", "inactive", "deleted"]
+        if status not in valid_statuses:
+            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        
+        channel.status = status
+        await db.commit()
+        await db.refresh(channel)
+        
+        return channel

@@ -869,12 +869,15 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 **GET** `/channels`
 
 获取招聘渠道列表，管理员可查看所有渠道，HR只能查看自己创建的渠道
+- 默认过滤掉已删除的渠道
+- 管理员 (`admin`角色): 可查看租户内所有渠道
+- 普通HR (`hr`角色): 只能查看自己创建的渠道
 
 **查询参数**:
 - `page` (int, optional): 页码，默认1
 - `pageSize` (int, optional): 每页数量，默认10
 - `search` (string, optional): 搜索关键词
-- `status` (string, optional): 渠道状态筛选
+- `status` (string, optional): 渠道状态筛选 (active, inactive, deleted)
 
 **响应**:
 ```json
@@ -887,21 +890,56 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
     "pageSize": 10,
     "items": [
       {
-        "id": "50000000-0000-0000-0000-000000000001",
+        "id": "50000000-0000-0000-0000-000000001",
         "name": "智联招聘",
         "type": "job-board",
         "status": "active",
-        "applicantsCount": 150,
-        "annualCost": 50000.00,
+        "cost": "50000.00",
         "costCurrency": "CNY",
         "contactPerson": "张经理",
         "contactEmail": "contact@zhaopin.com",
         "description": "综合性招聘网站，覆盖各行各业",
-        "lastSyncAt": "2025-01-27T10:00:00Z",
+        "applicantsCount": 150,
+        "lastSync": "2025-01-27T10:00:00Z",
+        "userId": "10000000-0000-0000-0000-000000004",
         "createdAt": "2025-01-27T10:30:00Z",
         "updatedAt": "2025-01-27T10:30:00Z"
       }
     ]
+  }
+}
+```
+
+### 🔍 获取渠道详情
+
+**GET** `/channels/{channel_id}`
+
+获取指定渠道的详细信息
+- 已删除的渠道无法访问
+
+**路径参数**:
+- `channel_id` (UUID): 渠道ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "获取渠道详情成功",
+  "data": {
+    "id": "50000000-0000-0000-0000-000000001",
+    "name": "智联招聘",
+    "type": "job-board",
+    "status": "active",
+    "cost": "50000.00",
+    "costCurrency": "CNY",
+    "contactPerson": "张经理",
+    "contactEmail": "contact@zhaopin.com",
+    "description": "综合性招聘网站，覆盖各行各业",
+    "applicantsCount": 150,
+    "lastSync": "2025-01-27T10:00:00Z",
+    "userId": "10000000-0000-0000-0000-000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T10:30:00Z"
   }
 }
 ```
@@ -911,6 +949,8 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 **POST** `/channels`
 
 创建新的招聘渠道
+- 自动设置当前用户为创建者
+- 自动设置租户ID
 
 **请求体**:
 ```json
@@ -918,7 +958,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
   "name": "BOSS直聘",
   "type": "job-board",
   "status": "active",
-  "annualCost": 80000.00,
+  "cost": "80000.00",
   "costCurrency": "CNY",
   "contactPerson": "李经理",
   "contactEmail": "contact@bosszhipin.com",
@@ -926,17 +966,165 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 }
 ```
 
+**字段说明**:
+- `name` (string, required): 渠道名称，1-100字符
+- `type` (string, optional): 渠道类型 (job-board/social-media/referral/agency/website)
+- `status` (string, optional): 渠道状态，默认为"active" (active/inactive)
+- `cost` (string, optional): 年度成本，字符串格式以避免精度问题
+- `costCurrency` (string, optional): 成本货币，默认为"CNY"
+- `apiKey` (string, optional): API密钥，仅用于创建和更新，不在响应中返回
+- `contactPerson` (string, optional): 联系人姓名
+- `contactEmail` (string, optional): 联系邮箱，可为空字符串
+- `description` (string, optional): 渠道描述
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "渠道创建成功",
+  "data": {
+    "id": "50000000-0000-0000-0000-000000002",
+    "name": "BOSS直聘",
+    "type": "job-board",
+    "status": "active",
+    "cost": "80000.00",
+    "costCurrency": "CNY",
+    "contactPerson": "李经理",
+    "contactEmail": "contact@bosszhipin.com",
+    "description": "直聊模式招聘平台",
+    "applicantsCount": 0,
+    "userId": "10000000-0000-0000-0000-000000004",
+    "createdAt": "2025-01-27T11:00:00Z",
+    "updatedAt": "2025-01-27T11:00:00Z"
+  }
+}
+```
+
 ### ✏️ 更新渠道
 
 **PUT** `/channels/{channel_id}`
 
-更新渠道信息
+更新指定渠道信息
+- 管理员 (`admin`角色): 可以更新任何渠道
+- 普通HR (`hr`角色): 只能更新自己创建的渠道
+- 已删除的渠道无法更新
+
+**请求体**:
+```json
+{
+  "name": "更新的渠道名称",
+  "type": "social-media",
+  "status": "inactive",
+  "cost": "90000.00",
+  "costCurrency": "USD",
+  "contactPerson": "王经理",
+  "contactEmail": "new-contact@example.com",
+  "description": "更新的渠道描述"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "渠道更新成功",
+  "data": {
+    "id": "50000000-0000-0000-0000-000000001",
+    "name": "更新的渠道名称",
+    "type": "social-media",
+    "status": "inactive",
+    "cost": "90000.00",
+    "costCurrency": "USD",
+    "contactPerson": "王经理",
+    "contactEmail": "new-contact@example.com",
+    "description": "更新的渠道描述",
+    "applicantsCount": 150,
+    "lastSync": "2025-01-27T10:00:00Z",
+    "userId": "10000000-0000-0000-0000-000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T11:30:00Z"
+  }
+}
+```
 
 ### 🗑️ 删除渠道
 
 **DELETE** `/channels/{channel_id}`
 
-删除渠道
+逻辑删除指定渠道（将状态设置为deleted）
+- 管理员 (`admin`角色): 可以删除任何渠道
+- 普通HR (`hr`角色): 只能删除自己创建的渠道
+- 删除操作为逻辑删除，数据仍保留在数据库中
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "渠道删除成功"
+}
+```
+
+### 🔄 更新渠道状态
+
+**PATCH** `/channels/{channel_id}/status`
+
+更新渠道状态
+- 管理员 (`admin`角色): 可以更新任何渠道状态
+- 普通HR (`hr`角色): 只能更新自己创建的渠道状态
+- 已删除的渠道无法更新状态
+
+**请求体**:
+```json
+{
+  "status": "active"
+}
+```
+
+**字段说明**:
+- `status` (string, required): 渠道状态 (active, inactive, deleted)
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "渠道状态更新成功",
+  "data": {
+    "id": "50000000-0000-0000-0000-000000001",
+    "name": "智联招聘",
+    "type": "job-board",
+    "status": "active",
+    "cost": "50000.00",
+    "costCurrency": "CNY",
+    "contactPerson": "张经理",
+    "contactEmail": "contact@zhaopin.com",
+    "description": "综合性招聘网站，覆盖各行各业",
+    "applicantsCount": 150,
+    "lastSync": "2025-01-27T10:00:00Z",
+    "userId": "10000000-0000-0000-0000-000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T11:30:00Z"
+  }
+}
+```
+
+### 🔄 同步渠道数据
+
+**POST** `/channels/{channel_id}/sync`
+
+同步渠道数据
+- 已删除的渠道无法同步
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "同步成功",
+  "data": {
+    "newResumes": 5,
+    "syncedAt": "2025-01-27T12:00:00Z"
+  }
+}
+```
 
 ---
 
@@ -1324,13 +1512,7 @@ query = (
 **渠道状态**:
 - `active`: 激活
 - `inactive`: 停用
-
-**渠道类型**:
-- `job-board`: 招聘网站
-- `social-media`: 社交媒体
-- `referral`: 内推
-- `agency`: 猎头
-- `website`: 官网
+- `deleted`: 已删除（逻辑删除）
 
 **职位类型**:
 - `full-time`: 全职

@@ -5,6 +5,7 @@ from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from decimal import Decimal
 
 from app.api.deps import get_db, get_current_user
 from app.api.permissions import check_resource_permission, validate_pagination_params
@@ -12,7 +13,7 @@ from app.api.responses import (
     create_success_response, create_error_response,
     create_paginated_response, handle_service_error
 )
-from app.schemas.channel import ChannelCreate, ChannelUpdate, ChannelResponse, ChannelSyncResponse
+from app.schemas.channel import ChannelCreate, ChannelUpdate, ChannelResponse, ChannelSyncResponse, ChannelStatusUpdate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.channel_service import ChannelService
 from app.models.user import User
@@ -49,7 +50,7 @@ async def get_channels(
         is_admin=is_admin
     )
 
-    channel_responses = [ChannelResponse.model_validate(channel) for channel in channels]
+    channel_responses = [ChannelResponse.model_validate(channel, from_attributes=True) for channel in channels]
 
     return create_paginated_response(
         items=channel_responses,
@@ -70,14 +71,21 @@ async def create_channel(
     channel_service = ChannelService()
 
     try:
+        # 转换数据，处理 cost 字段
+        data = channel_data.model_dump(by_alias=True, exclude_unset=True)
+        if 'annual_cost' in data and data['annual_cost'] is not None:
+            # 只有当 cost 是字符串时才转换为 Decimal
+            if isinstance(data['annual_cost'], str):
+                data['annual_cost'] = Decimal(str(data['annual_cost']))
+        
         channel = await channel_service.create_channel(
             db=db,
             tenant_id=current_user.tenant_id,
             user_id=current_user.id,
-            **channel_data.model_dump(exclude_unset=True)
+            **data
         )
 
-        channel_response = ChannelResponse.model_validate(channel)
+        channel_response = ChannelResponse.model_validate(channel, from_attributes=True)
 
         return create_success_response(
             message="渠道创建成功",
@@ -100,16 +108,27 @@ async def update_channel(
     # 使用权限装饰器检查权限
     @check_resource_permission(channel_service, check_tenant=True, check_user=True)
     async def _update_channel():
+        # 获取渠道并检查是否已删除
+        channel = await channel_service.get(db, channel_id)
+        if channel and channel.status == "deleted":
+            raise HTTPException(status_code=404, detail="渠道不存在")
+        
+        # 转换数据，处理 cost 字段
+        data = channel_data.model_dump(by_alias=True, exclude_unset=True)
+        if 'annual_cost' in data and data['annual_cost'] is not None:
+            # 将字符串形式的 cost 转换为 Decimal
+            data['annual_cost'] = Decimal(str(data['annual_cost']))
+        
         channel = await channel_service.update_channel(
             db=db,
             channel_id=channel_id,
-            **channel_data.model_dump(exclude_unset=True)
+            **data
         )
         return channel
 
     try:
         channel = await _update_channel()
-        channel_response = ChannelResponse.model_validate(channel)
+        channel_response = ChannelResponse.model_validate(channel, from_attributes=True)
 
         return APIResponse(
             code=200,
@@ -129,7 +148,7 @@ async def delete_channel(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """删除渠道"""
+    """删除渠道（逻辑删除）"""
     channel_service = ChannelService()
 
     # 检查渠道是否存在
@@ -140,12 +159,87 @@ async def delete_channel(
             message="渠道不存在"
         )
 
-    await channel_service.delete(db, channel_id)
+    # 逻辑删除渠道
+    await channel_service.delete_channel(db, channel_id)
 
     return APIResponse(
         code=200,
         message="渠道删除成功"
     )
+
+
+@router.get("/{channel_id}", response_model=APIResponse)
+async def get_channel(
+    channel_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """获取渠道详情"""
+    channel_service = ChannelService()
+
+    # 检查渠道是否存在
+    channel = await channel_service.get(db, channel_id)
+    if not channel or channel.tenant_id != current_user.tenant_id or channel.status == "deleted":
+        return APIResponse(
+            code=404,
+            message="渠道不存在"
+        )
+
+    # 非管理员用户只能查看自己创建的渠道
+    if current_user.role != "admin" and channel.user_id != current_user.id:
+        return APIResponse(
+            code=403,
+            message="无权访问该渠道"
+        )
+
+    channel_response = ChannelResponse.model_validate(channel, from_attributes=True)
+
+    return create_success_response(
+        message="获取渠道详情成功",
+        data=channel_response.model_dump()
+    )
+
+
+@router.patch("/{channel_id}/status", response_model=APIResponse)
+async def update_channel_status(
+    channel_id: UUID,
+    status_update: ChannelStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """更新渠道状态"""
+    channel_service = ChannelService()
+
+    # 检查渠道是否存在
+    channel = await channel_service.get(db, channel_id)
+    if not channel or channel.tenant_id != current_user.tenant_id:
+        return APIResponse(
+            code=404,
+            message="渠道不存在"
+        )
+
+    # 非管理员用户只能更新自己创建的渠道状态
+    if current_user.role != "admin" and channel.user_id != current_user.id:
+        return APIResponse(
+            code=403,
+            message="无权修改该渠道状态"
+        )
+
+    try:
+        channel = await channel_service.update_channel_status(db, channel_id, status_update.status)
+        channel_response = ChannelResponse.model_validate(channel, from_attributes=True)
+
+        return create_success_response(
+            message="渠道状态更新成功",
+            data=channel_response.model_dump()
+        )
+    except ValueError as e:
+        return APIResponse(
+            code=400,
+            message=str(e)
+        )
+    except Exception as e:
+        return handle_service_error(e, "更新渠道状态")
 
 
 @router.post("/{channel_id}/sync", response_model=APIResponse)
@@ -159,7 +253,7 @@ async def sync_channel(
 
     # 检查渠道是否存在
     channel = await channel_service.get(db, channel_id)
-    if not channel or channel.tenant_id != current_user.tenant_id or channel.user_id != current_user.id:
+    if not channel or channel.tenant_id != current_user.tenant_id or channel.user_id != current_user.id or channel.status == "deleted":
         return APIResponse(
             code=404,
             message="渠道不存在"
