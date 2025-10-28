@@ -178,6 +178,8 @@ async def get_resume(
         "skills": resume_data["resume"].skills,
         "resume_url": resume_data["resume"].resume_url,
         "conversation_summary": resume_data["resume"].conversation_summary,
+        "is_match": resume_data["resume"].is_match,
+        "match_conclusion": resume_data["resume"].match_conclusion,
         "submitted_at": resume_data["resume"].submitted_at,
 
         # 关联数据 - 使用数据库原始数据

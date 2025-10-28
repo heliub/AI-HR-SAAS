@@ -116,6 +116,8 @@ class ResumeBase(BaseModel):
     school: Optional[str] = None
     major: Optional[str] = None
     skills: Optional[str] = None
+    isMatch: Optional[bool] = Field(None, alias="is_match")
+    matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
 
 
 class ResumeCreate(ResumeBase):
@@ -144,6 +146,8 @@ class ResumeResponse(ResumeBase, IDSchema, TimestampSchema):
     submittedAt: Optional[datetime] = Field(alias="submitted_at")
     resumeUrl: Optional[str] = Field(alias="resume_url")
     conversationSummary: Optional[str] = Field(alias="conversation_summary")
+    isMatch: Optional[bool] = Field(None, alias="is_match")
+    matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
 
     @field_serializer('submittedAt')
     def serialize_submitted_at(self, value: Optional[datetime]) -> Optional[str]:
@@ -166,6 +170,8 @@ class ResumeDetailResponse(ResumeResponse):
     educationLevel: Optional[str] = Field(alias="education_level")
     resumeUrl: Optional[str] = Field(alias="resume_url")
     conversationSummary: Optional[str] = Field(alias="conversation_summary")
+    isMatch: Optional[bool] = Field(None, alias="is_match")
+    matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
 
     # 关联数据的alias映射
     workHistory: Optional[List[WorkExperienceBase]] = Field(default=[], alias="work_experiences")

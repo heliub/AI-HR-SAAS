@@ -1,7 +1,7 @@
 """
 Resume model
 """
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -33,6 +33,8 @@ class Resume(Base):
     skills = Column(Text, comment="技能列表（多个技能用分隔符分开，如逗号）")
     resume_url = Column(Text, comment="简历文件URL")
     conversation_summary = Column(Text, comment="AI对话总结")
+    is_match = Column(Boolean, comment="是否匹配（基于AI分析结果）")
+    match_conclusion = Column(Text, comment="匹配结论（基于AI分析结果）")
     submitted_at = Column(DateTime(timezone=True), comment="简历投递时间")
     
         

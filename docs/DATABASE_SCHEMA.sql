@@ -294,6 +294,8 @@ CREATE TABLE resumes (
     skills TEXT,
     resume_url TEXT,
     conversation_summary TEXT,
+    is_match BOOLEAN,
+    match_conclusion TEXT,
     submitted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -321,6 +323,8 @@ COMMENT ON COLUMN resumes.major IS '专业';
 COMMENT ON COLUMN resumes.skills IS '技能列表（多个技能用分隔符分开，如逗号）';
 COMMENT ON COLUMN resumes.resume_url IS '简历文件URL';
 COMMENT ON COLUMN resumes.conversation_summary IS 'AI对话总结';
+COMMENT ON COLUMN resumes.is_match IS '是否匹配（基于AI分析结果）';
+COMMENT ON COLUMN resumes.match_conclusion IS '匹配结论（基于AI分析结果）';
 COMMENT ON COLUMN resumes.submitted_at IS '简历投递时间';
 COMMENT ON COLUMN resumes.created_at IS '创建时间';
 COMMENT ON COLUMN resumes.updated_at IS '更新时间';
@@ -696,162 +700,94 @@ COMMENT ON COLUMN email_logs.created_at IS '创建时间';
 COMMENT ON COLUMN email_logs.sent_at IS '实际发送时间';
 COMMENT ON COLUMN email_logs.updated_at IS '更新时间';
 -- ==============================================
--- 10. 索引
+-- 10. 索引（精简版）
 -- ==============================================
 
 -- 租户表索引
 CREATE INDEX idx_tenants_status ON tenants(status);
-CREATE INDEX idx_tenants_expires_at ON tenants(expires_at);
 
 -- 用户表索引
-CREATE INDEX idx_users_tenant_id ON users(tenant_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_is_active ON users(is_active);
 CREATE INDEX idx_users_tenant_email ON users(tenant_id, email);
 
 -- 用户设置表索引
-CREATE INDEX idx_user_settings_tenant_id ON user_settings(tenant_id);
 CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
 
 -- 认证Token表索引
-CREATE INDEX idx_auth_tokens_tenant_id ON auth_tokens(tenant_id);
 CREATE INDEX idx_auth_tokens_user_id ON auth_tokens(user_id);
-CREATE INDEX idx_auth_tokens_token ON auth_tokens(token);
-CREATE INDEX idx_auth_tokens_expires_at ON auth_tokens(expires_at);
+
 
 -- 职位表索引
-CREATE INDEX idx_jobs_tenant_id ON jobs(tenant_id);
-CREATE INDEX idx_jobs_user_id ON jobs(user_id);
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_department ON jobs(department);
-CREATE INDEX idx_jobs_location ON jobs(location);
-CREATE INDEX idx_jobs_created_by ON jobs(created_by);
-CREATE INDEX idx_jobs_created_at ON jobs(created_at DESC);
 CREATE INDEX idx_jobs_tenant_status ON jobs(tenant_id, status);
 CREATE INDEX idx_jobs_tenant_user ON jobs(tenant_id, user_id);
 CREATE INDEX idx_jobs_title_search ON jobs USING gin(to_tsvector('simple', title));
-CREATE INDEX idx_jobs_requirements ON jobs(requirements);
-CREATE INDEX idx_jobs_preferred_schools ON jobs(preferred_schools);
--- 新字段索引
+
+-- LinkedIn/JobStreet 标准字段索引
 CREATE INDEX idx_jobs_company ON jobs(company);
-CREATE INDEX idx_jobs_workplace_type ON jobs(workplace_type);
-CREATE INDEX idx_jobs_pay_type ON jobs(pay_type);
 CREATE INDEX idx_jobs_category ON jobs(category);
-CREATE INDEX idx_jobs_pay_currency ON jobs(pay_currency);
-CREATE INDEX idx_jobs_tenant_company ON jobs(tenant_id, company);
 
 -- 渠道表索引
-CREATE INDEX idx_channels_tenant_id ON channels(tenant_id);
-CREATE INDEX idx_channels_user_id ON channels(user_id);
-CREATE INDEX idx_channels_status ON channels(status);
-CREATE INDEX idx_channels_type ON channels(type);
 CREATE INDEX idx_channels_tenant_status ON channels(tenant_id, status);
 CREATE INDEX idx_channels_tenant_user ON channels(tenant_id, user_id);
 
 -- 职位发布渠道表索引
-CREATE INDEX idx_job_channels_tenant_id ON job_channels(tenant_id);
 CREATE INDEX idx_job_channels_job_id ON job_channels(job_id);
 CREATE INDEX idx_job_channels_channel_id ON job_channels(channel_id);
 
 -- 简历表索引
-CREATE INDEX idx_resumes_tenant_id ON resumes(tenant_id);
-CREATE INDEX idx_resumes_user_id ON resumes(user_id);
-CREATE INDEX idx_resumes_status ON resumes(status);
-CREATE INDEX idx_resumes_job_id ON resumes(job_id);
-CREATE INDEX idx_resumes_source_channel_id ON resumes(source_channel_id);
-CREATE INDEX idx_resumes_submitted_at ON resumes(submitted_at DESC);
-CREATE INDEX idx_resumes_candidate_name ON resumes(candidate_name);
-CREATE INDEX idx_resumes_email ON resumes(email);
-CREATE INDEX idx_resumes_phone ON resumes(phone);
 CREATE INDEX idx_resumes_tenant_status ON resumes(tenant_id, status);
 CREATE INDEX idx_resumes_tenant_user ON resumes(tenant_id, user_id);
+CREATE INDEX idx_resumes_job_id ON resumes(job_id);
 CREATE INDEX idx_resumes_search ON resumes USING gin(
     to_tsvector('simple', candidate_name || ' ' || COALESCE(email, '') || ' ' || position)
 );
-CREATE INDEX idx_resumes_skills ON resumes(skills);
+CREATE INDEX idx_resumes_is_match ON resumes(is_match);
 
 -- 工作经历表索引
-CREATE INDEX idx_work_experiences_tenant_id ON work_experiences(tenant_id);
 CREATE INDEX idx_work_experiences_resume_id ON work_experiences(resume_id);
 
 -- 项目经历表索引
-CREATE INDEX idx_project_experiences_tenant_id ON project_experiences(tenant_id);
 CREATE INDEX idx_project_experiences_resume_id ON project_experiences(resume_id);
-CREATE INDEX idx_project_experiences_technologies ON project_experiences(technologies);
 
 -- 教育经历表索引
-CREATE INDEX idx_education_histories_tenant_id ON education_histories(tenant_id);
 CREATE INDEX idx_education_histories_resume_id ON education_histories(resume_id);
 
 -- 求职意向表索引
-CREATE INDEX idx_job_preferences_tenant_id ON job_preferences(tenant_id);
 CREATE INDEX idx_job_preferences_resume_id ON job_preferences(resume_id);
-CREATE INDEX idx_job_preferences_locations ON job_preferences(preferred_locations);
 
 -- AI匹配结果索引
-CREATE INDEX idx_ai_match_results_tenant_id ON ai_match_results(tenant_id);
-CREATE INDEX idx_ai_match_results_user_id ON ai_match_results(user_id);
-CREATE INDEX idx_ai_match_results_resume_id ON ai_match_results(resume_id);
-CREATE INDEX idx_ai_match_results_job_id ON ai_match_results(job_id);
-CREATE INDEX idx_ai_match_results_match_score ON ai_match_results(match_score DESC);
 CREATE INDEX idx_ai_match_results_tenant_resume ON ai_match_results(tenant_id, resume_id);
-CREATE INDEX idx_ai_match_results_tenant_user ON ai_match_results(tenant_id, user_id);
-CREATE INDEX idx_ai_match_results_strengths ON ai_match_results(strengths);
-CREATE INDEX idx_ai_match_results_weaknesses ON ai_match_results(weaknesses);
+CREATE INDEX idx_ai_match_results_tenant_job ON ai_match_results(tenant_id, job_id);
 
 -- 招聘任务表索引
-CREATE INDEX idx_recruitment_tasks_tenant_id ON recruitment_tasks(tenant_id);
-CREATE INDEX idx_recruitment_tasks_user_id ON recruitment_tasks(user_id);
-CREATE INDEX idx_recruitment_tasks_job_id ON recruitment_tasks(job_id);
-CREATE INDEX idx_recruitment_tasks_status ON recruitment_tasks(status);
-CREATE INDEX idx_recruitment_tasks_created_at ON recruitment_tasks(created_at DESC);
 CREATE INDEX idx_recruitment_tasks_tenant_status ON recruitment_tasks(tenant_id, status);
 CREATE INDEX idx_recruitment_tasks_tenant_user ON recruitment_tasks(tenant_id, user_id);
+CREATE INDEX idx_recruitment_tasks_job_id ON recruitment_tasks(job_id);
+CREATE INDEX idx_recruitment_tasks_created_at ON recruitment_tasks(created_at DESC);
 
 -- 面试表索引
-CREATE INDEX idx_interviews_tenant_id ON interviews(tenant_id);
-CREATE INDEX idx_interviews_user_id ON interviews(user_id);
-CREATE INDEX idx_interviews_candidate_id ON interviews(candidate_id);
-CREATE INDEX idx_interviews_status ON interviews(status);
-CREATE INDEX idx_interviews_date_time ON interviews(interview_date, interview_time);
 CREATE INDEX idx_interviews_tenant_status ON interviews(tenant_id, status);
 CREATE INDEX idx_interviews_tenant_user ON interviews(tenant_id, user_id);
+CREATE INDEX idx_interviews_candidate_id ON interviews(candidate_id);
+CREATE INDEX idx_interviews_date_time ON interviews(interview_date, interview_time);
 
 -- 聊天会话索引
-CREATE INDEX idx_chat_sessions_tenant_id ON chat_sessions(tenant_id);
-CREATE INDEX idx_chat_sessions_user_id ON chat_sessions(user_id);
-CREATE INDEX idx_chat_sessions_updated_at ON chat_sessions(updated_at DESC);
+CREATE INDEX idx_chat_sessions_tenant_user ON chat_sessions(tenant_id, user_id);
 
 -- 聊天消息索引
-CREATE INDEX idx_chat_messages_tenant_id ON chat_messages(tenant_id);
-CREATE INDEX idx_chat_messages_user_id ON chat_messages(user_id);
 CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
-CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at);
-CREATE INDEX idx_chat_messages_message_type ON chat_messages(message_type);
 CREATE INDEX idx_chat_messages_metadata ON chat_messages USING gin(metadata);
-CREATE INDEX idx_chat_messages_tenant_user ON chat_messages(tenant_id, user_id);
 
 -- 候选人聊天历史索引
-CREATE INDEX idx_candidate_chat_history_tenant_id ON candidate_chat_history(tenant_id);
 CREATE INDEX idx_candidate_chat_history_resume_id ON candidate_chat_history(resume_id);
-CREATE INDEX idx_candidate_chat_history_created_at ON candidate_chat_history(created_at);
-CREATE INDEX idx_candidate_chat_history_message_type ON candidate_chat_history(message_type);
-CREATE INDEX idx_candidate_chat_history_metadata ON candidate_chat_history USING gin(metadata);
 
 -- 活动日志索引
-CREATE INDEX idx_activity_logs_tenant_id ON activity_logs(tenant_id);
-CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX idx_activity_logs_tenant_user ON activity_logs(tenant_id, user_id);
 CREATE INDEX idx_activity_logs_entity_type_id ON activity_logs(entity_type, entity_id);
-CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at DESC);
-CREATE INDEX idx_activity_logs_details ON activity_logs USING gin(details);
 
 -- 邮件日志索引
 CREATE INDEX idx_email_logs_tenant_id ON email_logs(tenant_id);
-CREATE INDEX idx_email_logs_recipient_email ON email_logs(recipient_email);
 CREATE INDEX idx_email_logs_status ON email_logs(status);
 CREATE INDEX idx_email_logs_resume_id ON email_logs(resume_id);
-CREATE INDEX idx_email_logs_created_at ON email_logs(created_at DESC);
 
 -- ==============================================
 -- 11. 初始化数据（示例）
