@@ -3,7 +3,7 @@ Job endpoints
 """
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
@@ -25,7 +25,9 @@ async def get_jobs(
     pageSize: int = Query(10, ge=1, le=100),
     search: Optional[str] = None,
     status: Optional[str] = None,
-    department: Optional[str] = None,
+    company: Optional[str] = None,
+    category: Optional[str] = None,
+    workplaceType: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -41,7 +43,9 @@ async def get_jobs(
         user_id=current_user.id,
         keyword=search,
         status=status,
-        department=department,
+        company=company,
+        category=category,
+        workplace_type=workplaceType,
         skip=skip,
         limit=pageSize,
         is_admin=is_admin
@@ -54,8 +58,10 @@ async def get_jobs(
         current_user.id,
         {
             "status": status,
-            "department": department
-        } if status or department else None,
+            "company": company,
+            "category": category,
+            "workplace_type": workplaceType
+        } if status or company or category or workplaceType else None,
         is_admin=is_admin
     )
 
@@ -109,7 +115,7 @@ async def create_job(
     current_user: User = Depends(get_current_user)
 ):
     """创建职位"""
-    job_service = JobService()
+    job_service = JobService(db)
     
     job = await job_service.create_job(
         db=db,
@@ -136,7 +142,7 @@ async def update_job(
     current_user: User = Depends(get_current_user)
 ):
     """更新职位"""
-    job_service = JobService()
+    job_service = JobService(db)
     
     # 检查职位是否存在
     job = await job_service.get_by_id(Job, job_id, current_user.tenant_id)
@@ -146,10 +152,11 @@ async def update_job(
             message="职位不存在"
         )
     
-    job = await job_service.update_job(
-        db=db,
-        job_id=job_id,
-        **job_data.model_dump(exclude_unset=True)
+    job = await job_service.update(
+        model=Job,
+        record_id=job_id,
+        data=job_data.model_dump(exclude_unset=True),
+        tenant_id=current_user.tenant_id
     )
     
     job_response = JobResponse.model_validate(job)
@@ -168,7 +175,7 @@ async def delete_job(
     current_user: User = Depends(get_current_user)
 ):
     """删除职位"""
-    job_service = JobService()
+    job_service = JobService(db)
     
     # 检查职位是否存在
     job = await job_service.get_by_id(Job, job_id, current_user.tenant_id)
@@ -178,7 +185,7 @@ async def delete_job(
             message="职位不存在"
         )
     
-    await job_service.delete(db, job_id)
+    await job_service.delete(Job, job_id, current_user.tenant_id)
     
     return APIResponse(
         code=200,
@@ -194,7 +201,7 @@ async def update_job_status(
     current_user: User = Depends(get_current_user)
 ):
     """更新职位状态"""
-    job_service = JobService()
+    job_service = JobService(db)
     
     # 检查职位是否存在
     job = await job_service.get_by_id(Job, job_id, current_user.tenant_id)
@@ -204,9 +211,9 @@ async def update_job_status(
             message="职位不存在"
         )
     
-    job = await job_service.update_job(
-        db=db,
+    job = await job_service.update_job_status(
         job_id=job_id,
+        tenant_id=current_user.tenant_id,
         status=status_data.status
     )
     
@@ -223,7 +230,7 @@ async def duplicate_job(
     current_user: User = Depends(get_current_user)
 ):
     """复制职位"""
-    job_service = JobService()
+    job_service = JobService(db)
     
     # 检查职位是否存在
     job = await job_service.get_by_id(Job, job_id, current_user.tenant_id)
@@ -234,8 +241,8 @@ async def duplicate_job(
         )
     
     new_job = await job_service.duplicate_job(
-        db=db,
         job_id=job_id,
+        tenant_id=current_user.tenant_id,
         user_id=current_user.id,
         created_by=current_user.id
     )
@@ -252,13 +259,11 @@ async def duplicate_job(
 @router.post("/ai-generate", response_model=APIResponse)
 async def ai_generate_job(
     request_data: JobAIGenerateRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     """AI生成职位描述"""
     try:
         # 智能生成职位信息
-        generated_data = _generate_job_description(request_data.title, request_data.description)
+        generated_data = _generate_job_description(request_data.title, "")
 
         response_data = JobAIGenerateResponse(**generated_data)
 
@@ -298,10 +303,14 @@ def _generate_job_description(job_title: str, brief_desc: str) -> dict:
 def _generate_tech_job_desc(title: str, brief_desc: str) -> dict:
     """生成技术类职位描述"""
     return {
-        "department": "技术部",
+        "company": None,
         "location": "北京/上海/深圳",
+        "workplace_type": "Hybrid",
         "min_salary": 20000,
         "max_salary": 45000,
+        "pay_type": "Monthly",
+        "pay_currency": "CNY",
+        "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责公司{title}相关的开发工作，参与产品需求分析和技术方案设计
 2. 编写高质量、可维护的代码，完成核心功能模块开发
@@ -314,20 +323,23 @@ def _generate_tech_job_desc(title: str, brief_desc: str) -> dict:
 • 熟练掌握相关技术栈和开发工具
 • 具备良好的编程习惯和代码规范意识
 • 有较强的学习能力和技术热情""",
+        "category": ["Software Development", "Engineering"],
         "recruitment_invitation": f"我们正在寻找优秀的{title}加入我们的技术团队！你将有机会参与创新项目，与技术大牛一起成长，享受有竞争力的薪酬福利和良好的职业发展空间。",
-        "education": "本科及以上",
-        "min_age": 22,
-        "max_age": 45
+        "education": "本科及以上"
     }
 
 
 def _generate_product_job_desc(title: str, brief_desc: str) -> dict:
     """生成产品类职位描述"""
     return {
-        "department": "产品部",
+        "company": None,
         "location": "北京/上海",
+        "workplace_type": "Hybrid",
         "min_salary": 15000,
         "max_salary": 35000,
+        "pay_type": "Monthly",
+        "pay_currency": "CNY",
+        "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责公司{title}相关工作，参与产品规划和需求调研
 2. 进行市场分析和竞品研究，为产品决策提供数据支持
@@ -340,20 +352,23 @@ def _generate_product_job_desc(title: str, brief_desc: str) -> dict:
 • 具备良好的市场洞察力和用户需求分析能力
 • 优秀的沟通协调能力和团队合作精神
 • 熟练使用产品设计和管理工具""",
+        "category": ["Product Management", "Design"],
         "recruitment_invitation": f"如果你对产品有热情，对用户体验有执着，加入我们的产品团队！你将有机会参与产品全生命周期管理，创造用户喜爱的产品。",
-        "education": "本科及以上",
-        "min_age": 23,
-        "max_age": 40
+        "education": "本科及以上"
     }
 
 
 def _generate_hr_job_desc(title: str, brief_desc: str) -> dict:
     """生成HR类职位描述"""
     return {
-        "department": "人力资源部",
+        "company": None,
         "location": "北京",
+        "workplace_type": "On-site",
         "min_salary": 12000,
         "max_salary": 25000,
+        "pay_type": "Monthly",
+        "pay_currency": "CNY",
+        "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责{title}相关工作，协助制定和完善人力资源管理制度
 2. 参与招聘流程优化和人才选拔，确保人才质量
@@ -366,20 +381,23 @@ def _generate_hr_job_desc(title: str, brief_desc: str) -> dict:
 • 具备良好的沟通能力和亲和力
 • 熟悉劳动法律法规，具备风险防范意识
 • 工作细致认真，有较强的责任心和执行力""",
+        "category": ["Human Resources"],
         "recruitment_invitation": f"我们期待热爱HR工作、有服务意识的你加入！在这里，你将有机会参与人力资源体系建设，助力公司和员工共同成长。",
-        "education": "本科及以上",
-        "min_age": 24,
-        "max_age": 40
+        "education": "本科及以上"
     }
 
 
 def _generate_general_job_desc(title: str, brief_desc: str) -> dict:
     """生成通用职位描述"""
     return {
-        "department": "综合管理部",
+        "company": None,
         "location": "北京",
+        "workplace_type": "On-site",
         "min_salary": 10000,
         "max_salary": 20000,
+        "pay_type": "Monthly",
+        "pay_currency": "CNY",
+        "pay_shown_on_ad": False,
         "description": f"""职位描述：
 1. 负责{title}相关工作，协助部门完成各项业务指标
 2. 根据工作要求和标准，高效完成分配的任务
@@ -392,8 +410,7 @@ def _generate_general_job_desc(title: str, brief_desc: str) -> dict:
 • 具备良好的职业素养和工作态度
 • 有较强的学习能力和适应能力
 • 注重团队合作，积极主动""",
+        "category": ["General Business"],
         "recruitment_invitation": f"我们正在寻找合适的{title}加入我们的团队！如果你渴望在专业领域发展，愿意接受挑战，这里将是你施展才华的舞台。",
-        "education": "大专及以上",
-        "min_age": 20,
-        "max_age": 45
+        "education": "大专及以上"
     }

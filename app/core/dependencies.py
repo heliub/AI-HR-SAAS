@@ -21,32 +21,32 @@ async def get_current_user(
 ) -> User:
     """
     获取当前认证用户
-    
+
     Args:
         credentials: HTTP Bearer凭证
         db: 数据库会话
-    
+
     Returns:
         当前用户对象
-    
+
     Raises:
         HTTPException: 认证失败
     """
     token = credentials.credentials
-    
+
     # 验证Token
     payload = security_manager.verify_token(token)
-    
+
     user_id_str: Optional[str] = payload.get("sub")
     tenant_id_str: Optional[str] = payload.get("tenantId")
-    
+
     if user_id_str is None or tenant_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     try:
         user_id = UUID(user_id_str)
     except (ValueError, AttributeError):
@@ -55,24 +55,35 @@ async def get_current_user(
             detail="Invalid user ID format",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # 检查token是否在黑名单中
+    from app.services.auth_token_service import AuthTokenService
+    auth_token_service = AuthTokenService()
+
+    if await auth_token_service.is_token_revoked(db, token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # 获取用户
     user_service = UserService()
     user = await user_service.get_by_id(db, user_id)
-    
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is not active",
         )
-    
+
     return user
 
 

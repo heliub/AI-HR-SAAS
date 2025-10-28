@@ -3,12 +3,13 @@ Authentication endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import HTTPAuthorizationCredentials
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.auth import LoginRequest, LoginResponse, LogoutRequest, UserInfo
 from app.schemas.base import APIResponse
 from app.services.user_service import UserService
-from app.core.security import security_manager
+from app.core.security import security_manager, security
 from app.models.user import User
 
 router = APIRouter()
@@ -39,17 +40,32 @@ async def login(
         )
     
     # 更新最后登录时间
-    from datetime import datetime
-    user.last_login_at = datetime.utcnow()
+    from datetime import datetime, timezone
+    user.last_login_at = datetime.now(timezone.utc)
     await db.commit()
     
     # 生成token
+    from datetime import datetime, timedelta
+    from app.services.auth_token_service import AuthTokenService
+
     access_token = security_manager.create_access_token(
         data={
             "sub": str(user.id),
             "tenantId": str(user.tenant_id),
             "role": user.role
         }
+    )
+
+    # 将token存入数据库用于管理
+    auth_token_service = AuthTokenService()
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)  # 设置24小时过期
+
+    await auth_token_service.create_token(
+        db=db,
+        tenant_id=str(user.tenant_id),
+        user_id=str(user.id),
+        token=access_token,
+        expires_at=expires_at
     )
     
     user_info = UserInfo(
@@ -74,15 +90,54 @@ async def login(
 
 @router.post("/logout", response_model=APIResponse)
 async def logout(
-    logout_data: LogoutRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """用户登出"""
-    # TODO: 实现token撤销逻辑（将token加入黑名单或从数据库中删除）
-    
+    """用户登出（仅当前设备）"""
+    from app.services.auth_token_service import AuthTokenService
+
+    token = credentials.credentials
+    auth_token_service = AuthTokenService()
+
+    # 撤销当前token（加入黑名单）
+    success = await auth_token_service.revoke_token(
+        db=db,
+        token=token,
+        user_id=str(current_user.id)
+    )
+
+    if not success:
+        return APIResponse(
+            code=400,
+            message="无效的token或已过期"
+        )
+
     return APIResponse(
         code=200,
         message="登出成功"
+    )
+
+
+@router.post("/logout-all", response_model=APIResponse)
+async def logout_all_devices(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """用户登出（所有设备）"""
+    from app.services.auth_token_service import AuthTokenService
+
+    auth_token_service = AuthTokenService()
+
+    # 撤销用户的所有token（强制登出所有设备）
+    revoked_count = await auth_token_service.revoke_all_user_tokens(
+        db=db,
+        user_id=str(current_user.id)
+    )
+
+    return APIResponse(
+        code=200,
+        message=f"已成功登出 {revoked_count} 个设备"
     )
 
 

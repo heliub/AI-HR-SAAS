@@ -4,7 +4,7 @@ Job model
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, Text, DateTime, Integer, ARRAY
+from sqlalchemy import Column, String, Text, DateTime, Integer, ARRAY, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -37,6 +37,13 @@ class Job(Base):
     created_by = Column(UUID(as_uuid=True), index=True, comment="创建人用户ID")
     published_at = Column(DateTime(timezone=True), comment="发布时间")
     closed_at = Column(DateTime(timezone=True), comment="关闭时间")
+    # LinkedIn/JobStreet 标准字段
+    company = Column(String(200), comment="公司名称")
+    workplace_type = Column(String(20), comment="工作场所类型: on-site-现场办公, hybrid-混合办公, remote-远程办公")
+    pay_type = Column(String(20), comment="薪资类型: hourly-时薪, monthly-月薪, annual-年薪, annual_plus_commission-年薪加提成")
+    pay_currency = Column(String(10), default="CNY", comment="薪资货币")
+    pay_shown_on_ad = Column(Boolean, default=False, comment="是否在广告中显示薪资")
+    category = Column(String(100), comment="职位分类")
     
       
     @property

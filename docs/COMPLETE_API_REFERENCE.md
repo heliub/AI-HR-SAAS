@@ -66,17 +66,56 @@ Content-Type: application/json
   "code": 200,
   "message": "登录成功",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": "10000000-0000-0000-0000-000000000004",
       "name": "李技术总监",
       "email": "li@demo.com",
       "role": "admin",
-      "tenant_id": "00000000-0000-0000-0000-000000000001",
-      "avatar_url": null,
-      "last_login_at": "2025-01-27T10:30:00Z",
-      "is_active": true
+      "avatar": null
     }
+  }
+}
+```
+
+#### 用户登出
+**POST** `/auth/logout`
+
+**请求体**:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "登出成功",
+  "data": null
+}
+```
+
+#### 获取当前用户信息
+**GET** `/auth/me`
+
+**请求头**:
+```http
+Authorization: Bearer YOUR_TOKEN
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "id": "10000000-0000-0000-0000-000000000004",
+    "name": "李技术总监",
+    "email": "li@demo.com",
+    "role": "admin",
+    "avatar": null
   }
 }
 ```
@@ -87,7 +126,7 @@ Content-Type: application/json
 
 ### 👤 获取当前用户信息
 
-**GET** `/account/profile`
+**GET** `/auth/me`
 
 获取当前登录用户的详细信息
 
@@ -95,23 +134,18 @@ Content-Type: application/json
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
     "id": "10000000-0000-0000-0000-000000000004",
     "name": "李技术总监",
     "email": "li@demo.com",
     "role": "admin",
-    "tenant_id": "00000000-0000-0000-0000-000000000001",
-    "avatar_url": null,
-    "last_login_at": "2025-01-27T10:30:00Z",
-    "is_active": true,
-    "created_at": "2025-01-27T10:30:00Z",
-    "updated_at": "2025-01-27T10:30:00Z"
+    "avatar": null
   }
 }
 ```
 
-### ✏️ 更新用户信息
+### ✏️ 更新个人信息
 
 **PUT** `/account/profile`
 
@@ -121,7 +155,82 @@ Content-Type: application/json
 ```json
 {
   "name": "新用户名",
-  "avatar_url": "https://example.com/new-avatar.jpg"
+  "avatar": "https://example.com/new-avatar.jpg"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "个人信息更新成功",
+  "data": null
+}
+```
+
+### 🔒 更新密码
+
+**PUT** `/account/password`
+
+更新用户密码
+
+**请求体**:
+```json
+{
+  "currentPassword": "old-password123",
+  "newPassword": "new-password456"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "密码更新成功",
+  "data": null
+}
+```
+
+### 📷 上传头像
+
+**POST** `/account/avatar`
+
+上传用户头像
+
+**请求体**: `multipart/form-data`
+- `file`: 图片文件
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "头像上传成功",
+  "data": {
+    "avatarUrl": "https://example.com/avatars/user1.jpg"
+  }
+}
+```
+
+### 🔔 更新通知设置
+
+**POST** `/account/notifications`
+
+更新通知偏好设置
+
+**请求体**:
+```json
+{
+  "emailNotifications": true,
+  "taskReminders": true
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "通知设置更新成功",
+  "data": null
 }
 ```
 
@@ -138,13 +247,15 @@ Content-Type: application/json
 **查询参数**:
 - `page` (int, optional): 页码，默认1，最小值1
 - `pageSize` (int, optional): 每页数量，默认10，范围1-100
-- `search` (string, optional): 搜索关键词（标题、部门、描述）
+- `search` (string, optional): 搜索关键词（标题、公司、描述）
 - `status` (string, optional): 职位状态筛选
-- `department` (string, optional): 部门筛选
+- `company` (string, optional): 公司名称筛选
+- `category` (string, optional): 职位类别筛选 (如: Software Development, Design, Sales)
+- `workplaceType` (string, optional): 工作场所类型筛选 (On-site/Hybrid/Remote)
 
 **请求示例**:
 ```http
-GET /api/v1/jobs?page=1&pageSize=10&search=前端&status=open
+GET /api/v1/jobs?page=1&pageSize=10&search=前端&status=open&company=字节跳动&workplaceType=Hybrid
 Authorization: Bearer YOUR_TOKEN
 ```
 
@@ -161,20 +272,23 @@ Authorization: Bearer YOUR_TOKEN
       {
         "id": "30000000-0000-0000-0000-000000000001",
         "title": "高级前端工程师",
-        "department": "技术部",
+        "company": "字节跳动",
         "location": "北京",
         "type": "full-time",
+        "workplaceType": "Hybrid",
         "status": "open",
-        "minSalary": 25000,
-        "maxSalary": 45000,
+        "minSalary": 2500000,
+        "maxSalary": 4500000,
+        "payType": "Monthly",
+        "payCurrency": "CNY",
+        "payShownOnAd": true,
         "salary": "25K-45K",
         "description": "负责公司核心产品的前端开发工作...",
         "requirements": ["React", "TypeScript", "5年以上经验"],
+        "category": ["Software Development", "Engineering"],
         "recruitmentInvitation": "我们正在寻找优秀的前端工程师加入团队...",
         "education": "本科及以上",
-        "minAge": 22,
-        "maxAge": 40,
-        "jobLevel": "P6-P7",
+        "preferredSchools": ["清华大学", "北京大学"],
         "applicantsCount": 15,
         "userId": "10000000-0000-0000-0000-000000000004",
         "createdBy": "10000000-0000-0000-0000-000000000004",
@@ -204,20 +318,23 @@ Authorization: Bearer YOUR_TOKEN
   "data": {
     "id": "30000000-0000-0000-0000-000000000001",
     "title": "高级前端工程师",
-    "department": "技术部",
+    "company": "字节跳动",
     "location": "北京",
     "type": "full-time",
+    "workplaceType": "Hybrid",
     "status": "open",
-    "minSalary": 25000,
-    "maxSalary": 45000,
+    "minSalary": 2500000,
+    "maxSalary": 4500000,
+    "payType": "Monthly",
+    "payCurrency": "CNY",
+    "payShownOnAd": true,
     "salary": "25K-45K",
     "description": "负责公司核心产品的前端开发工作，参与产品需求分析和技术方案设计...",
     "requirements": ["React", "TypeScript", "5年以上经验", "大厂背景优先"],
+    "category": ["Software Development", "Engineering"],
     "recruitmentInvitation": "我们正在寻找优秀的前端工程师加入我们的技术团队！你将有机会参与创新项目...",
     "education": "本科及以上",
-    "minAge": 22,
-    "maxAge": 40,
-    "jobLevel": "P6-P7",
+    "preferredSchools": ["清华大学", "北京大学"],
     "applicantsCount": 15,
     "userId": "10000000-0000-0000-0000-000000000004",
     "createdBy": "10000000-0000-0000-0000-000000000004",
@@ -238,18 +355,21 @@ Authorization: Bearer YOUR_TOKEN
 ```json
 {
   "title": "高级后端工程师",
-  "department": "技术部",
+  "company": "字节跳动",
   "location": "北京",
   "type": "full-time",
-  "minSalary": 30000,
-  "maxSalary": 50000,
+  "workplaceType": "Hybrid",
+  "minSalary": 3000000,
+  "maxSalary": 5000000,
+  "payType": "Monthly",
+  "payCurrency": "CNY",
+  "payShownOnAd": true,
   "description": "负责后端服务开发和架构设计...",
   "requirements": ["Java", "Spring Boot", "微服务"],
+  "category": ["Software Development", "Engineering"],
   "recruitmentInvitation": "寻找优秀的后端工程师...",
   "education": "本科及以上",
-  "minAge": 25,
-  "maxAge": 45,
-  "jobLevel": "P7-P8"
+  "preferredSchools": ["清华大学", "北京大学"]
 }
 ```
 
@@ -261,7 +381,7 @@ Authorization: Bearer YOUR_TOKEN
   "data": {
     "id": "30000000-0000-0000-0000-000000000002",
     "title": "高级后端工程师",
-    "department": "技术部",
+    "company": "字节跳动",
     "status": "draft",
     "createdAt": "2025-01-27T11:00:00Z",
     "userId": "10000000-0000-0000-0000-000000000004",
@@ -353,16 +473,18 @@ AI智能生成职位描述和要求
   "code": 200,
   "message": "生成成功",
   "data": {
-    "department": "技术部",
+    "company": null,
     "location": "北京/上海/深圳",
-    "minSalary": 20000,
-    "maxSalary": 45000,
-    "description": "1. 负责公司高级前端工程师相关的开发工作，参与产品需求分析和技术方案设计\n2. 编写高质量、可维护的代码，完成核心功能模块开发...",
-    "requirements": ["• 3年以上相关开发经验，有大型项目经验者优先", "• 熟练掌握相关技术栈和开发工具"],
-    "recruitmentInvitation": "我们正在寻找优秀的高级前端工程师加入我们的技术团队！你将有机会参与创新项目...",
-    "education": "本科及以上",
-    "minAge": 22,
-    "maxAge": 45
+    "workplaceType": "Hybrid",
+    "minSalary": 2000000,
+    "maxSalary": 4500000,
+    "payType": "Monthly",
+    "payCurrency": "CNY",
+    "payShownOnAd": true,
+    "description": "职位描述：\n1. 负责公司高级前端工程师相关的开发工作，参与产品需求分析和技术方案设计\n2. 编写高质量、可维护的代码，完成核心功能模块开发\n3. 参与代码审查，确保代码质量和团队技术水平提升\n4. 解决开发过程中的技术难题，优化系统性能\n5. 与产品、设计、测试团队密切配合，确保项目按时高质量交付\n\n任职要求：\n• 3年以上相关开发经验，有大型项目经验者优先\n• 熟练掌握相关技术栈和开发工具\n• 具备良好的编程习惯和代码规范意识\n• 有较强的学习能力和技术热情",
+    "category": ["Software Development", "Engineering"],
+    "recruitmentInvitation": "我们正在寻找优秀的高级前端工程师加入我们的技术团队！你将有机会参与创新项目，与技术大牛一起成长，享受有竞争力的薪酬福利和良好的职业发展空间。",
+    "education": "本科及以上"
   }
 }
 ```
@@ -754,6 +876,133 @@ AI智能生成职位描述和要求
 
 ---
 
+## AI聊天管理
+
+### 💬 获取聊天会话列表
+
+**GET** `/chat/sessions`
+
+获取用户的聊天会话列表
+
+**查询参数**:
+- `page` (int, optional): 页码，默认1，最小值1
+- `pageSize` (int, optional): 每页数量，默认10，范围1-100
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "total": 5,
+    "page": 1,
+    "pageSize": 10,
+    "list": [
+      {
+        "id": "70000000-0000-0000-0000-000000000001",
+        "title": "招聘咨询 - 前端工程师",
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T15:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### ➕ 创建新会话
+
+**POST** `/chat/sessions`
+
+创建新的聊天会话
+
+**请求体**:
+```json
+{
+  "title": "新对话"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "会话创建成功",
+  "data": {
+    "id": "70000000-0000-0000-0000-000000000002",
+    "title": "新对话",
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "createdAt": "2025-01-27T16:00:00Z",
+    "updatedAt": "2025-01-27T16:00:00Z"
+  }
+}
+```
+
+### 📨 获取聊天历史
+
+**GET** `/chat/sessions/{session_id}/messages`
+
+获取指定会话的聊天历史记录
+
+**路径参数**:
+- `session_id` (UUID): 会话ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "messages": [
+      {
+        "id": "71000000-0000-0000-0000-000000000001",
+        "role": "assistant",
+        "content": "你好！我是AI招聘助手，有什么可以帮助你的吗？",
+        "timestamp": "2025-01-27T10:30:00Z"
+      },
+      {
+        "id": "71000000-0000-0000-0000-000000000002",
+        "role": "user",
+        "content": "帮我筛选一下前端工程师的简历",
+        "timestamp": "2025-01-27T10:31:00Z"
+      }
+    ]
+  }
+}
+```
+
+### 📤 发送消息
+
+**POST** `/chat/sessions/{session_id}/messages`
+
+向指定会话发送消息
+
+**路径参数**:
+- `session_id` (UUID): 会话ID
+
+**请求体**:
+```json
+{
+  "content": "帮我筛选一下前端工程师的简历"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "id": "71000000-0000-0000-0000-000000000003",
+    "role": "assistant",
+    "content": "我已收到您的简历筛选请求。正在为您分析数据库中的简历匹配情况，请稍等...",
+    "timestamp": "2025-01-27T10:31:30Z"
+  }
+}
+```
+
+---
+
 ## 错误处理
 
 ### 错误响应格式
@@ -827,10 +1076,38 @@ AI智能生成职位描述和要求
 - `contract`: 合同
 - `intern`: 实习
 
-**性别**:
-- `male`: 男
-- `female`: 女
-- `unlimited`: 不限
+**工作场所类型**:
+- `On-site`: 现场办公
+- `Hybrid`: 混合办公
+- `Remote`: 远程办公
+
+**薪资类型**:
+- `Hourly rate`: 小时费率
+- `Monthly salary`: 月薪
+- `Annual salary`: 年薪
+- `Annual plus commission`: 年薪+提成
+
+**薪资货币**:
+- `AUD`: 澳元
+- `HKD`: 港币
+- `IDR`: 印尼盾
+- `MYR`: 马来西亚林吉特
+- `NZD`: 新西兰元
+- `PHP`: 菲律宾比索
+- `SGD`: 新加坡元
+- `THB`: 泰铢
+- `USD`: 美元
+- `CNY`: 人民币
+
+**职位类别**:
+- `Software Development`: 软件开发
+- `Engineering`: 工程技术
+- `Product Management`: 产品管理
+- `Design`: 设计
+- `Sales`: 销售
+- `Marketing`: 市场营销
+- `Human Resources`: 人力资源
+- `General Business`: 综合商业
 
 ---
 

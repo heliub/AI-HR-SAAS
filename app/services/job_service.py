@@ -199,7 +199,9 @@ class JobService(BaseService):
         user_id: Optional[UUID] = None,
         keyword: Optional[str] = None,
         status: Optional[str] = None,
-        department: Optional[str] = None,
+        company: Optional[str] = None,
+        category: Optional[str] = None,
+        workplace_type: Optional[str] = None,
         location: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
@@ -211,9 +213,11 @@ class JobService(BaseService):
         Args:
             tenant_id: 租户ID
             user_id: 用户ID
-            keyword: 搜索关键词（搜索标题、部门）
+            keyword: 搜索关键词（搜索标题、公司、描述）
             status: 职位状态
-            department: 部门
+            company: 公司名称
+            category: 职位类别
+            workplace_type: 工作场所类型
             location: 工作地点
             skip: 跳过记录数
             limit: 返回记录数
@@ -232,8 +236,14 @@ class JobService(BaseService):
         if status:
             conditions.append(Job.status == status)
 
-        if department:
-            conditions.append(Job.department == department)
+        if company:
+            conditions.append(Job.company.ilike(f"%{company}%"))
+
+        if category:
+            conditions.append(Job.category.contains([category]))
+
+        if workplace_type:
+            conditions.append(Job.workplace_type == workplace_type)
 
         if location:
             conditions.append(Job.location == location)
@@ -242,7 +252,7 @@ class JobService(BaseService):
             conditions.append(
                 or_(
                     Job.title.ilike(f"%{keyword}%"),
-                    Job.department.ilike(f"%{keyword}%"),
+                    Job.company.ilike(f"%{keyword}%"),
                     Job.description.ilike(f"%{keyword}%")
                 )
             )
@@ -352,21 +362,22 @@ class JobService(BaseService):
             "tenant_id": tenant_id,
             "user_id": user_id,
             "title": f"{original_job.title} (副本)",
-            "department": original_job.department,
+            "company": original_job.company,
             "location": original_job.location,
             "type": original_job.type,
+            "workplace_type": original_job.workplace_type,
             "status": "draft",
             "min_salary": original_job.min_salary,
             "max_salary": original_job.max_salary,
+            "pay_type": original_job.pay_type,
+            "pay_currency": original_job.pay_currency,
+            "pay_shown_on_ad": original_job.pay_shown_on_ad,
             "description": original_job.description,
             "requirements": original_job.requirements,
             "preferred_schools": original_job.preferred_schools,
+            "category": original_job.category,
             "recruitment_invitation": original_job.recruitment_invitation,
-            "min_age": original_job.min_age,
-            "max_age": original_job.max_age,
-            "gender": original_job.gender,
             "education": original_job.education,
-            "job_level": original_job.job_level,
             "created_by": created_by
         }
 

@@ -14,19 +14,20 @@ class JobBase(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     title: str = Field(..., min_length=1, max_length=200)
-    department: str = Field(..., min_length=1, max_length=100)
+    company: Optional[str] = Field(None, max_length=200, description="公司名称")
     location: str = Field(..., min_length=1, max_length=100)
     type: str
-    minSalary: Optional[int] = Field(None, alias="min_salary", description="最低薪资（元/月）")
-    maxSalary: Optional[int] = Field(None, alias="max_salary", description="最高薪资（元/月）")
+    workplaceType: Optional[str] = Field(None, alias="workplace_type", description="工作场所类型: On-site/Hybrid/Remote")
+    minSalary: Optional[int] = Field(None, alias="min_salary", description="最低薪资（分）")
+    maxSalary: Optional[int] = Field(None, alias="max_salary", description="最高薪资（分）")
+    payType: Optional[str] = Field(None, alias="pay_type", description="薪资类型: Hourly/Monthly/Annual/Annual plus commission")
+    payCurrency: Optional[str] = Field(None, alias="pay_currency", description="薪资货币: AUD/HKD/IDR/MYR/NZD/PHP/SGD/THB/USD")
+    payShownOnAd: Optional[bool] = Field(None, alias="pay_shown_on_ad", description="是否在广告中显示薪资")
     description: Optional[str] = None
     requirements: Optional[List[str]] = None
-    minAge: Optional[int] = Field(None, alias="min_age", description="最低年龄")
-    maxAge: Optional[int] = Field(None, alias="max_age", description="最高年龄")
-    gender: Optional[str] = None
     education: Optional[str] = None
     preferredSchools: Optional[List[str]] = Field(None, alias="preferred_schools")
-    jobLevel: Optional[str] = Field(None, alias="job_level")
+    category: Optional[str] = Field(None, max_length=100, description="职位类别，如: IT-技术类, 销售-营销类, 财务-会计类")
     recruitmentInvitation: Optional[str] = Field(None, alias="recruitment_invitation")
 
 
@@ -41,20 +42,21 @@ class JobUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     title: Optional[str] = Field(None, min_length=1, max_length=200)
-    department: Optional[str] = None
+    company: Optional[str] = Field(None, max_length=200)
     location: Optional[str] = None
     type: Optional[str] = None
+    workplaceType: Optional[str] = Field(None, alias="workplace_type")
     minSalary: Optional[int] = Field(None, alias="min_salary")
     maxSalary: Optional[int] = Field(None, alias="max_salary")
     salary: Optional[str] = None  # 兼容字符串格式薪资，如 "30K-50K"
+    payType: Optional[str] = Field(None, alias="pay_type")
+    payCurrency: Optional[str] = Field(None, alias="pay_currency")
+    payShownOnAd: Optional[bool] = Field(None, alias="pay_shown_on_ad")
     description: Optional[str] = None
     requirements: Optional[List[str]] = None
-    minAge: Optional[int] = Field(None, alias="min_age")
-    maxAge: Optional[int] = Field(None, alias="max_age")
-    gender: Optional[str] = None
     education: Optional[str] = None
     preferredSchools: Optional[List[str]] = Field(None, alias="preferred_schools")
-    jobLevel: Optional[str] = Field(None, alias="job_level")
+    category: Optional[str] = None
     recruitmentInvitation: Optional[str] = Field(None, alias="recruitment_invitation")
     publishedChannels: Optional[List[UUID]] = Field(None, alias="published_channels")
 
@@ -89,13 +91,16 @@ class JobAIGenerateResponse(BaseModel):
     """AI生成职位描述响应"""
     model_config = ConfigDict(populate_by_name=True)
 
-    department: str
+    company: Optional[str] = None
     location: str
+    workplaceType: str = Field(alias="workplace_type")
     minSalary: int = Field(alias="min_salary")
     maxSalary: int = Field(alias="max_salary")
+    payType: str = Field(alias="pay_type")
+    payCurrency: str = Field(alias="pay_currency")
+    payShownOnAd: bool = Field(alias="pay_shown_on_ad")
     description: str
+    category: str
     recruitmentInvitation: str = Field(alias="recruitment_invitation")
     education: str
-    minAge: int = Field(alias="min_age")
-    maxAge: int = Field(alias="max_age")
 

@@ -128,7 +128,7 @@ COMMENT ON COLUMN auth_tokens.updated_at IS '更新时间';
 -- 3. 职位管理表
 -- ==============================================
 
--- 职位表（优化：合并职位要求和偏好学校）
+-- 职位表（优化：合并职位要求和偏好学校，支持LinkedIn/JobStreet标准字段）
 CREATE TABLE jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
@@ -154,17 +154,24 @@ CREATE TABLE jobs (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMPTZ,
-    closed_at TIMESTAMPTZ
+    closed_at TIMESTAMPTZ,
+    -- LinkedIn/JobStreet 标准字段
+    company VARCHAR(200),
+    workplace_type VARCHAR(20),
+    pay_type VARCHAR(20),
+    pay_currency VARCHAR(10) DEFAULT 'CNY',
+    pay_shown_on_ad BOOLEAN DEFAULT FALSE,
+    category VARCHAR(100)
 );
 
-COMMENT ON TABLE jobs IS '职位表（已合并职位要求和偏好学校）';
+COMMENT ON TABLE jobs IS '职位表（已合并职位要求和偏好学校，支持LinkedIn/JobStreet标准字段）';
 COMMENT ON COLUMN jobs.id IS '职位ID（主键）';
 COMMENT ON COLUMN jobs.tenant_id IS '租户ID';
 COMMENT ON COLUMN jobs.user_id IS '创建该职位的HR用户ID';
 COMMENT ON COLUMN jobs.title IS '职位标题';
 COMMENT ON COLUMN jobs.department IS '所属部门';
 COMMENT ON COLUMN jobs.location IS '工作地点';
-COMMENT ON COLUMN jobs.type IS '职位类型: full-time-全职, part-time-兼职, contract-合同, intern-实习';
+COMMENT ON COLUMN jobs.type IS '职位类型: full-time-全职, part-time-兼职, contract-合同, intern-实习, temporary-临时工, volunteer-志愿者, casual-兼职';
 COMMENT ON COLUMN jobs.status IS '职位状态: open-开放, closed-关闭, draft-草稿';
 COMMENT ON COLUMN jobs.min_salary IS '最低薪资（单位：元/月）';
 COMMENT ON COLUMN jobs.max_salary IS '最高薪资（单位：元/月）';
@@ -183,6 +190,13 @@ COMMENT ON COLUMN jobs.created_at IS '创建时间';
 COMMENT ON COLUMN jobs.updated_at IS '更新时间';
 COMMENT ON COLUMN jobs.published_at IS '发布时间';
 COMMENT ON COLUMN jobs.closed_at IS '关闭时间';
+-- LinkedIn/JobStreet 标准字段注释
+COMMENT ON COLUMN jobs.company IS '公司名称';
+COMMENT ON COLUMN jobs.workplace_type IS '工作场所类型: on-site-现场办公, hybrid-混合办公, remote-远程办公';
+COMMENT ON COLUMN jobs.pay_type IS '薪资类型: hourly-时薪, monthly-月薪, annual-年薪, annual_plus_commission-年薪加提成';
+COMMENT ON COLUMN jobs.pay_currency IS '薪资货币: CNY-人民币, USD-美元, EUR-欧元, GBP-英镑, JPY-日元, KRW-韩元, SGD-新加坡元, HKD-港币, AUD-澳元, CAD-加元, CHF-瑞士法郎, SEK-瑞典克朗, NOK-挪威克朗, DKK-丹麦克朗, INR-印度卢比, MYR-马来西亚林吉特, THB-泰铢, PHP-菲律宾比索, IDR-印尼盾, NZD-新西兰元';
+COMMENT ON COLUMN jobs.pay_shown_on_ad IS '是否在广告中显示薪资: true-显示, false-不显示';
+COMMENT ON COLUMN jobs.category IS '职位分类: IT-技术类, 销售-营销类, 财务-会计类, 人事-行政类, 运营-管理类, 设计-创意类, 工程-技术类, 客服-支持类, 教学-培训类, 医疗-健康类, 制造-生产类, 物流-仓储类, 建筑-工程类, 法律-合规类, 咨询-顾问类, 媒体-传媒类, 零售-服务类, 金融-银行类, 保险-证券类, 房地产-建筑类, 旅游-酒店类, 餐饮-食品类, 娱乐-休闲类, 体育-健身类, 教育-科研类, 政府-公共类, 非营利组织类';
 
 -- ==============================================
 -- 4. 招聘渠道表
@@ -719,6 +733,13 @@ CREATE INDEX idx_jobs_tenant_user ON jobs(tenant_id, user_id);
 CREATE INDEX idx_jobs_title_search ON jobs USING gin(to_tsvector('simple', title));
 CREATE INDEX idx_jobs_requirements ON jobs USING gin(requirements);
 CREATE INDEX idx_jobs_preferred_schools ON jobs USING gin(preferred_schools);
+-- 新字段索引
+CREATE INDEX idx_jobs_company ON jobs(company);
+CREATE INDEX idx_jobs_workplace_type ON jobs(workplace_type);
+CREATE INDEX idx_jobs_pay_type ON jobs(pay_type);
+CREATE INDEX idx_jobs_category ON jobs(category);
+CREATE INDEX idx_jobs_pay_currency ON jobs(pay_currency);
+CREATE INDEX idx_jobs_tenant_company ON jobs(tenant_id, company);
 
 -- 渠道表索引
 CREATE INDEX idx_channels_tenant_id ON channels(tenant_id);
@@ -846,9 +867,9 @@ CREATE INDEX idx_email_logs_created_at ON email_logs(created_at DESC);
 -- 12. 数据示例和使用说明
 -- ==============================================
 
--- 示例1：插入职位（包含要求和偏好学校数组）
--- INSERT INTO jobs (tenant_id, title, requirements, preferred_schools) VALUES
--- ('tenant-uuid', '高级前端工程师', 
+-- 示例1：插入职位（包含要求、偏好学校数组和新字段）
+-- INSERT INTO jobs (tenant_id, title, company, workplace_type, pay_type, pay_currency, category, requirements, preferred_schools) VALUES
+-- ('tenant-uuid', '高级前端工程师', '腾讯科技', 'hybrid', 'monthly', 'CNY', 'IT-技术类',
 --  ARRAY['5年以上前端开发经验', '精通React/Vue', '有大型项目经验'],
 --  ARRAY['清华大学', '北京大学', '浙江大学']);
 
