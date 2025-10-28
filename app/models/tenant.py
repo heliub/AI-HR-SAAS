@@ -22,15 +22,14 @@ class Tenant(Base):
     contact_phone = Column(String(50), comment="联系人电话")
     plan_type = Column(String(50), default='basic', comment="套餐类型: basic-基础版, pro-专业版, enterprise-企业版")
     status = Column(
-        String(20), 
-        nullable=False, 
-        default="active", 
+        String(20),
+        default="active",
         index=True,
         comment="状态: active-激活, inactive-停用, suspended-暂停"
     )
     max_users = Column(Integer, default=10, comment="最大用户数")
     max_jobs = Column(Integer, default=50, comment="最大职位数")
-    expires_at = Column(DateTime(timezone=True), nullable=True, comment="到期时间")
+    expires_at = Column(DateTime(timezone=True), comment="到期时间")
     
     
     def __repr__(self) -> str:

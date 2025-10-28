@@ -31,7 +31,7 @@ class PlatformAccount(Base):
         index=True,
         comment="状态: active, invalid, suspended"
     )
-    last_validated_at = Column(DateTime, nullable=True, comment="最后验证时间")
+    last_validated_at = Column(DateTime, comment="最后验证时间")
     
     def __repr__(self) -> str:
         return f"<PlatformAccount(id={self.id}, platform={self.platform}, status={self.status})>"

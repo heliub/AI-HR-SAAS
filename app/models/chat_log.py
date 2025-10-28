@@ -21,7 +21,7 @@ class ChatMediationLog(Base):
         nullable=False,
         index=True
     )
-    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"),)
     platform = Column(
         String(50), 
         nullable=False,
@@ -39,7 +39,7 @@ class ChatMediationLog(Base):
     )
     message_content = Column(Text, comment="消息内容")
     ai_generated = Column(Boolean, default=False, comment="是否AI生成")
-    sent_at = Column(DateTime, nullable=True, comment="发送时间")
+    sent_at = Column(DateTime, comment="发送时间")
     
     
     def __repr__(self) -> str:

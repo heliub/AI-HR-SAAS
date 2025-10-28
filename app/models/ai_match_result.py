@@ -13,7 +13,7 @@ class AIMatchResult(Base):
     __tablename__ = "ai_match_results"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="创建该匹配结果的HR用户ID")
+    user_id = Column(UUID(as_uuid=True),  index=True, comment="创建该匹配结果的HR用户ID")
     resume_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="简历ID")
     job_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="职位ID")
     is_match = Column(Boolean, nullable=False, comment="是否匹配")

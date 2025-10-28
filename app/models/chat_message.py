@@ -13,7 +13,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="发送该消息的用户ID")
+    user_id = Column(UUID(as_uuid=True), index=True, comment="发送该消息的用户ID")
     session_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="聊天会话ID")
     role = Column(String(20), nullable=False, comment="消息角色: user-用户, assistant-AI助手, system-系统")
     content = Column(Text, nullable=False, comment="消息内容")

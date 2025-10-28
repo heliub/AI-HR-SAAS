@@ -33,9 +33,9 @@ class AsyncTask(Base):
     error_message = Column(Text, comment="错误信息")
     retry_count = Column(Integer, default=0, comment="重试次数")
     max_retries = Column(Integer, default=3, comment="最大重试次数")
-    scheduled_at = Column(DateTime, nullable=True, index=True, comment="计划执行时间")
-    started_at = Column(DateTime, nullable=True, comment="开始时间")
-    completed_at = Column(DateTime, nullable=True, comment="完成时间")
+    scheduled_at = Column(DateTime, index=True, comment="计划执行时间")
+    started_at = Column(DateTime, comment="开始时间")
+    completed_at = Column(DateTime, comment="完成时间")
     
     def __repr__(self) -> str:
         return f"<AsyncTask(id={self.id}, type={self.task_type}, status={self.status})>"

@@ -30,7 +30,7 @@ class Task(Base):
     )
     task_name = Column(String(500), comment="任务名称")
     context = Column(JSONB, comment="任务上下文信息")
-    related_job_id = Column(UUID(as_uuid=True), nullable=True, comment="关联的职位ID")
+    related_job_id = Column(UUID(as_uuid=True), comment="关联的职位ID")
     status = Column(
         String(20), 
         default="active",

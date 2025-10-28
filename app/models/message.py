@@ -19,7 +19,7 @@ class Message(Base):
         nullable=False,
         index=True
     )
-    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True, index=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), index=True)
     role = Column(
         String(20), 
         nullable=False,

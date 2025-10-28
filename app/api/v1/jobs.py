@@ -146,7 +146,7 @@ async def create_job(
 
     # 分离渠道数据和其他字段
     channel_ids = job_data.channels
-    create_data = job_data.model_dump(exclude_unset=True, exclude={"channels"})
+    create_data = job_data.model_dump(exclude_unset=True, exclude={"channels"}, by_alias=True)
 
     # 设置创建者信息
     create_data.update({
@@ -210,7 +210,7 @@ async def update_job(
 
     # 分离渠道数据和其他字段
     channel_ids = job_data.channels
-    update_data = job_data.model_dump(exclude_unset=True, exclude={"salary", "channels"})
+    update_data = job_data.model_dump(exclude_unset=True, exclude={"salary", "channels"}, by_alias=True)
 
     # 更新职位，更新时间会在服务层自动处理
     job = await job_service.update(
@@ -370,10 +370,16 @@ async def duplicate_job(
 async def ai_generate_job(
     request_data: JobAIGenerateRequest,
 ):
-    """AI生成职位描述"""
+    """AI智能生成职位描述，根据输入参数生成完整的职位信息"""
     try:
-        # 智能生成职位信息
-        generated_data = _generate_job_description(request_data.title)
+        # 智能生成职位信息，使用更多输入参数
+        generated_data = _generate_job_description(
+            title=request_data.title,
+            job_type=request_data.type,
+            workplace_type=request_data.workplaceType,
+            pay_currency=request_data.payCurrency,
+            location=request_data.location
+        )
 
         response_data = JobAIGenerateResponse(**generated_data)
 
@@ -389,9 +395,9 @@ async def ai_generate_job(
         )
 
 
-def _generate_job_description(job_title: str) -> dict:
+def _generate_job_description(job_title: str, job_type: str, workplace_type: Optional[str] = None, pay_currency: Optional[str] = None, location: Optional[str] = None) -> dict:
     """
-    根据职位标题和简要描述生成详细职位信息
+    根据职位标题、类型、工作场所、薪资货币、地点等参数生成详细职位信息
     """
     # 基于职位标题的智能生成逻辑
     tech_jobs = ["前端", "后端", "全栈", "移动端", "算法", "数据", "测试", "运维", "架构师"]
@@ -400,26 +406,30 @@ def _generate_job_description(job_title: str) -> dict:
 
     job_title_lower = job_title.lower()
 
+    # 基于职位类型调整生成策略，job_type参数用于未来扩展
+    if job_type == "intern" or job_type == "part-time":
+        # 实习生和兼职的生成逻辑可以在这里扩展
+        pass
     if any(tech in job_title_lower for tech in tech_jobs):
-        return _generate_tech_job_desc(job_title)
+        return _generate_tech_job_desc(job_title, workplace_type, pay_currency, location)
     elif any(job in job_title_lower for job in product_jobs):
-        return _generate_product_job_desc(job_title)
+        return _generate_product_job_desc(job_title, workplace_type, pay_currency, location)
     elif any(hr_job in job_title_lower for hr_job in hr_jobs):
-        return _generate_hr_job_desc(job_title)
+        return _generate_hr_job_desc(job_title, workplace_type, pay_currency, location)
     else:
-        return _generate_general_job_desc(job_title)
+        return _generate_general_job_desc(job_title, workplace_type, pay_currency, location)
 
 
-def _generate_tech_job_desc(title: str) -> dict:
+def _generate_tech_job_desc(title: str, workplace_type: Optional[str] = None, pay_currency: Optional[str] = None, location: Optional[str] = None) -> dict:
     """生成技术类职位描述"""
     return {
         "company": None,
-        "location": "北京/上海/深圳",
-        "workplace_type": "Hybrid",
+        "location": location or "北京/上海/深圳",
+        "workplace_type": workplace_type or "Hybrid",
         "min_salary": 20000,
         "max_salary": 45000,
         "pay_type": "Monthly",
-        "pay_currency": "CNY",
+        "pay_currency": pay_currency or "CNY",
         "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责公司{title}相关的开发工作，参与产品需求分析和技术方案设计
@@ -440,16 +450,16 @@ def _generate_tech_job_desc(title: str) -> dict:
     }
 
 
-def _generate_product_job_desc(title: str) -> dict:
+def _generate_product_job_desc(title: str, workplace_type: Optional[str] = None, pay_currency: Optional[str] = None, location: Optional[str] = None) -> dict:
     """生成产品类职位描述"""
     return {
         "company": None,
-        "location": "北京/上海",
-        "workplace_type": "Hybrid",
+        "location": location or "北京/上海",
+        "workplace_type": workplace_type or "Hybrid",
         "min_salary": 15000,
         "max_salary": 35000,
         "pay_type": "Monthly",
-        "pay_currency": "CNY",
+        "pay_currency": pay_currency or "CNY",
         "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责公司{title}相关工作，参与产品规划和需求调研
@@ -470,16 +480,16 @@ def _generate_product_job_desc(title: str) -> dict:
     }
 
 
-def _generate_hr_job_desc(title: str) -> dict:
+def _generate_hr_job_desc(title: str, workplace_type: Optional[str] = None, pay_currency: Optional[str] = None, location: Optional[str] = None) -> dict:
     """生成HR类职位描述"""
     return {
         "company": None,
-        "location": "北京",
-        "workplace_type": "On-site",
+        "location": location or "北京",
+        "workplace_type": workplace_type or "On-site",
         "min_salary": 12000,
         "max_salary": 25000,
         "pay_type": "Monthly",
-        "pay_currency": "CNY",
+        "pay_currency": pay_currency or "CNY",
         "pay_shown_on_ad": True,
         "description": f"""职位描述：
 1. 负责{title}相关工作，协助制定和完善人力资源管理制度
@@ -500,16 +510,16 @@ def _generate_hr_job_desc(title: str) -> dict:
     }
 
 
-def _generate_general_job_desc(title: str) -> dict:
+def _generate_general_job_desc(title: str, workplace_type: Optional[str] = None, pay_currency: Optional[str] = None, location: Optional[str] = None) -> dict:
     """生成通用职位描述"""
     return {
         "company": None,
-        "location": "北京",
-        "workplace_type": "On-site",
+        "location": location or "北京",
+        "workplace_type": workplace_type or "On-site",
         "min_salary": 10000,
         "max_salary": 20000,
         "pay_type": "Monthly",
-        "pay_currency": "CNY",
+        "pay_currency": pay_currency or "CNY",
         "pay_shown_on_ad": False,
         "description": f"""职位描述：
 1. 负责{title}相关工作，协助部门完成各项业务指标

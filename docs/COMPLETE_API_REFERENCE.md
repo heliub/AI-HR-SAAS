@@ -531,19 +531,25 @@ Authorization: Bearer YOUR_TOKEN
 
 **POST** `/jobs/ai-generate`
 
-AI智能生成职位描述和要求，根据职位标题自动生成完整的职位信息
+AI智能生成职位描述和要求，根据多个参数智能生成完整的职位信息
 
 **请求体**:
 ```json
 {
   "title": "高级前端工程师",
-  "jobLevel": "senior"
+  "type": "full-time",
+  "workplaceType": "Hybrid",
+  "payCurrency": "CNY",
+  "location": "北京"
 }
 ```
 
 **字段说明**:
 - `title` (string, required): 职位标题，用于智能生成相关内容
-- `jobLevel` (string, optional): 职位级别，用于更精确的生成
+- `type` (string, required): 职位类型 (full-time/part-time/contract/intern)
+- `workplaceType` (string, optional): 工作场所类型 (On-site/Hybrid/Remote)
+- `payCurrency` (string, optional): 薪资货币，默认CNY
+- `location` (string, optional): 工作地点，如未提供则根据职位类型智能推荐
 
 **响应**:
 ```json
@@ -552,7 +558,7 @@ AI智能生成职位描述和要求，根据职位标题自动生成完整的职
   "message": "生成成功",
   "data": {
     "company": null,
-    "location": "北京/上海/深圳",
+    "location": "北京",
     "workplaceType": "Hybrid",
     "minSalary": 2000000,
     "maxSalary": 4500000,
@@ -565,6 +571,42 @@ AI智能生成职位描述和要求，根据职位标题自动生成完整的职
     "recruitmentInvitation": "我们正在寻找优秀的高级前端工程师加入我们的技术团队！你将有机会参与创新项目，与技术大牛一起成长，享受有竞争力的薪酬福利和良好的职业发展空间。",
     "education": "本科及以上"
   }
+}
+```
+
+**智能生成特性**:
+- ✅ 根据职位标题智能识别职位类别（技术/产品/HR/通用）
+- ✅ 根据输入参数定制生成内容（地点、工作场所、货币）
+- ✅ 智能匹配薪资范围和职位要求
+- ✅ 生成完整的职位描述、要求和招聘邀请语
+
+**不同职位类型的生成示例**:
+```json
+// 技术类职位 - 高薪资范围
+{
+  "title": "高级前端工程师",
+  "type": "full-time",
+  "workplaceType": "Hybrid",
+  "payCurrency": "USD",
+  "location": "硅谷"
+}
+
+// 产品类职位 - 中等薪资范围
+{
+  "title": "产品经理",
+  "type": "full-time",
+  "workplaceType": "Remote",
+  "payCurrency": "CNY",
+  "location": "上海"
+}
+
+// HR类职位 - 偏向现场办公
+{
+  "title": "招聘专员",
+  "type": "full-time",
+  "workplaceType": "On-site",
+  "payCurrency": "CNY",
+  "location": "北京"
 }
 ```
 

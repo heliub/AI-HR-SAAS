@@ -26,7 +26,7 @@ class User(Base):
         comment="用户角色: admin-租户管理员, hr-人力资源"
     )
     avatar_url = Column(Text, comment="头像URL")
-    last_login_at = Column(DateTime(timezone=True), nullable=True, comment="最后登录时间")
+    last_login_at = Column(DateTime(timezone=True),  comment="最后登录时间")
     is_active = Column(Boolean, default=True, comment="是否激活")
       
     def __repr__(self) -> str:

@@ -30,7 +30,7 @@ class EmailAccount(Base):
         index=True,
         comment="状态: active, invalid, suspended"
     )
-    last_synced_at = Column(DateTime, nullable=True, comment="最后同步时间")
+    last_synced_at = Column(DateTime, comment="最后同步时间")
     
     # 唯一约束
     __table_args__ = (

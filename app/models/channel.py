@@ -13,11 +13,11 @@ class Channel(Base):
     __tablename__ = "channels"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="创建该渠道的HR用户ID")
+    user_id = Column(UUID(as_uuid=True), index=True, comment="创建该渠道的HR用户ID")
     name = Column(String(100), nullable=False, comment="渠道名称")
-    type = Column(String(20), nullable=False, index=True, 
+    type = Column(String(20), index=True,
                  comment="渠道类型: job-board-招聘网站, social-media-社交媒体, referral-内推, agency-猎头, website-官网")
-    status = Column(String(20), nullable=False, default="active", index=True, 
+    status = Column(String(20), default="active", index=True,
                    comment="渠道状态: active-激活, inactive-停用")
     applicants_count = Column(Integer, default=0, comment="该渠道总申请人数（冗余字段）")
     annual_cost = Column(Numeric(10, 2), comment="年度成本")

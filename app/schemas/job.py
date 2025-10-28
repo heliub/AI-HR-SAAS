@@ -94,7 +94,7 @@ class JobStatusUpdate(BaseModel):
 
 class JobResponse(JobBase, IDSchema, TimestampSchema):
     """职位响应"""
-    userId: Optional[UUID] = Field(alias="user_id")
+    userId: Optional[UUID] = Field(None, alias="user_id")
     status: str
     salary: Optional[str] = None  # 兼容字符串格式薪资，如 "30K-50K"
     applicantsCount: int = Field(alias="applicants_count")
@@ -110,7 +110,10 @@ class JobResponse(JobBase, IDSchema, TimestampSchema):
 class JobAIGenerateRequest(BaseModel):
     """AI生成职位描述请求"""
     title: str
-    jobLevel: Optional[str] = Field(alias="job_level")
+    type: str
+    workplaceType: Optional[str] = Field(None, alias="workplace_type")
+    payCurrency: Optional[str] = Field(None, alias="pay_currency")
+    location: Optional[str] = None
 
 
 class JobAIGenerateResponse(BaseModel):

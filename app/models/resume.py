@@ -13,16 +13,16 @@ class Resume(Base):
     __tablename__ = "resumes"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="处理该简历的HR用户ID")
+    user_id = Column(UUID(as_uuid=True), index=True, comment="处理该简历的HR用户ID")
     candidate_name = Column(String(100), nullable=False, comment="候选人姓名")
     email = Column(String(255), index=True, comment="候选人邮箱")
     phone = Column(String(50), comment="候选人电话")
-    position = Column(String(200), nullable=False, comment="应聘职位")
+    position = Column(String(200), comment="应聘职位")
     status = Column(String(20), nullable=False, default="pending", index=True, 
                    comment="简历状态: pending-待处理, reviewing-审核中, interview-面试中, offered-已发offer, rejected-已拒绝")
     source = Column(String(100), comment="简历来源渠道名称")
     source_channel_id = Column(UUID(as_uuid=True), index=True, comment="来源渠道ID")
-    job_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="应聘职位ID")
+    job_id = Column(UUID(as_uuid=True), index=True, comment="应聘职位ID")
     experience_years = Column(String(20), comment="工作年限，如：5年")
     education_level = Column(String(50), comment="学历水平，如：本科、硕士")
     age = Column(Integer, comment="年龄")

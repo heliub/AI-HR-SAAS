@@ -13,7 +13,7 @@ class RecruitmentTask(Base):
     __tablename__ = "recruitment_tasks"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="处理该任务的HR用户ID")
+    user_id = Column(UUID(as_uuid=True), index=True, comment="处理该任务的HR用户ID")
     job_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="职位ID")
     job_title = Column(String(200), nullable=False, comment="职位标题（冗余字段）")
     status = Column(String(20), nullable=False, default="not-started", index=True,

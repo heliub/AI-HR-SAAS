@@ -32,8 +32,8 @@ class MatchingResult(Base):
         index=True,
         comment="状态: pending_review, accepted, rejected"
     )
-    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    reviewed_at = Column(DateTime, nullable=True, comment="审核时间")
+    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), )
+    reviewed_at = Column(DateTime, comment="审核时间")
     
     
     # 唯一约束
