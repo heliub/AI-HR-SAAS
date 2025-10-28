@@ -14,7 +14,6 @@ import re
 class ChannelBase(BaseModel):
     """渠道基础Schema"""
     name: str = Field(..., min_length=1, max_length=100)
-    type: Optional[str] = None
     status: str = "active"
     cost: Optional[str] = Field(None, alias="annual_cost")
     costCurrency: Optional[str] = Field("CNY", alias="cost_currency")

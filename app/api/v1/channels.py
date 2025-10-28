@@ -53,15 +53,14 @@ async def get_channels(
     channel_responses = [ChannelResponse.model_validate(channel, from_attributes=True) for channel in channels]
 
     return create_paginated_response(
-        items=channel_responses,
+        list=channel_responses,
         total=total,
         page=page,
-        page_size=pageSize,
-        message="获取渠道列表成功"
+        page_size=pageSize
     )
 
 
-@router.post("", response_model=APIResponse)
+@router.post("/create", response_model=APIResponse)
 async def create_channel(
     channel_data: ChannelCreate,
     db: AsyncSession = Depends(get_db),
@@ -73,10 +72,6 @@ async def create_channel(
     try:
         # 转换数据，处理 cost 字段
         data = channel_data.model_dump(by_alias=True, exclude_unset=True)
-        if 'annual_cost' in data and data['annual_cost'] is not None:
-            # 只有当 cost 是字符串时才转换为 Decimal
-            if isinstance(data['annual_cost'], str):
-                data['annual_cost'] = Decimal(str(data['annual_cost']))
         
         channel = await channel_service.create_channel(
             db=db,

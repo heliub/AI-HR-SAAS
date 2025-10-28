@@ -55,7 +55,7 @@ def create_error_response(
 
 
 def create_paginated_response(
-    items: list[Any],
+    list: list[Any],
     total: int,
     page: int,
     page_size: int,
@@ -78,7 +78,7 @@ def create_paginated_response(
         total=total,
         page=page,
         pageSize=page_size,
-        list=items
+        list=list
     )
 
     return APIResponse(

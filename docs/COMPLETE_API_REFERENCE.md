@@ -888,7 +888,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
     "total": 20,
     "page": 1,
     "pageSize": 10,
-    "items": [
+    "list": [
       {
         "id": "50000000-0000-0000-0000-000000001",
         "name": "智联招聘",
@@ -928,7 +928,6 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
   "data": {
     "id": "50000000-0000-0000-0000-000000001",
     "name": "智联招聘",
-    "type": "job-board",
     "status": "active",
     "cost": "50000.00",
     "costCurrency": "CNY",
@@ -946,7 +945,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 
 ### ➕ 创建渠道
 
-**POST** `/channels`
+**POST** `/channels/create`
 
 创建新的招聘渠道
 - 自动设置当前用户为创建者
@@ -956,9 +955,9 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 ```json
 {
   "name": "BOSS直聘",
-  "type": "job-board",
   "status": "active",
   "cost": "80000.00",
+  "apiKey":"222xx",
   "costCurrency": "CNY",
   "contactPerson": "李经理",
   "contactEmail": "contact@bosszhipin.com",
@@ -968,7 +967,6 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 
 **字段说明**:
 - `name` (string, required): 渠道名称，1-100字符
-- `type` (string, optional): 渠道类型 (job-board/social-media/referral/agency/website)
 - `status` (string, optional): 渠道状态，默认为"active" (active/inactive)
 - `cost` (string, optional): 年度成本，字符串格式以避免精度问题
 - `costCurrency` (string, optional): 成本货币，默认为"CNY"
@@ -985,7 +983,6 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
   "data": {
     "id": "50000000-0000-0000-0000-000000002",
     "name": "BOSS直聘",
-    "type": "job-board",
     "status": "active",
     "cost": "80000.00",
     "costCurrency": "CNY",
@@ -1013,10 +1010,10 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 ```json
 {
   "name": "更新的渠道名称",
-  "type": "social-media",
   "status": "inactive",
   "cost": "90000.00",
   "costCurrency": "USD",
+  "apiKey": "22xxx",
   "contactPerson": "王经理",
   "contactEmail": "new-contact@example.com",
   "description": "更新的渠道描述"
@@ -1031,7 +1028,6 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
   "data": {
     "id": "50000000-0000-0000-0000-000000001",
     "name": "更新的渠道名称",
-    "type": "social-media",
     "status": "inactive",
     "cost": "90000.00",
     "costCurrency": "USD",
