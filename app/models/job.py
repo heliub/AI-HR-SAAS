@@ -21,7 +21,7 @@ class Job(Base):
     department = Column(String(100),  comment="所属部门")
     location = Column(String(100),  comment="工作地点")
     type = Column(String(20),  comment="职位类型: full-time-全职, part-time-兼职, contract-合同, intern-实习")
-    status = Column(String(20), nullable=False, default="draft", index=True, comment="职位状态: open-开放, closed-关闭, draft-草稿")
+    status = Column(String(20), nullable=False, default="draft", index=True, comment="职位状态: open-开放, closed-关闭, draft-草稿, deleted-已删除")
     min_salary = Column(Integer,  comment="最低薪资（单位：元/月）")
     max_salary = Column(Integer,  comment="最高薪资（单位：元/月）")
     description = Column(Text,  comment="职位描述")

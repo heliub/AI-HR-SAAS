@@ -172,7 +172,7 @@ COMMENT ON COLUMN jobs.title IS '职位标题';
 COMMENT ON COLUMN jobs.department IS '所属部门';
 COMMENT ON COLUMN jobs.location IS '工作地点';
 COMMENT ON COLUMN jobs.type IS '职位类型: full-time-全职, part-time-兼职, contract-合同, intern-实习, temporary-临时工, volunteer-志愿者, casual-兼职';
-COMMENT ON COLUMN jobs.status IS '职位状态: open-开放, closed-关闭, draft-草稿';
+COMMENT ON COLUMN jobs.status IS '职位状态: open-开放, closed-关闭, draft-草稿, deleted-已删除';
 COMMENT ON COLUMN jobs.min_salary IS '最低薪资（单位：元/月）';
 COMMENT ON COLUMN jobs.max_salary IS '最高薪资（单位：元/月）';
 COMMENT ON COLUMN jobs.description IS '职位描述';

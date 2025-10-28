@@ -58,11 +58,10 @@ async def get_jobs(
     job_channels_map = result["job_channels"]
 
     # 获取总数
-    total = await job_service.count(
-        Job,
-        current_user.tenant_id,
-        current_user.id,
-        {
+    total = await job_service.count_jobs(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        filters={
             "status": status,
             "company": company,
             "category": category,
@@ -295,8 +294,13 @@ async def delete_job(
             message="权限不足，只能删除自己创建的职位"
         )
     
-    await job_service.delete(Job, job_id, current_user.tenant_id)
-    
+    # 更新职位状态为删除（软删除）
+    await job_service.update_job_status(
+        job_id=job_id,
+        tenant_id=current_user.tenant_id,
+        status="deleted"
+    )
+
     return APIResponse(
         code=200,
         message="职位删除成功"
@@ -374,7 +378,7 @@ async def ai_generate_job(
     try:
         # 智能生成职位信息，使用更多输入参数
         generated_data = _generate_job_description(
-            title=request_data.title,
+            job_title=request_data.title,
             job_type=request_data.type,
             workplace_type=request_data.workplaceType,
             pay_currency=request_data.payCurrency,

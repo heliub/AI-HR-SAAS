@@ -2,7 +2,7 @@
 Job service for handling job-related database operations
 """
 import re
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -338,7 +338,62 @@ class JobService(BaseService):
         Returns:
             更新后的职位对象
         """
-        return await self.update(Job, job_id, {"status": status}, tenant_id)
+        from datetime import datetime
+
+        update_data = {"status": status}
+
+        # 如果状态改为关闭，设置关闭时间
+        if status == "closed":
+            update_data["closed_at"] = datetime.utcnow()
+
+        # BaseService的update方法会自动更新updated_at字段
+        return await self.update(Job, job_id, update_data, tenant_id)
+
+    async def count_jobs(
+        self,
+        tenant_id: UUID,
+        user_id: Optional[UUID] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        is_admin: bool = False
+    ) -> int:
+        """
+        统计职位数量（自动过滤已删除的职位）
+
+        Args:
+            tenant_id: 租户ID
+            user_id: 用户ID
+            filters: 过滤条件
+            is_admin: 是否为管理员
+
+        Returns:
+            职位数量
+        """
+        conditions = [Job.tenant_id == tenant_id]
+
+        # 默认过滤已删除的职位，除非明确查询已删除状态
+        status = filters.get('status') if filters else None
+        if status != "deleted":
+            conditions.append(Job.status != "deleted")
+
+        # 用户过滤 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
+            conditions.append(Job.user_id == user_id)
+
+        if filters:
+            for key, value in filters.items():
+                if hasattr(Job, key) and value is not None:
+                    if key == 'company':
+                        conditions.append(Job.company.ilike(f"%{value}%"))
+                    elif key == 'category':
+                        conditions.append(Job.category.contains([value]))
+                    elif key == 'workplace_type':
+                        conditions.append(Job.workplace_type == value)
+                    else:
+                        conditions.append(getattr(Job, key) == value)
+
+        query = select(func.count(Job.id)).where(and_(*conditions))
+        result = await self.db.execute(query)
+        return result.scalar()
 
     async def duplicate_job(self, job_id: UUID, tenant_id: UUID, user_id: UUID, created_by: UUID) -> Optional[Job]:
         """
@@ -418,6 +473,10 @@ class JobService(BaseService):
         """
         # 构建基础查询条件
         conditions = [Job.tenant_id == tenant_id]
+
+        # 默认过滤已删除的职位，除非明确查询已删除状态
+        if status != "deleted":
+            conditions.append(Job.status != "deleted")
 
         # 用户过滤 - 只有非管理员才过滤user_id
         if user_id and not is_admin:
