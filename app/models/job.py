@@ -4,7 +4,7 @@ Job model
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, Text, DateTime, Integer, ARRAY, Boolean
+from sqlalchemy import Column, String, Text, DateTime, Integer, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -25,8 +25,8 @@ class Job(Base):
     min_salary = Column(Integer, comment="最低薪资（单位：元/月）")
     max_salary = Column(Integer, comment="最高薪资（单位：元/月）")
     description = Column(Text, comment="职位描述")
-    requirements = Column(ARRAY(Text), comment="职位要求列表（TEXT数组）")
-    preferred_schools = Column(ARRAY(Text), comment="偏好学校列表（TEXT数组）")
+    requirements = Column(Text, comment="职位要求（多个要求用分隔符分开，如逗号）")
+    preferred_schools = Column(Text, comment="偏好学校（多个学校用分隔符分开，如逗号）")
     recruitment_invitation = Column(Text, comment="招聘邀请语")
     min_age = Column(Integer, comment="最低年龄要求")
     max_age = Column(Integer, comment="最高年龄要求")

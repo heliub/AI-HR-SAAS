@@ -1,7 +1,7 @@
 """
 Project Experience model
 """
-from sqlalchemy import Column, String, Integer, Text, ARRAY
+from sqlalchemy import Column, String, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -19,7 +19,7 @@ class ProjectExperience(Base):
     start_date = Column(String(20), comment="开始日期")
     end_date = Column(String(20), comment="结束日期")
     description = Column(Text, comment="项目描述")
-    technologies = Column(ARRAY(Text), comment="技术栈列表（TEXT数组）")
+    technologies = Column(Text, comment="技术栈列表（多个技术用分隔符分开，如逗号）")
     sort_order = Column(Integer, default=0, comment="显示排序（越小越靠前）")
     
     

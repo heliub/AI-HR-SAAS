@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, or_, select, func, text
+from sqlalchemy import and_, or_, select, func, text, outerjoin
 
 from app.models.job import Job
 from app.models.resume import Resume
@@ -382,3 +382,108 @@ class JobService(BaseService):
         }
 
         return await self.create(Job, new_job_data)
+
+    async def search_jobs_with_channels(
+        self,
+        tenant_id: UUID,
+        user_id: Optional[UUID] = None,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        company: Optional[str] = None,
+        category: Optional[str] = None,
+        workplace_type: Optional[str] = None,
+        location: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+        is_admin: bool = False
+    ) -> Dict[str, List]:
+        """
+        优化版本：使用JOIN查询一次性获取职位及其关联的渠道，解决N+1查询问题
+
+        Args:
+            tenant_id: 租户ID
+            user_id: 用户ID
+            keyword: 搜索关键词（搜索标题、公司、描述）
+            status: 职位状态
+            company: 公司名称
+            category: 职位类别
+            workplace_type: 工作场所类型
+            location: 工作地点
+            skip: 跳过记录数
+            limit: 返回记录数
+            is_admin: 是否为管理员
+
+        Returns:
+            包含职位列表和渠道映射的字典: {"jobs": List[Job], "job_channels": Dict[UUID, List[UUID]]}
+        """
+        # 构建基础查询条件
+        conditions = [Job.tenant_id == tenant_id]
+
+        # 用户过滤 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
+            conditions.append(Job.user_id == user_id)
+
+        if status:
+            conditions.append(Job.status == status)
+
+        if company:
+            conditions.append(Job.company.ilike(f"%{company}%"))
+
+        if category:
+            conditions.append(Job.category.contains([category]))
+
+        if workplace_type:
+            conditions.append(Job.workplace_type == workplace_type)
+
+        if location:
+            conditions.append(Job.location == location)
+
+        if keyword:
+            conditions.append(
+                or_(
+                    Job.title.ilike(f"%{keyword}%"),
+                    Job.company.ilike(f"%{keyword}%"),
+                    Job.description.ilike(f"%{keyword}%")
+                )
+            )
+
+        # 使用LEFT JOIN获取职位和渠道信息
+        query = (
+            select(Job, JobChannel.channel_id)
+            .select_from(Job)
+            .outerjoin(JobChannel, and_(
+                Job.id == JobChannel.job_id,
+                JobChannel.tenant_id == tenant_id
+            ))
+            .where(and_(*conditions))
+            .offset(skip)
+            .limit(limit)
+            .order_by(Job.created_at.desc())
+        )
+
+        result = await self.db.execute(query)
+        rows = result.all()
+
+        # 组织结果：职位列表和渠道映射
+        jobs_dict = {}
+        job_channels = {}
+
+        for job, channel_id in rows:
+            job_id = job.id
+
+            # 如果职位还没有被记录，添加到职位字典
+            if job_id not in jobs_dict:
+                jobs_dict[job_id] = job
+                job_channels[job_id] = []
+
+            # 如果有渠道ID，添加到渠道列表
+            if channel_id:
+                job_channels[job_id].append(channel_id)
+
+        # 转换为最终的返回格式
+        jobs_list = list(jobs_dict.values())
+
+        return {
+            "jobs": jobs_list,
+            "job_channels": job_channels
+        }

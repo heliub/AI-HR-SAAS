@@ -1,7 +1,7 @@
 """
 Job Preference model
 """
-from sqlalchemy import Column, String, Date, Text, ARRAY
+from sqlalchemy import Column, String, Date, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -15,7 +15,7 @@ class JobPreference(Base):
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
     resume_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="简历ID")
     expected_salary = Column(String(50), comment="期望薪资")
-    preferred_locations = Column(ARRAY(Text), comment="期望工作地点列表（TEXT数组）")
+    preferred_locations = Column(Text, comment="期望工作地点（多个地点用分隔符分开，如逗号）")
     job_type = Column(String(50), comment="期望工作类型，如：全职、兼职")
     available_date = Column(Date, comment="最早到岗日期")
     

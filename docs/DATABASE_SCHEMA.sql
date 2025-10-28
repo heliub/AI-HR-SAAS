@@ -141,8 +141,8 @@ CREATE TABLE jobs (
     min_salary INTEGER,
     max_salary INTEGER,
     description TEXT,
-    requirements TEXT[],
-    preferred_schools TEXT[],
+    requirements TEXT,
+    preferred_schools TEXT,
     recruitment_invitation TEXT,
     min_age INTEGER,
     max_age INTEGER,
@@ -176,8 +176,8 @@ COMMENT ON COLUMN jobs.status IS '职位状态: open-开放, closed-关闭, draf
 COMMENT ON COLUMN jobs.min_salary IS '最低薪资（单位：元/月）';
 COMMENT ON COLUMN jobs.max_salary IS '最高薪资（单位：元/月）';
 COMMENT ON COLUMN jobs.description IS '职位描述';
-COMMENT ON COLUMN jobs.requirements IS '职位要求列表（TEXT数组），如：{"5年以上前端开发经验","精通React/Vue"}';
-COMMENT ON COLUMN jobs.preferred_schools IS '偏好学校列表（TEXT数组），如：{"清华大学","北京大学"}';
+COMMENT ON COLUMN jobs.requirements IS '职位要求（多个要求用分隔符分开，如逗号）';
+COMMENT ON COLUMN jobs.preferred_schools IS '偏好学校（多个学校用分隔符分开，如逗号）';
 COMMENT ON COLUMN jobs.recruitment_invitation IS '招聘邀请语';
 COMMENT ON COLUMN jobs.min_age IS '最低年龄要求';
 COMMENT ON COLUMN jobs.max_age IS '最高年龄要求';
@@ -291,7 +291,7 @@ CREATE TABLE resumes (
     location VARCHAR(100),
     school VARCHAR(200),
     major VARCHAR(200),
-    skills TEXT[],
+    skills TEXT,
     resume_url TEXT,
     conversation_summary TEXT,
     submitted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -318,7 +318,7 @@ COMMENT ON COLUMN resumes.gender IS '性别: male-男, female-女';
 COMMENT ON COLUMN resumes.location IS '所在城市';
 COMMENT ON COLUMN resumes.school IS '毕业院校';
 COMMENT ON COLUMN resumes.major IS '专业';
-COMMENT ON COLUMN resumes.skills IS '技能列表（TEXT数组），如：{"React","TypeScript","Node.js"}';
+COMMENT ON COLUMN resumes.skills IS '技能列表（多个技能用分隔符分开，如逗号）';
 COMMENT ON COLUMN resumes.resume_url IS '简历文件URL';
 COMMENT ON COLUMN resumes.conversation_summary IS 'AI对话总结';
 COMMENT ON COLUMN resumes.submitted_at IS '简历投递时间';
@@ -362,7 +362,7 @@ CREATE TABLE project_experiences (
     start_date VARCHAR(20),
     end_date VARCHAR(20),
     description TEXT,
-    technologies TEXT[],
+    technologies TEXT,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -377,7 +377,7 @@ COMMENT ON COLUMN project_experiences.role IS '在项目中的角色';
 COMMENT ON COLUMN project_experiences.start_date IS '开始日期';
 COMMENT ON COLUMN project_experiences.end_date IS '结束日期';
 COMMENT ON COLUMN project_experiences.description IS '项目描述';
-COMMENT ON COLUMN project_experiences.technologies IS '技术栈列表（TEXT数组），如：{"React","TypeScript","Next.js"}';
+COMMENT ON COLUMN project_experiences.technologies IS '技术栈列表（多个技术用分隔符分开，如逗号）';
 COMMENT ON COLUMN project_experiences.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN project_experiences.created_at IS '创建时间';
 COMMENT ON COLUMN project_experiences.updated_at IS '更新时间';
@@ -414,7 +414,7 @@ CREATE TABLE job_preferences (
     tenant_id UUID NOT NULL,
     resume_id UUID NOT NULL,
     expected_salary VARCHAR(50),
-    preferred_locations TEXT[],
+    preferred_locations TEXT,
     job_type VARCHAR(50),
     available_date DATE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -426,7 +426,7 @@ COMMENT ON COLUMN job_preferences.id IS '意向ID（主键）';
 COMMENT ON COLUMN job_preferences.tenant_id IS '租户ID';
 COMMENT ON COLUMN job_preferences.resume_id IS '简历ID';
 COMMENT ON COLUMN job_preferences.expected_salary IS '期望薪资';
-COMMENT ON COLUMN job_preferences.preferred_locations IS '期望工作地点列表（TEXT数组），如：{"北京","上海","深圳"}';
+COMMENT ON COLUMN job_preferences.preferred_locations IS '期望工作地点（多个地点用分隔符分开，如逗号）';
 COMMENT ON COLUMN job_preferences.job_type IS '期望工作类型，如：全职、兼职';
 COMMENT ON COLUMN job_preferences.available_date IS '最早到岗日期';
 COMMENT ON COLUMN job_preferences.created_at IS '创建时间';
@@ -442,8 +442,8 @@ CREATE TABLE ai_match_results (
     is_match BOOLEAN NOT NULL,
     match_score INTEGER,
     reason TEXT,
-    strengths TEXT[],
-    weaknesses TEXT[],
+    strengths TEXT,
+    weaknesses TEXT,
     recommendation TEXT,
     analyzed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -459,8 +459,8 @@ COMMENT ON COLUMN ai_match_results.job_id IS '职位ID';
 COMMENT ON COLUMN ai_match_results.is_match IS '是否匹配';
 COMMENT ON COLUMN ai_match_results.match_score IS '匹配分数（0-100）';
 COMMENT ON COLUMN ai_match_results.reason IS 'AI分析原因';
-COMMENT ON COLUMN ai_match_results.strengths IS '优势列表（TEXT数组），如：{"6年前端开发经验","熟练掌握React"}';
-COMMENT ON COLUMN ai_match_results.weaknesses IS '劣势列表（TEXT数组），如：{"缺少移动端经验"}';
+COMMENT ON COLUMN ai_match_results.strengths IS '优势列表（多个优势用分隔符分开，如逗号）';
+COMMENT ON COLUMN ai_match_results.weaknesses IS '劣势列表（多个劣势用分隔符分开，如逗号）';
 COMMENT ON COLUMN ai_match_results.recommendation IS 'AI推荐意见';
 COMMENT ON COLUMN ai_match_results.analyzed_at IS 'AI分析时间';
 COMMENT ON COLUMN ai_match_results.created_at IS '创建时间';
@@ -731,8 +731,8 @@ CREATE INDEX idx_jobs_created_at ON jobs(created_at DESC);
 CREATE INDEX idx_jobs_tenant_status ON jobs(tenant_id, status);
 CREATE INDEX idx_jobs_tenant_user ON jobs(tenant_id, user_id);
 CREATE INDEX idx_jobs_title_search ON jobs USING gin(to_tsvector('simple', title));
-CREATE INDEX idx_jobs_requirements ON jobs USING gin(requirements);
-CREATE INDEX idx_jobs_preferred_schools ON jobs USING gin(preferred_schools);
+CREATE INDEX idx_jobs_requirements ON jobs(requirements);
+CREATE INDEX idx_jobs_preferred_schools ON jobs(preferred_schools);
 -- 新字段索引
 CREATE INDEX idx_jobs_company ON jobs(company);
 CREATE INDEX idx_jobs_workplace_type ON jobs(workplace_type);
@@ -769,7 +769,7 @@ CREATE INDEX idx_resumes_tenant_user ON resumes(tenant_id, user_id);
 CREATE INDEX idx_resumes_search ON resumes USING gin(
     to_tsvector('simple', candidate_name || ' ' || COALESCE(email, '') || ' ' || position)
 );
-CREATE INDEX idx_resumes_skills ON resumes USING gin(skills);
+CREATE INDEX idx_resumes_skills ON resumes(skills);
 
 -- 工作经历表索引
 CREATE INDEX idx_work_experiences_tenant_id ON work_experiences(tenant_id);
@@ -778,7 +778,7 @@ CREATE INDEX idx_work_experiences_resume_id ON work_experiences(resume_id);
 -- 项目经历表索引
 CREATE INDEX idx_project_experiences_tenant_id ON project_experiences(tenant_id);
 CREATE INDEX idx_project_experiences_resume_id ON project_experiences(resume_id);
-CREATE INDEX idx_project_experiences_technologies ON project_experiences USING gin(technologies);
+CREATE INDEX idx_project_experiences_technologies ON project_experiences(technologies);
 
 -- 教育经历表索引
 CREATE INDEX idx_education_histories_tenant_id ON education_histories(tenant_id);
@@ -787,7 +787,7 @@ CREATE INDEX idx_education_histories_resume_id ON education_histories(resume_id)
 -- 求职意向表索引
 CREATE INDEX idx_job_preferences_tenant_id ON job_preferences(tenant_id);
 CREATE INDEX idx_job_preferences_resume_id ON job_preferences(resume_id);
-CREATE INDEX idx_job_preferences_locations ON job_preferences USING gin(preferred_locations);
+CREATE INDEX idx_job_preferences_locations ON job_preferences(preferred_locations);
 
 -- AI匹配结果索引
 CREATE INDEX idx_ai_match_results_tenant_id ON ai_match_results(tenant_id);
@@ -797,8 +797,8 @@ CREATE INDEX idx_ai_match_results_job_id ON ai_match_results(job_id);
 CREATE INDEX idx_ai_match_results_match_score ON ai_match_results(match_score DESC);
 CREATE INDEX idx_ai_match_results_tenant_resume ON ai_match_results(tenant_id, resume_id);
 CREATE INDEX idx_ai_match_results_tenant_user ON ai_match_results(tenant_id, user_id);
-CREATE INDEX idx_ai_match_results_strengths ON ai_match_results USING gin(strengths);
-CREATE INDEX idx_ai_match_results_weaknesses ON ai_match_results USING gin(weaknesses);
+CREATE INDEX idx_ai_match_results_strengths ON ai_match_results(strengths);
+CREATE INDEX idx_ai_match_results_weaknesses ON ai_match_results(weaknesses);
 
 -- 招聘任务表索引
 CREATE INDEX idx_recruitment_tasks_tenant_id ON recruitment_tasks(tenant_id);
@@ -870,24 +870,24 @@ CREATE INDEX idx_email_logs_created_at ON email_logs(created_at DESC);
 -- 示例1：插入职位（包含要求、偏好学校数组和新字段）
 -- INSERT INTO jobs (tenant_id, title, company, workplace_type, pay_type, pay_currency, category, requirements, preferred_schools) VALUES
 -- ('tenant-uuid', '高级前端工程师', '腾讯科技', 'hybrid', 'monthly', 'CNY', 'IT-技术类',
---  ARRAY['5年以上前端开发经验', '精通React/Vue', '有大型项目经验'],
---  ARRAY['清华大学', '北京大学', '浙江大学']);
+--  '5年以上前端开发经验,精通React/Vue,有大型项目经验',
+--  '清华大学,北京大学,浙江大学');
 
 -- 示例2：插入简历（包含技能数组）
 -- INSERT INTO resumes (tenant_id, candidate_name, skills) VALUES
 -- ('tenant-uuid', '张伟',
---  ARRAY['React', 'TypeScript', 'Node.js', 'Next.js']);
+--  'React,TypeScript,Node.js,Next.js');
 
 -- 示例3：插入项目经历（包含技术栈数组）
 -- INSERT INTO project_experiences (tenant_id, resume_id, project_name, technologies) VALUES
 -- ('tenant-uuid', 'resume-uuid', '抖音创作者平台',
---  ARRAY['React', 'TypeScript', 'Next.js', 'TailwindCSS']);
+--  'React,TypeScript,Next.js,TailwindCSS');
 
 -- 示例4：插入AI匹配结果（包含优势和劣势数组）
 -- INSERT INTO ai_match_results (tenant_id, resume_id, job_id, strengths, weaknesses) VALUES
 -- ('tenant-uuid', 'resume-uuid', 'job-uuid',
---  ARRAY['6年前端开发经验', '熟练掌握React/TypeScript', '有大厂背景'],
---  ARRAY['缺少移动端开发经验']);
+--  '6年前端开发经验,熟练掌握React/TypeScript,有大厂背景',
+--  '缺少移动端开发经验');
 
 -- 示例5：插入聊天消息（带工具调用metadata）
 -- INSERT INTO chat_messages (tenant_id, session_id, role, content, message_type, metadata) VALUES
@@ -895,13 +895,13 @@ CREATE INDEX idx_email_logs_created_at ON email_logs(created_at DESC);
 --  '{"tool_name": "search_resumes", "tool_args": {"keyword": "前端工程师"}}');
 
 -- 示例6：查询职位的所有要求
--- SELECT title, unnest(requirements) as requirement FROM jobs WHERE id = 'job-uuid';
+-- SELECT title, requirements FROM jobs WHERE id = 'job-uuid';
 
 -- 示例7：查询简历的所有技能
--- SELECT candidate_name, unnest(skills) as skill FROM resumes WHERE id = 'resume-uuid';
+-- SELECT candidate_name, skills FROM resumes WHERE id = 'resume-uuid';
 
 -- 示例8：搜索包含特定技能的简历
--- SELECT * FROM resumes WHERE tenant_id = 'tenant-uuid' AND 'React' = ANY(skills);
+-- SELECT * FROM resumes WHERE tenant_id = 'tenant-uuid' AND skills LIKE '%React%';
 
 -- 示例9：搜索包含特定要求的职位
--- SELECT * FROM jobs WHERE tenant_id = 'tenant-uuid' AND '精通React' = ANY(requirements);
+-- SELECT * FROM jobs WHERE tenant_id = 'tenant-uuid' AND requirements LIKE '%精通React%';

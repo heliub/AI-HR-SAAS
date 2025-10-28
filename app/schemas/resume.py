@@ -30,7 +30,7 @@ class ProjectExperienceBase(BaseModel):
     startDate: Optional[str] = Field(None, alias="start_date")
     endDate: Optional[str] = Field(None, alias="end_date")
     description: Optional[str] = None
-    technologies: Optional[List[str]] = None
+    technologies: Optional[str] = None
 
     model_config = {
         "from_attributes": True,
@@ -55,7 +55,7 @@ class EducationHistoryBase(BaseModel):
 class JobPreferenceBase(BaseModel):
     """求职意向基础Schema"""
     expectedSalary: Optional[str] = Field(None, alias="expected_salary")
-    preferredLocations: Optional[List[str]] = Field(None, alias="preferred_locations")
+    preferredLocations: Optional[str] = Field(None, alias="preferred_locations")
     jobType: Optional[str] = Field(None, alias="job_type")
     availableDate: Optional[date] = Field(None, alias="available_date")
 
@@ -77,8 +77,8 @@ class AIMatchBase(BaseModel):
     isMatch: bool = Field(alias="is_match")
     score: Optional[int] = Field(None, alias="match_score")
     reason: Optional[str] = None
-    strengths: Optional[List[str]] = None
-    weaknesses: Optional[List[str]] = None
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
     recommendation: Optional[str] = None
 
     model_config = {
@@ -114,7 +114,7 @@ class ResumeBase(BaseModel):
     location: Optional[str] = None
     school: Optional[str] = None
     major: Optional[str] = None
-    skills: Optional[List[str]] = None
+    skills: Optional[str] = None
 
 
 class ResumeCreate(ResumeBase):

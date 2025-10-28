@@ -80,7 +80,7 @@ class ResumeCreateValidator(BaseValidator):
     school: Optional[constr(max_length=100)] = Field(None, description="毕业院校")
 
     # 技能标签
-    skills: Optional[List[constr(max_length=50)]] = Field(default=[], description="技能标签")
+    skills: Optional[constr(max_length=1000)] = Field(None, description="技能标签（多个技能用逗号分隔）")
 
     # 个人简介
     summary: Optional[constr(max_length=1000)] = Field(None, description="个人简介")
@@ -162,7 +162,7 @@ class ProjectExperienceValidator(BaseValidator):
     start_date: date = Field(..., description="开始日期")
     end_date: Optional[date] = Field(None, description="结束日期")
     description: constr(min_length=10, max_length=2000) = Field(..., description="项目描述")
-    technologies: List[constr(max_length=50)] = Field(..., description="使用技术")
+    technologies: constr(max_length=1000) = Field(..., description="使用技术（多个技术用逗号分隔）")
 
     @validator('end_date')
     def validate_end_date(cls, v, values):

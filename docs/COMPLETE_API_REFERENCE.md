@@ -242,7 +242,10 @@ Authorization: Bearer YOUR_TOKEN
 
 **GET** `/jobs`
 
-获取职位列表，管理员可查看所有职位，HR只能查看自己创建的职位
+获取职位列表 - 优化版本，使用JOIN查询解决N+1性能问题
+- **管理员 (`admin`角色)**: 可查看租户内所有职位
+- **普通HR (`hr`角色)**: 只能查看自己创建的职位
+- **性能优化**: 通过LEFT JOIN查询一次性获取职位和关联渠道信息，避免N+1查询问题
 
 **查询参数**:
 - `page` (int, optional): 页码，默认1，最小值1
@@ -284,12 +287,16 @@ Authorization: Bearer YOUR_TOKEN
         "payShownOnAd": true,
         "salary": "25K-45K",
         "description": "负责公司核心产品的前端开发工作...",
-        "requirements": ["React", "TypeScript", "5年以上经验"],
-        "category": ["Software Development", "Engineering"],
+        "requirements": "React,TypeScript,5年以上经验",
+        "category": "Software Development",
         "recruitmentInvitation": "我们正在寻找优秀的前端工程师加入团队...",
         "education": "本科及以上",
-        "preferredSchools": ["清华大学", "北京大学"],
+        "preferredSchools": "清华大学,北京大学",
         "applicantsCount": 15,
+        "channels": [
+          "50000000-0000-0000-0000-000000000001",
+          "50000000-0000-0000-0000-000000000002"
+        ],
         "userId": "10000000-0000-0000-0000-000000000004",
         "createdBy": "10000000-0000-0000-0000-000000000004",
         "publishedAt": "2025-01-27T10:30:00Z",
@@ -330,12 +337,16 @@ Authorization: Bearer YOUR_TOKEN
     "payShownOnAd": true,
     "salary": "25K-45K",
     "description": "负责公司核心产品的前端开发工作，参与产品需求分析和技术方案设计...",
-    "requirements": ["React", "TypeScript", "5年以上经验", "大厂背景优先"],
-    "category": ["Software Development", "Engineering"],
+    "requirements": "React,TypeScript,5年以上经验,大厂背景优先",
+    "category": "Software Development",
     "recruitmentInvitation": "我们正在寻找优秀的前端工程师加入我们的技术团队！你将有机会参与创新项目...",
     "education": "本科及以上",
-    "preferredSchools": ["清华大学", "北京大学"],
+    "preferredSchools": "清华大学,北京大学",
     "applicantsCount": 15,
+    "channels": [
+      "50000000-0000-0000-0000-000000000001",
+      "50000000-0000-0000-0000-000000000002"
+    ],
     "userId": "10000000-0000-0000-0000-000000000004",
     "createdBy": "10000000-0000-0000-0000-000000000004",
     "publishedAt": "2025-01-27T10:30:00Z",
@@ -349,7 +360,10 @@ Authorization: Bearer YOUR_TOKEN
 
 **POST** `/jobs`
 
-创建新职位（自动设置当前用户为创建者）
+创建新职位
+- 自动设置当前用户为创建者(`created_by`、`user_id`)
+- 自动设置租户ID(`tenant_id`)
+- 默认状态为`draft`（草稿）
 
 **请求体**:
 ```json
@@ -359,19 +373,46 @@ Authorization: Bearer YOUR_TOKEN
   "location": "北京",
   "type": "full-time",
   "workplaceType": "Hybrid",
+  "status": "draft",
   "minSalary": 3000000,
   "maxSalary": 5000000,
   "payType": "Monthly",
   "payCurrency": "CNY",
   "payShownOnAd": true,
-  "description": "负责后端服务开发和架构设计...",
-  "requirements": ["Java", "Spring Boot", "微服务"],
-  "category": ["Software Development", "Engineering"],
-  "recruitmentInvitation": "寻找优秀的后端工程师...",
+  "description": "负责后端服务开发和架构设计，参与系统架构优化...",
+  "requirements": "Java,Spring Boot,微服务；3年以上相关开发经验；熟悉分布式系统设计",
+  "category": "Software Development",
+  "recruitmentInvitation": "寻找优秀的后端工程师加入我们的技术团队...",
   "education": "本科及以上",
-  "preferredSchools": ["清华大学", "北京大学"]
+  "preferredSchools": "清华大学,北京大学,浙江大学",
+  "applicantsCount": 0,
+  "channels": [
+    "50000000-0000-0000-0000-000000000001",
+    "50000000-0000-0000-0000-000000000002"
+  ]
 }
 ```
+
+**字段说明**:
+- `title` (string, required): 职位标题，1-200字符
+- `company` (string, optional): 公司名称，最大200字符
+- `location` (string, required): 工作地点，1-100字符
+- `type` (string, required): 职位类型 (full-time/part-time/contract/intern)
+- `workplaceType` (string, optional): 工作场所类型 (On-site/Hybrid/Remote)
+- `status` (string, optional): 职位状态，默认为"draft" (open/closed/draft)
+- `minSalary` (integer, optional): 最低薪资（分为单位，不能为负数）
+- `maxSalary` (integer, optional): 最高薪资（分为单位，不能低于最低薪资）
+- `payType` (string, optional): 薪资类型 (Hourly/Monthly/Annual/Annual plus commission)
+- `payCurrency` (string, optional): 薪资货币，默认CNY
+- `payShownOnAd` (boolean, optional): 是否在招聘广告中显示薪资
+- `description` (string, optional): 职位详细描述
+- `requirements` (string, optional): 职位要求，多个要求用分号(;)分隔
+- `category` (string, optional): 职位类别，最大100字符
+- `recruitmentInvitation` (string, optional): 招聘邀请语
+- `education` (string, optional): 学历要求
+- `preferredSchools` (string, optional): 偏好学校，多个学校用逗号(,)分隔
+- `applicantsCount` (integer, optional): 申请人数，默认为0，不能为负数
+- `channels` (array, optional): 关联的渠道ID列表，支持UUID数组格式，用于建立职位与招聘渠道的多对多关联
 
 **响应**:
 ```json
@@ -383,6 +424,10 @@ Authorization: Bearer YOUR_TOKEN
     "title": "高级后端工程师",
     "company": "字节跳动",
     "status": "draft",
+    "channels": [
+      "50000000-0000-0000-0000-000000000001",
+      "50000000-0000-0000-0000-000000000002"
+    ],
     "createdAt": "2025-01-27T11:00:00Z",
     "userId": "10000000-0000-0000-0000-000000000004",
     "createdBy": "10000000-0000-0000-0000-000000000004"
@@ -394,24 +439,53 @@ Authorization: Bearer YOUR_TOKEN
 
 **PUT** `/jobs/{job_id}`
 
-更新指定职位信息（只有职位创建者或管理员可以更新）
+更新指定职位信息
+- **管理员 (`admin`角色)**: 可以更新任何职位
+- **普通HR (`hr`角色)**: 只能更新自己创建的职位
+- 系统自动处理时间戳更新（`updatedAt`字段）
 
 **请求体**:
 ```json
 {
   "title": "更新的职位名称",
-  "status": "closed",
-  "description": "更新的职位描述...",
-  "minSalary": 28000,
-  "maxSalary": 48000
+  "company": "更新的公司名称",
+  "location": "更新的工作地点",
+  "type": "full-time",
+  "workplaceType": "Hybrid",
+  "minSalary": 2800000,
+  "maxSalary": 4800000,
+  "payType": "Monthly",
+  "payCurrency": "CNY",
+  "payShownOnAd": true,
+  "description": "更新的职位描述，包含详细的职责和要求...",
+  "requirements": "React,TypeScript；5年以上前端开发经验；有大型项目经验",
+  "category": "Software Development",
+  "recruitmentInvitation": "寻找优秀的前端工程师加入团队...",
+  "education": "本科及以上",
+  "preferredSchools": "清华大学,北京大学",
+  "applicantsCount": 15,
+  "channels": [
+    "50000000-0000-0000-0000-000000000003",
+    "50000000-0000-0000-0000-000000000004"
+  ]
 }
 ```
+
+**字段说明**:
+- 只能更新指定的字段，状态(`status`)和时间戳等字段由系统自动处理
+- 更新时间(`updatedAt`)会自动设置为当前时间
+- 薪资验证：最低薪资不能为负数，最高薪资不能低于最低薪资
+- 申请人数验证：不能为负数
+- 渠道关联：提供`channels`字段时会完全替换现有关联，空数组表示取消所有关联
 
 ### 🗑️ 删除职位
 
 **DELETE** `/jobs/{job_id}`
 
-删除指定职位（只有职位创建者或管理员可以删除）
+删除指定职位
+- **管理员 (`admin`角色)**: 可以删除任何职位
+- **普通HR (`hr`角色)**: 只能删除自己创建的职位
+- 删除操作不可逆，请谨慎操作
 
 **响应**:
 ```json
@@ -457,15 +531,19 @@ Authorization: Bearer YOUR_TOKEN
 
 **POST** `/jobs/ai-generate`
 
-AI智能生成职位描述和要求
+AI智能生成职位描述和要求，根据职位标题自动生成完整的职位信息
 
 **请求体**:
 ```json
 {
   "title": "高级前端工程师",
-  "description": "负责前端开发和性能优化"
+  "jobLevel": "senior"
 }
 ```
+
+**字段说明**:
+- `title` (string, required): 职位标题，用于智能生成相关内容
+- `jobLevel` (string, optional): 职位级别，用于更精确的生成
 
 **响应**:
 ```json
@@ -482,7 +560,8 @@ AI智能生成职位描述和要求
     "payCurrency": "CNY",
     "payShownOnAd": true,
     "description": "职位描述：\n1. 负责公司高级前端工程师相关的开发工作，参与产品需求分析和技术方案设计\n2. 编写高质量、可维护的代码，完成核心功能模块开发\n3. 参与代码审查，确保代码质量和团队技术水平提升\n4. 解决开发过程中的技术难题，优化系统性能\n5. 与产品、设计、测试团队密切配合，确保项目按时高质量交付\n\n任职要求：\n• 3年以上相关开发经验，有大型项目经验者优先\n• 熟练掌握相关技术栈和开发工具\n• 具备良好的编程习惯和代码规范意识\n• 有较强的学习能力和技术热情",
-    "category": ["Software Development", "Engineering"],
+    "requirements": "3年以上相关开发经验，有大型项目经验者优先；熟练掌握相关技术栈和开发工具；具备良好的编程习惯和代码规范意识；有较强的学习能力和技术热情",
+    "category": "Software Development",
     "recruitmentInvitation": "我们正在寻找优秀的高级前端工程师加入我们的技术团队！你将有机会参与创新项目，与技术大牛一起成长，享受有竞争力的薪酬福利和良好的职业发展空间。",
     "education": "本科及以上"
   }
@@ -531,7 +610,7 @@ AI智能生成职位描述和要求
         "location": "北京",
         "school": "北京大学",
         "major": "计算机科学与技术",
-        "skills": ["React", "TypeScript", "Node.js", "Next.js"],
+        "skills": "React,TypeScript,Node.js,Next.js",
         "submittedAt": "2025-01-13T10:30:00Z",
         "conversationSummary": "候选人张伟在字节跳动有丰富的前端开发经验...",
         "userId": "10000000-0000-0000-0000-000000000002",
@@ -572,7 +651,7 @@ AI智能生成职位描述和要求
     "location": "北京",
     "school": "北京大学",
     "major": "计算机科学与技术",
-    "skills": ["React", "TypeScript", "Node.js", "Next.js"],
+    "skills": "React,TypeScript,Node.js,Next.js",
     "submittedAt": "2025-01-13T10:30:00Z",
     "conversationSummary": "候选人张伟在字节跳动有丰富的前端开发经验，主导开发了抖音创作者平台...",
     "userId": "10000000-0000-0000-0000-000000000002",
@@ -606,7 +685,7 @@ AI智能生成职位描述和要求
         "startDate": "2021-03",
         "endDate": "至今",
         "description": "从0到1搭建创作者平台，支持百万级创作者使用，包括内容发布、数据分析、变现等功能",
-        "technologies": ["React", "TypeScript", "Next.js", "Node.js", "GraphQL"]
+        "technologies": "React,TypeScript,Next.js,Node.js,GraphQL"
       }
     ],
 
@@ -626,7 +705,7 @@ AI智能生成职位描述和要求
     "jobPreferences": {
       "id": "44000000-0000-0000-0000-000000000001",
       "expectedSalary": "35K-45K",
-      "preferredLocations": ["北京", "上海"],
+      "preferredLocations": "北京,上海",
       "jobType": "full-time",
       "availableDate": "2025-02-01"
     },
@@ -638,8 +717,8 @@ AI智能生成职位描述和要求
         "isMatch": true,
         "score": 92,
         "reason": "候选人具备丰富的前端开发经验，技术栈完全匹配（React/TypeScript/Next.js），有大厂背景，项目经验丰富。在性能优化方面有深入实践，成功将页面加载时间从3s优化到1s以内。",
-        "strengths": ["技术栈匹配", "大厂背景", "项目经验丰富", "性能优化经验"],
-        "weaknesses": ["薪资期望略高于预算"],
+        "strengths": "技术栈匹配,大厂背景,项目经验丰富,性能优化经验",
+        "weaknesses": "薪资期望略高于预算",
         "recommendation": "强烈推荐安排技术面试"
       }
     ],
@@ -714,8 +793,8 @@ AI智能生成职位描述和要求
     "isMatch": true,
     "score": 92,
     "reason": "候选人具备丰富的前端开发经验，技术栈完全匹配，有大厂背景，项目经验丰富。",
-    "strengths": ["技术栈匹配", "大厂背景", "项目经验丰富"],
-    "weaknesses": ["薪资期望略高"],
+    "strengths": "技术栈匹配,大厂背景,项目经验丰富",
+    "weaknesses": "薪资期望略高",
     "recommendation": "强烈推荐安排技术面试"
   }
 }
@@ -1023,9 +1102,9 @@ AI智能生成职位描述和要求
 |----------|------|----------|
 | 400 | 请求参数错误 | 检查请求参数格式和必填字段 |
 | 401 | 未授权访问 | 检查Token是否有效或是否已过期 |
-| 403 | 权限不足 | 确认用户角色权限 |
+| 403 | 权限不足 | 确认用户角色权限，管理员才能操作他人的职位 |
 | 404 | 资源不存在 | 检查资源ID是否正确 |
-| 422 | 请求参数验证失败 | 检查参数类型和格式 |
+| 422 | 请求参数验证失败 | 检查参数类型和格式（如薪资不能为负数） |
 | 500 | 服务器内部错误 | 联系技术支持 |
 
 ### 请求限制
@@ -1034,6 +1113,135 @@ AI智能生成职位描述和要求
 - **查询接口**: 每分钟最多100次请求
 - **创建/更新接口**: 每分钟最多50次请求
 - **删除接口**: 每分钟最多20次请求
+
+---
+
+## 字段格式说明
+
+### 字符串数组字段
+
+以下字段现在使用逗号分隔的字符串格式存储多个值：
+
+**技术类字段**:
+- `requirements`: 职位要求，多个要求用分号(;)分隔
+- `skills`: 技能列表，多个技能用逗号(,)分隔
+- `technologies`: 技术栈，多个技术用逗号(,)分隔
+
+**偏好类字段**:
+- `preferredSchools`: 偏好学校，多个学校用逗号(,)分隔
+- `preferredLocations`: 期望工作地点，多个地点用逗号(,)分隔
+
+**AI分析字段**:
+- `strengths`: 优势列表，多个优势用逗号(,)分隔
+- `weaknesses`: 劣势列表，多个劣势用逗号(,)分隔
+
+**渠道关联字段**:
+- `channels`: 关联的招聘渠道ID列表，支持UUID数组格式，通过job_channels中间表建立多对多关联
+
+**示例**:
+```json
+{
+  "requirements": "3年以上相关开发经验；熟练掌握相关技术栈；具备良好的编程习惯",
+  "skills": "React,TypeScript,Node.js,Next.js",
+  "preferredSchools": "清华大学,北京大学,浙江大学",
+  "strengths": "技术栈匹配,大厂背景,项目经验丰富",
+  "channels": [
+    "50000000-0000-0000-0000-000000000001",
+    "50000000-0000-0000-0000-000000000002"
+  ]
+}
+```
+
+**数据类型说明**:
+- **字符串数组字段**: 使用逗号/分号分隔的单个字符串字段存储（如requirements, skills, preferredSchools等）
+- **UUID数组字段**: 使用真正的JSON数组格式存储（如channels字段），通过数据库中间表实现关联
+
+---
+
+## 性能优化说明
+
+### 🚀 N+1查询优化
+
+**问题描述**:
+职位列表查询原本存在N+1查询性能问题：
+- 1次查询获取N个职位
+- N次查询获取每个职位的渠道信息
+- 总计：1+N次数据库查询
+
+**优化方案**:
+使用SQLAlchemy LEFT JOIN查询一次性获取职位和关联渠道信息：
+
+```python
+# 优化查询示例
+query = (
+    select(Job, JobChannel.channel_id)
+    .select_from(Job)
+    .outerjoin(JobChannel, and_(
+        Job.id == JobChannel.job_id,
+        JobChannel.tenant_id == tenant_id
+    ))
+    .where(and_(*conditions))
+    .order_by(Job.created_at.desc())
+)
+```
+
+**性能提升效果**:
+| 职位数量 | 优化前查询次数 | 优化后查询次数 | 性能提升 |
+|---------|---------------|---------------|----------|
+| 10个职位 | 11次 | 1次 | 91% |
+| 50个职位 | 51次 | 1次 | 98% |
+| 100个职位 | 101次 | 1次 | 99% |
+
+**优势**:
+- ✅ 显著减少数据库查询次数
+- ✅ 提升API响应速度
+- ✅ 保持多租户数据隔离安全
+- ✅ 不影响现有API响应格式
+
+---
+
+## 渠道关联使用说明
+
+### 渠道关联机制
+
+职位与招聘渠道通过`job_channels`中间表建立多对多关联关系：
+
+**创建职位时关联渠道**:
+```json
+{
+  "title": "高级前端工程师",
+  "company": "字节跳动",
+  "channels": [
+    "50000000-0000-0000-0000-000000000001",  // 智联招聘
+    "50000000-0000-0000-0000-000000000002"   // BOSS直聘
+  ]
+}
+```
+
+**更新职位渠道关联**:
+```json
+{
+  "channels": [
+    "50000000-0000-0000-0000-000000000003",  // 猎聘网站
+    "50000000-0000-0000-0000-000000000004"   // 内推渠道
+  ]
+}
+```
+
+**渠道关联说明**:
+- ✅ 支持关联多个招聘渠道
+- ✅ 创建职位时可关联多个渠道
+- ✅ 更新时完全替换现有关联（先删除再创建）
+- ✅ 空数组`[]`表示取消所有渠道关联
+- ✅ 不提供`channels`字段时保持现有关联不变
+- ✅ 返回数据中包含完整的渠道ID列表
+
+**渠道类型**:
+- `job-board`: 招聘网站（如智联招聘、前程无忧）
+- `social-media`: 社交媒体（如LinkedIn）
+- `referral`: 内推渠道
+- `agency`: 猎头服务
+- `website`: 官网招聘
 
 ---
 
@@ -1125,5 +1333,5 @@ AI智能生成职位描述和要求
 
 ---
 
-*文档最后更新时间: 2025-01-27*
+*文档最后更新时间: 2025-01-28*
 *API版本: v1*
