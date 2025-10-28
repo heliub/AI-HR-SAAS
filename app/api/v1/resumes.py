@@ -209,7 +209,14 @@ async def get_resume(
             **resume_data["job_preference"].__dict__,
             "available_date": format_date(resume_data["job_preference"].available_date) if resume_data["job_preference"] and resume_data["job_preference"].available_date else None
         } if resume_data["job_preference"] else None,
-        "ai_match_results": resume_data["ai_match_results"],
+        "ai_match_results": [
+            {
+                **match.__dict__,
+                "is_match": match.is_match,
+                "match_score": match.match_score
+            }
+            for match in resume_data["ai_match_results"]
+        ],
         "chat_histories": [
             {
                 **chat.__dict__,
@@ -217,8 +224,50 @@ async def get_resume(
             }
             for chat in resume_data["chat_histories"]
         ],
-        "interviews": resume_data["interviews"],
-        "email_logs": resume_data["email_logs"]
+        "interviews": [
+            {
+                "id": interview.id,
+                "candidate_id": interview.candidate_id,
+                "candidate_name": interview.candidate_name,
+                "position": interview.position,
+                "interview_date": format_date(interview.interview_date) if interview.interview_date else None,
+                "interview_time": interview.interview_time.strftime("%H:%M") if interview.interview_time else None,
+                "interviewer": interview.interviewer,
+                "interviewer_title": interview.interviewer_title,
+                "type": interview.type,
+                "location": interview.location,
+                "meeting_link": interview.meeting_link,
+                "notes": interview.notes,
+                "status": interview.status,
+                "feedback": interview.feedback,
+                "rating": interview.rating,
+                "cancelled_at": format_datetime(interview.cancelled_at) if interview.cancelled_at else None,
+                "cancellation_reason": interview.cancellation_reason,
+                "created_at": format_datetime(interview.created_at) if interview.created_at else None,
+                "updated_at": format_datetime(interview.updated_at) if interview.updated_at else None,
+                "tenant_id": interview.tenant_id,
+                "user_id": interview.user_id
+            }
+            for interview in resume_data["interviews"]
+        ],
+        "email_logs": [
+            {
+                "id": email.id,
+                "recipient_email": email.recipient_email,
+                "subject": email.subject,
+                "content": email.content,
+                "template_name": email.template_name,
+                "status": email.status,
+                "error_message": email.error_message,
+                "resume_id": email.resume_id,
+                "sent_by": email.sent_by,
+                "sent_at": format_datetime(email.sent_at) if email.sent_at else None,
+                "created_at": format_datetime(email.created_at) if email.created_at else None,
+                "updated_at": format_datetime(email.updated_at) if email.updated_at else None,
+                "tenant_id": email.tenant_id
+            }
+            for email in resume_data["email_logs"]
+        ]
     }
 
     # 让Schema自动处理字段转换

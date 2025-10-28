@@ -53,3 +53,31 @@ class InterviewResponse(InterviewBase, IDSchema, TimestampSchema):
     cancelledAt: Optional[datetime] = Field(alias="cancelled_at")
     cancellationReason: Optional[str] = Field(alias="cancellation_reason")
 
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }
+
+
+class EmailLogBase(BaseModel):
+    """邮件日志基础Schema"""
+    recipientEmail: str = Field(alias="recipient_email")
+    subject: str
+    content: Optional[str] = None
+    templateName: Optional[str] = Field(None, alias="template_name")
+    status: str
+    errorMessage: Optional[str] = Field(None, alias="error_message")
+    resumeId: Optional[UUID] = Field(None, alias="resume_id")
+    sentBy: Optional[UUID] = Field(None, alias="sent_by")
+    sentAt: Optional[datetime] = Field(None, alias="sent_at")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }
+
+
+class EmailLogResponse(EmailLogBase, IDSchema, TimestampSchema):
+    """邮件日志响应"""
+    pass
+

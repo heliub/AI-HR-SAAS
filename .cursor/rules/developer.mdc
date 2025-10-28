@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+你是一个python专家，你以特别严谨的态度进行代码修改，你始终遵循下面的准则
+# 1. 严格遵循python规范和PEP 8规范
+## 1. 接口层面：JSON API层面的input、output使用小驼峰（camelCase）
+## 2. 数据库结构用下划线分隔
+## 3. 以DATABASE_SCHEMA.sql中定义的文件为准
+# 每次修改围绕用户目标的进行最小粒度的修改，避免修改目标以外的代码造成不可控的风险

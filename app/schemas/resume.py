@@ -6,6 +6,7 @@ from uuid import UUID
 from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, Field, field_serializer
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
+from app.schemas.interview import InterviewResponse, EmailLogResponse
 from app.utils.datetime_formatter import format_datetime, format_date
 
 
@@ -173,8 +174,8 @@ class ResumeDetailResponse(ResumeResponse):
     jobPreferences: Optional[JobPreferenceBase] = Field(None, alias="job_preference")
     aiMatchResults: Optional[List[AIMatchBase]] = Field(default=[], alias="ai_match_results")
     chatHistory: Optional[List[CandidateChatHistoryBase]] = Field(default=[], alias="chat_histories")
-    interviews: Optional[List] = Field(default=[])
-    emails: Optional[List] = Field(default=[])
+    interviews: Optional[List[InterviewResponse]] = Field(default=[])
+    emails: Optional[List[EmailLogResponse]] = Field(default=[], alias="email_logs")
 
     model_config = {
         "from_attributes": False,  # 因为现在传递的是字典而不是模型实例
