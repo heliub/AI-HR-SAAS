@@ -30,18 +30,25 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase, IDSchema, TimestampSchema):
+
     """用户响应"""
     tenantId: UUID = Field(alias="tenant_id")
     avatarUrl: Optional[str] = Field(alias="avatar_url")
     isActive: bool = Field(alias="is_active")
-    lastLoginAt: Optional[str] = Field(alias="last_login_at")
+    lastLoginAt: Optional[datetime] = Field(alias="last_login_at", default=None)
+
+    @field_serializer('lastLoginAt', when_used='always')
+    def serialize_last_login_at(self, value: Optional[datetime]) -> Optional[str]:
+        """序列化最后登录时间"""
+        if value is None:
+            return None
+        return format_datetime(value)
 
 
 class ProfileUpdateRequest(BaseModel):
-    """个人信息更新请求"""
-    name: Optional[str] = None
+    """个人信息更新请求（不包含角色字段）"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
-    role: Optional[str] = None
 
 
 class PasswordUpdateRequest(BaseModel):

@@ -115,14 +115,97 @@ class UserService(BaseService[User]):
         user = await self.get(db, user_id)
         if not user:
             raise NotFoundException("User not found")
-        
+
         # 验证当前密码
         if not security_manager.verify_password(current_password, user.password_hash):
             raise BadRequestException("Current password is incorrect")
-        
+
         # 更新密码
         user.password_hash = security_manager.hash_password(new_password)
         await db.commit()
-        
+
         return True
+
+    async def update_profile(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        name: Optional[str] = None,
+        email: Optional[str] = None
+    ) -> User:
+        """更新个人信息（不允许修改角色）"""
+        user = await self.get(db, user_id)
+        if not user:
+            raise NotFoundException("User not found")
+
+        # 更新姓名
+        if name is not None:
+            user.name = name
+
+        # 更新邮箱（需要检查唯一性）
+        if email is not None and email != user.email:
+            existing_user = await self.get_by_email(db, email, user.tenant_id)
+            if existing_user and existing_user.id != user_id:
+                raise BadRequestException("Email already registered")
+            user.email = email
+
+        await db.commit()
+        await db.refresh(user)
+
+        return user
+
+    async def update_avatar(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        avatar_url: str
+    ) -> User:
+        """更新头像"""
+        user = await self.get(db, user_id)
+        if not user:
+            raise NotFoundException("User not found")
+
+        user.avatar_url = avatar_url
+        await db.commit()
+        await db.refresh(user)
+
+        return user
+
+    async def update_notification_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        email_notifications: bool,
+        task_reminders: bool
+    ):
+        """更新通知设置"""
+        from app.models.user_setting import UserSetting
+        from sqlalchemy import select
+
+        user = await self.get(db, user_id)
+        if not user:
+            raise NotFoundException("User not found")
+
+        # 查找或创建用户设置
+        query = select(UserSetting).where(UserSetting.user_id == user_id)
+        result = await db.execute(query)
+        user_setting = result.scalar_one_or_none()
+
+        if not user_setting:
+            # 创建新的用户设置
+            user_setting = UserSetting(
+                tenant_id=user.tenant_id,
+                user_id=user_id,
+                email_notifications=email_notifications,
+                task_reminders=task_reminders
+            )
+            db.add(user_setting)
+        else:
+            # 更新现有设置
+            user_setting.email_notifications = email_notifications
+            user_setting.task_reminders = task_reminders
+
+        await db.commit()
+
+        return {"email_notifications": email_notifications, "task_reminders": task_reminders}
 

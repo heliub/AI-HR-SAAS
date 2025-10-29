@@ -4,7 +4,8 @@ Base schemas
 from datetime import datetime
 from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from app.utils.datetime_formatter import format_datetime
 
 
 class BaseSchema(BaseModel):
@@ -14,8 +15,15 @@ class BaseSchema(BaseModel):
 
 class TimestampSchema(BaseSchema):
     """时间戳Schema - 数据库用snake_case，API用camelCase"""
-    createdAt: datetime = Field(alias="created_at")
-    updatedAt: datetime = Field(alias="updated_at")
+    createdAt: Optional[datetime] = Field(alias="created_at")
+    updatedAt: Optional[datetime] = Field(alias="updated_at")
+
+    @field_serializer('createdAt', 'updatedAt', when_used='always')
+    def serialize_timestamps(self, value: Optional[datetime]) -> Optional[str]:
+        """序列化时间戳"""
+        if value is None:
+            return None
+        return format_datetime(value)
 
 
 class IDSchema(BaseSchema):
