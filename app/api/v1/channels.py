@@ -91,6 +91,7 @@ async def create_channel(
 
 
 @router.put("/{channel_id}", response_model=APIResponse)
+@check_resource_permission(ChannelService(), check_tenant=True, check_user=True)
 async def update_channel(
     channel_id: UUID,
     channel_data: ChannelUpdate,
@@ -100,41 +101,38 @@ async def update_channel(
     """更新渠道"""
     channel_service = ChannelService()
 
-    # 使用权限装饰器检查权限
-    @check_resource_permission(channel_service, check_tenant=True, check_user=True)
-    async def _update_channel():
-        # 获取渠道并检查是否已删除
-        channel = await channel_service.get(db, channel_id)
-        if channel and channel.status == "deleted":
-            raise HTTPException(status_code=404, detail="渠道不存在")
-        
+    # 获取渠道并检查是否已删除（装饰器已经检查了存在性和权限）
+    channel = await channel_service.get(db, channel_id)
+    if channel.status == "deleted":
+        return APIResponse(
+            code=404,
+            message="渠道不存在"
+        )
+
+    try:
         # 转换数据，处理 cost 字段
         data = channel_data.model_dump(by_alias=True, exclude_unset=True)
+
         if 'annual_cost' in data and data['annual_cost'] is not None:
             # 将字符串形式的 cost 转换为 Decimal
             data['annual_cost'] = Decimal(str(data['annual_cost']))
-        
+
         channel = await channel_service.update_channel(
             db=db,
             channel_id=channel_id,
             **data
         )
-        return channel
 
-    try:
-        channel = await _update_channel()
         channel_response = ChannelResponse.model_validate(channel, from_attributes=True)
+        
 
         return APIResponse(
             code=200,
             message="渠道更新成功",
             data=channel_response.model_dump()
         )
-    except HTTPException as e:
-        return APIResponse(
-            code=e.status_code,
-            message=e.detail
-        )
+    except Exception as e:
+        return handle_service_error(e, "更新渠道")
 
 
 @router.delete("/{channel_id}", response_model=APIResponse)

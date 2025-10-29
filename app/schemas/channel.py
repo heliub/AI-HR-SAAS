@@ -5,19 +5,21 @@ from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
-from pydantic import BaseModel, EmailStr, Field, field_serializer
+from pydantic import BaseModel, EmailStr, Field, field_serializer, ConfigDict
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
 from app.utils.datetime_formatter import format_datetime
 import re
 
 
 class ChannelBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     """渠道基础Schema"""
     name: str = Field(..., min_length=1, max_length=100)
     status: str = "active"
     cost: Optional[str] = Field(None, alias="annual_cost")
     costCurrency: Optional[str] = Field("CNY", alias="cost_currency")
-    apiKey: Optional[str] = Field(None, alias="api_key", exclude=True)
+    apiKey: Optional[str] = Field(None, alias="api_key")
     contactPerson: Optional[str] = Field(None, alias="contact_person")
     contactEmail: Optional[Union[EmailStr, str]] = Field(None, alias="contact_email")
     description: Optional[str] = None
@@ -36,13 +38,14 @@ class ChannelCreate(ChannelBase):
 
 
 class ChannelUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     """更新渠道"""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     type: Optional[str] = None
     status: Optional[str] = None
     cost: Optional[str] = Field(None, alias="annual_cost")
     costCurrency: Optional[str] = Field(None, alias="cost_currency")
-    apiKey: Optional[str] = Field(None, alias="api_key", exclude=True)
+    apiKey: Optional[str] = Field(None, alias="api_key")
     contactPerson: Optional[str] = Field(None, alias="contact_person")
     contactEmail: Optional[Union[EmailStr, str]] = Field(None, alias="contact_email")
     description: Optional[str] = None
@@ -57,7 +60,7 @@ class ChannelResponse(BaseModel):
     status: Optional[str] = None
     cost: Optional[Union[Decimal, str]] = Field(None, alias="annual_cost")
     costCurrency: Optional[str] = Field(None, alias="cost_currency")
-    apiKey: Optional[str] = Field(None, alias="api_key", exclude=True)
+    # apiKey: Optional[str] = Field(None, alias="api_key")
     contactPerson: Optional[str] = Field(None, alias="contact_person")
     contactEmail: Optional[Union[EmailStr, str]] = Field(None, alias="contact_email")
     description: Optional[str] = Field(None, alias="description")
