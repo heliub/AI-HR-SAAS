@@ -1,10 +1,10 @@
 """
 Application Configuration
 """
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+import os
 
 class Settings(BaseSettings):
     """应用配置"""
@@ -51,11 +51,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
     
     # AI配置
-    AI_PROVIDER: str = "openai"
-    AI_API_KEY: str
-    AI_MODEL: str = "gpt-4"
-    AI_TEMPERATURE: float = 0.7
-    AI_MAX_TOKENS: Optional[int] = None
+    AI_PROVIDERS: List[Dict] = [
+        {
+            "provider": "volcengine",
+            "base_url": "https://ark.cn-beijing.volces.com/api/v3"
+        }
+    ]
     
     # Jaeger配置
     JAEGER_HOST: str = "localhost"
@@ -88,7 +89,6 @@ class Settings(BaseSettings):
         if isinstance(self.SUPPORTED_LANGUAGES, str):
             return [lang.strip() for lang in self.SUPPORTED_LANGUAGES.split(",")]
         return self.SUPPORTED_LANGUAGES
-
-
+    
 settings = Settings()
 
