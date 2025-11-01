@@ -638,6 +638,104 @@ COMMENT ON COLUMN candidate_chat_history.metadata IS '消息元数据（JSONB格
 COMMENT ON COLUMN candidate_chat_history.created_at IS '消息发送时间';
 COMMENT ON COLUMN candidate_chat_history.updated_at IS '更新时间';
 -- ==============================================
+-- 8.1. 职位问题预设表
+-- ==============================================
+
+-- 职位问题预设表
+CREATE TABLE job_questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    job_id UUID NOT NULL,
+    question TEXT NOT NULL,
+    question_type VARCHAR(20) NOT NULL,
+    is_required BOOLEAN DEFAULT FALSE,
+    evaluation_criteria TEXT,
+    sort_order INTEGER DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE job_questions IS '职位问题预设表';
+COMMENT ON COLUMN job_questions.id IS '问题ID（主键）';
+COMMENT ON COLUMN job_questions.tenant_id IS '租户ID';
+COMMENT ON COLUMN job_questions.user_id IS '创建问题的HR用户ID';
+COMMENT ON COLUMN job_questions.job_id IS '关联职位ID';
+COMMENT ON COLUMN job_questions.question IS '问题内容';
+COMMENT ON COLUMN job_questions.question_type IS '问题类型: information-信息采集, assessment-考察评估';
+COMMENT ON COLUMN job_questions.is_required IS '是否必须满足该要求';
+COMMENT ON COLUMN job_questions.evaluation_criteria IS '判断标准（考察类问题使用）';
+COMMENT ON COLUMN job_questions.sort_order IS '显示排序（越小越靠前）';
+COMMENT ON COLUMN job_questions.status IS '状态: active-启用, deleted-已删除';
+COMMENT ON COLUMN job_questions.created_at IS '创建时间';
+COMMENT ON COLUMN job_questions.updated_at IS '更新时间';
+
+-- ==============================================
+-- 8.2. 候选人会话表
+-- ==============================================
+
+-- 候选人会话表
+CREATE TABLE candidate_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    resume_id UUID NOT NULL,
+    job_id UUID NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'opened',
+    stage VARCHAR(20) NOT NULL DEFAULT 'greeting',
+    summary TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE candidate_conversations IS 'HR与候选人沟通会话主表';
+COMMENT ON COLUMN candidate_conversations.id IS '会话ID（主键）';
+COMMENT ON COLUMN candidate_conversations.tenant_id IS '租户ID';
+COMMENT ON COLUMN candidate_conversations.user_id IS '负责该会话的HR用户ID';
+COMMENT ON COLUMN candidate_conversations.resume_id IS '候选人简历ID';
+COMMENT ON COLUMN candidate_conversations.job_id IS '关联职位ID';
+COMMENT ON COLUMN candidate_conversations.status IS '会话状态: opened-会话开启, ongoing-沟通中, interrupted-中断, ended-会话结束, deleted-已删除';
+COMMENT ON COLUMN candidate_conversations.stage IS '沟通阶段: greeting-开场白阶段, questioning-问题询问阶段, intention-职位意向询问阶段, matched-撮合成功';
+COMMENT ON COLUMN candidate_conversations.summary IS '会话总结（AI生成）';
+COMMENT ON COLUMN candidate_conversations.created_at IS '创建时间';
+COMMENT ON COLUMN candidate_conversations.updated_at IS '更新时间';
+
+-- ==============================================
+-- 8.3. 会话问题跟踪表
+-- ==============================================
+
+-- 会话问题跟踪表
+CREATE TABLE conversation_question_tracking (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    conversation_id UUID NOT NULL,
+    question_id UUID NOT NULL,
+    job_id UUID NOT NULL,
+    resume_id UUID NOT NULL,
+    question TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    is_satisfied BOOLEAN,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE conversation_question_tracking IS '会话问题跟踪表';
+COMMENT ON COLUMN conversation_question_tracking.id IS '跟踪记录ID（主键）';
+COMMENT ON COLUMN conversation_question_tracking.tenant_id IS '租户ID';
+COMMENT ON COLUMN conversation_question_tracking.user_id IS '执行问题的HR用户ID';
+COMMENT ON COLUMN conversation_question_tracking.conversation_id IS '会话ID';
+COMMENT ON COLUMN conversation_question_tracking.question_id IS '问题ID（关联job_questions表）';
+COMMENT ON COLUMN conversation_question_tracking.job_id IS '职位ID（冗余字段，提高查询效率）';
+COMMENT ON COLUMN conversation_question_tracking.resume_id IS '简历ID（冗余字段，提高查询效率）';
+COMMENT ON COLUMN conversation_question_tracking.question IS '问题内容（冗余字段，提高查询效率）';
+COMMENT ON COLUMN conversation_question_tracking.status IS '问题状态: pending-待处理, ongoing-进行中, completed-已完成, skipped-已跳过, deleted-已删除';
+COMMENT ON COLUMN conversation_question_tracking.is_satisfied IS '是否满足要求（考察类问题）';
+COMMENT ON COLUMN conversation_question_tracking.created_at IS '创建时间';
+COMMENT ON COLUMN conversation_question_tracking.updated_at IS '更新时间';
+
+-- ==============================================
 -- 9. 系统日志表
 -- ==============================================
 
@@ -780,6 +878,17 @@ CREATE INDEX idx_chat_messages_metadata ON chat_messages USING gin(metadata);
 -- 候选人聊天历史索引
 CREATE INDEX idx_candidate_chat_history_resume_id ON candidate_chat_history(resume_id);
 
+-- 职位问题预设表索引
+CREATE INDEX idx_job_questions_tenant_job ON job_questions(tenant_id, job_id);
+
+-- 候选人会话表索引
+CREATE INDEX idx_candidate_conversations_tenant_user ON candidate_conversations(tenant_id, user_id);
+CREATE INDEX idx_candidate_conversations_resume_job ON candidate_conversations(resume_id, job_id);
+
+-- 会话问题跟踪表索引
+CREATE INDEX idx_conversation_question_tracking_conversation ON conversation_question_tracking(conversation_id);
+CREATE UNIQUE INDEX idx_conversation_question_unique ON conversation_question_tracking(conversation_id, question_id) WHERE status != 'deleted';
+
 -- 活动日志索引
 CREATE INDEX idx_activity_logs_tenant_user ON activity_logs(tenant_id, user_id);
 CREATE INDEX idx_activity_logs_entity_type_id ON activity_logs(entity_type, entity_id);
@@ -830,14 +939,27 @@ CREATE INDEX idx_email_logs_resume_id ON email_logs(resume_id);
 -- ('tenant-uuid', 'session-uuid', 'assistant', '正在搜索简历...', 'tool_call',
 --  '{"tool_name": "search_resumes", "tool_args": {"keyword": "前端工程师"}}');
 
--- 示例6：查询职位的所有要求
+-- 示例6：插入职位问题预设
+-- INSERT INTO job_questions (tenant_id, user_id, job_id, question, question_type, is_required, evaluation_criteria) VALUES
+-- ('tenant-uuid', 'user-uuid', 'job-uuid', '您是否有React开发经验？', 'assessment', true, '必须具备2年以上React开发经验'),
+-- ('tenant-uuid', 'user-uuid', 'job-uuid', '您的期望薪资范围是多少？', 'information', false, null);
+
+-- 示例7：插入候选人会话
+-- INSERT INTO candidate_conversations (tenant_id, user_id, resume_id, job_id, status, stage) VALUES
+-- ('tenant-uuid', 'user-uuid', 'resume-uuid', 'job-uuid', 'ongoing', 'questioning');
+
+-- 示例8：插入会话问题跟踪
+-- INSERT INTO conversation_question_tracking (tenant_id, user_id, conversation_id, question_id, job_id, resume_id, question, status) VALUES
+-- ('tenant-uuid', 'user-uuid', 'conversation-uuid', 'question-uuid', 'job-uuid', 'resume-uuid', '您是否有React开发经验？', 'ongoing');
+
+-- 示例9：查询职位的所有要求
 -- SELECT title, requirements FROM jobs WHERE id = 'job-uuid';
 
--- 示例7：查询简历的所有技能
+-- 示例10：查询简历的所有技能
 -- SELECT candidate_name, skills FROM resumes WHERE id = 'resume-uuid';
 
--- 示例8：搜索包含特定技能的简历
+-- 示例11：搜索包含特定技能的简历
 -- SELECT * FROM resumes WHERE tenant_id = 'tenant-uuid' AND skills LIKE '%React%';
 
--- 示例9：搜索包含特定要求的职位
+-- 示例12：搜索包含特定要求的职位
 -- SELECT * FROM jobs WHERE tenant_id = 'tenant-uuid' AND requirements LIKE '%精通React%';

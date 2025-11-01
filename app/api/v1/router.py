@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     auth, jobs, resumes, channels, 
-    tasks, interviews, chat, account, stats
+    tasks, interviews, chat, account, stats, job_questions
 )
 
 api_router = APIRouter()
@@ -20,4 +20,5 @@ api_router.include_router(interviews.router, prefix="/interviews", tags=["面试
 api_router.include_router(chat.router, prefix="/chat", tags=["AI聊天"])
 api_router.include_router(account.router, prefix="/account", tags=["账户设置"])
 api_router.include_router(stats.router, prefix="/stats", tags=["统计数据"])
+api_router.include_router(job_questions.router, tags=["职位问题管理"])
 

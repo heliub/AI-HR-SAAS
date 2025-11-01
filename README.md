@@ -45,6 +45,8 @@ uv sync
 # 安装开发依赖
 uv sync --extra dev
 
+uv sync --all-extras
+
 # 安装Playwright浏览器
 uv run playwright install chromium
 ```

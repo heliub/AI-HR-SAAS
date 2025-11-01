@@ -31,6 +31,9 @@ from app.models.chat_log import ChatMediationLog
 from app.models.async_task import AsyncTask
 from app.models.email_account import EmailAccount
 from app.models.platform_account import PlatformAccount
+from app.models.job_question import JobQuestion
+from app.models.candidate_conversation import CandidateConversation
+from app.models.conversation_question_tracking import ConversationQuestionTracking
 
 __all__ = [
     "Base",
@@ -63,5 +66,8 @@ __all__ = [
     "AsyncTask",
     "EmailAccount",
     "PlatformAccount",
+    "JobQuestion",
+    "CandidateConversation",
+    "ConversationQuestionTracking",
 ]
 

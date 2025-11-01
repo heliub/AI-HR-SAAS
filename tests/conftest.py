@@ -40,17 +40,16 @@ async def engine():
         poolclass=NullPool,
     )
     
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.drop_all)
+    #     await conn.run_sync(Base.metadata.create_all)
     
     yield engine
     
-    # 可选：注释掉以下代码以保留测试数据用于调试
-    # 环境变量 KEEP_TEST_DATA=1 时不删除测试数据
-    if not os.getenv("KEEP_TEST_DATA"):
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+    # 默认保留测试数据，只有设置了DELETE_TEST_DATA=1环境变量时才删除
+    # if os.getenv("DELETE_TEST_DATA"):
+    #     async with engine.begin() as conn:
+    #         await conn.run_sync(Base.metadata.drop_all)
     
     await engine.dispose()
 
@@ -124,7 +123,7 @@ def auth_token(test_user: User) -> str:
     token = security_manager.create_access_token(
         data={
             "sub": str(test_user.id),
-            "tenant_id": str(test_user.tenant_id),
+            "tenantId": str(test_user.tenant_id),
             "role": test_user.role
         }
     )
@@ -150,8 +149,8 @@ async def test_job(db_session: AsyncSession, test_tenant: Tenant, test_user: Use
         min_salary=25000,
         max_salary=40000,
         description="负责公司核心产品的前端开发工作",
-        requirements=["5年以上前端开发经验", "精通React/Vue"],
-        preferred_schools=["清华大学", "北京大学"],
+        requirements="5年以上前端开发经验,精通React/Vue",
+        preferred_schools="清华大学,北京大学",
         education="本科及以上",
         min_age=25,
         max_age=35,
@@ -182,7 +181,7 @@ async def test_resume(db_session: AsyncSession, test_tenant: Tenant, test_job: J
         location="北京",
         school="北京大学",
         major="计算机科学与技术",
-        skills=["React", "TypeScript", "Node.js"]
+        skills="React,TypeScript,Node.js"
     )
     db_session.add(resume)
     await db_session.commit()
