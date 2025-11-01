@@ -19,6 +19,7 @@ from app.observability.metrics.setup import setup_metrics
 from app.observability.metrics.middleware import MetricsMiddleware
 from app.infrastructure.database.session import init_db, close_db
 from app.infrastructure.cache.redis import init_redis, close_redis
+import os
 
 
 @asynccontextmanager
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI):
 
 def create_application() -> FastAPI:
     """创建FastAPI应用"""
-    
+    os.environ["VOLCENGINE_API_KEY"] = "9e198743-00bc-4a09-8a17-a07bef19e008"
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.VERSION,

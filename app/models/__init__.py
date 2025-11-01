@@ -34,6 +34,9 @@ from app.models.platform_account import PlatformAccount
 from app.models.job_question import JobQuestion
 from app.models.candidate_conversation import CandidateConversation
 from app.models.conversation_question_tracking import ConversationQuestionTracking
+from app.models.job_knowledge_base import JobKnowledgeBase
+from app.models.knowledge_question_variant import KnowledgeQuestionVariant
+from app.models.knowledge_hit_log import KnowledgeHitLog
 
 __all__ = [
     "Base",
@@ -69,5 +72,8 @@ __all__ = [
     "JobQuestion",
     "CandidateConversation",
     "ConversationQuestionTracking",
+    "JobKnowledgeBase",
+    "KnowledgeQuestionVariant",
+    "KnowledgeHitLog",
 ]
 

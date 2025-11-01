@@ -101,3 +101,31 @@ class StreamChunk(BaseModel):
     finish_reason: Optional[str] = None
     usage: Optional[Usage] = None  # 最后一个chunk包含usage
     model: Optional[str] = None
+
+
+class EmbeddingRequest(BaseModel):
+    """Embedding请求"""
+    model: str
+    input: str | List[str]  # 单个文本或文本列表
+    encoding_format: Optional[str] = None  # "float" | "base64"
+
+
+class EmbeddingData(BaseModel):
+    """单个Embedding数据"""
+    embedding: List[float]
+    index: int
+    object: str = "embedding"
+
+
+class EmbeddingUsage(BaseModel):
+    """Embedding Token使用统计"""
+    prompt_tokens: int
+    total_tokens: int
+
+
+class EmbeddingResponse(BaseModel):
+    """Embedding响应"""
+    data: List[EmbeddingData]
+    model: str
+    usage: EmbeddingUsage
+    object: str = "list"

@@ -157,6 +157,15 @@
         "max_tokens": None,
         "prompt": "candidate_position_willingness.md",
         "alias_name": "agreeInterviewApplySemanticAnalysis_NEW"
+    },
+    "generate_question_variants": {
+        "provider": "volcengine",
+        "model": "doubao-1.5-pro-32k-250115",
+        "temperature": 0.1,
+        "top_p": 0.8,
+        "max_tokens": 2000,
+        "system": "你是一个专业的HR助手，负责为知识库问题生成相似的问法变体。",
+        "prompt": "generate_question_variants.md"
     }
 }
 

@@ -1,7 +1,8 @@
 """
 LLM Providers
 """
-from .openai import OpenAIClient
-from .volcengine import VolcengineClient
+from .openai_client import OpenAIClient
+from .volcengine_client import VolcengineClient
+from .volcengine_embedding import VolcengineEmbeddingClient
 
-__all__ = ["OpenAIClient", "VolcengineClient"]
+__all__ = ["OpenAIClient", "VolcengineClient", "VolcengineEmbeddingClient"]

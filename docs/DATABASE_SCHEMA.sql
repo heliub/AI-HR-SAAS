@@ -1,16 +1,17 @@
 -- AI HR SaaS PostgreSQL Database Schema (Multi-Tenant, Optimized)
--- Version: 2.1
+-- Version: 2.2
 -- Created: 2025-01-26
--- Updated: 2025-01-26
--- 
+-- Updated: 2025-11-01
+--
 -- 优化说明：
 -- 1. 合并职位要求到职位表（使用TEXT数组）
 -- 2. 合并项目技术栈到项目经历表（使用TEXT数组）
 -- 3. 合并期望地点到求职意向表（使用TEXT数组）
 -- 4. 合并AI匹配优势/劣势到匹配结果表（使用JSONB）
 -- 5. 增强聊天消息类型字段，支持多种消息类型
--- 
--- 表数量：从33张减少到26张
+-- 6. 新增岗位/公司知识库模块（支持混合检索：向量+BM25）
+--
+-- 表数量：从33张减少到29张
 
 -- ==============================================
 -- 1. 租户管理表
@@ -736,6 +737,138 @@ COMMENT ON COLUMN conversation_question_tracking.created_at IS '创建时间';
 COMMENT ON COLUMN conversation_question_tracking.updated_at IS '更新时间';
 
 -- ==============================================
+-- 8.4. 岗位/公司知识库模块
+-- ==============================================
+
+-- 岗位/公司知识库主表
+CREATE TABLE job_knowledge_base (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID,  -- 创建者HR用户ID
+
+    -- 作用域
+    scope_type VARCHAR(20) NOT NULL,  -- 'company', 'job'
+    scope_id UUID NOT NULL,
+
+    -- 分类（支持多标签）
+    categories VARCHAR(50)[],  -- 如：{'salary', 'benefits', 'culture'}
+
+    -- 问答内容
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+
+    -- 检索字段
+    keywords TEXT,  -- BM25关键词（逗号分隔）
+    question_embedding VECTOR(2048),  -- 问题向量（允许NULL）
+
+    -- 扩展字段
+    meta_data JSONB,  -- 扩展元数据，如：{"source": "hr_manual", "reference_url": "..."}
+
+    -- 状态
+    status VARCHAR(20) DEFAULT 'active',  -- 'active', 'archived', 'deleted'
+
+    -- 时间戳
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    -- 审计字段
+    created_by UUID,
+    updated_by UUID
+);
+
+COMMENT ON TABLE job_knowledge_base IS '岗位/公司知识库主表（支持混合检索：向量+BM25）';
+COMMENT ON COLUMN job_knowledge_base.id IS '知识库条目ID（主键）';
+COMMENT ON COLUMN job_knowledge_base.tenant_id IS '租户ID';
+COMMENT ON COLUMN job_knowledge_base.user_id IS '创建者HR用户ID';
+COMMENT ON COLUMN job_knowledge_base.scope_type IS '作用域类型: company-公司级通用知识, job-岗位特定知识';
+COMMENT ON COLUMN job_knowledge_base.scope_id IS '作用域ID: 当scope_type=company时为tenant_id，=job时为job_id';
+COMMENT ON COLUMN job_knowledge_base.categories IS '分类标签数组，如：{salary,benefits,culture,tech_stack,team,growth}';
+COMMENT ON COLUMN job_knowledge_base.question IS '标准问题';
+COMMENT ON COLUMN job_knowledge_base.answer IS '标准答案';
+COMMENT ON COLUMN job_knowledge_base.keywords IS 'BM25检索关键词（逗号分隔），如：福利,待遇,五险一金';
+COMMENT ON COLUMN job_knowledge_base.question_embedding IS '问题向量（2048维，允许NULL，异步生成）';
+COMMENT ON COLUMN job_knowledge_base.meta_data IS '扩展元数据（JSONB），用于存储额外信息';
+COMMENT ON COLUMN job_knowledge_base.status IS '状态: active-启用, archived-归档, deleted-已删除';
+COMMENT ON COLUMN job_knowledge_base.created_at IS '创建时间';
+COMMENT ON COLUMN job_knowledge_base.updated_at IS '更新时间';
+COMMENT ON COLUMN job_knowledge_base.created_by IS '创建人用户ID';
+COMMENT ON COLUMN job_knowledge_base.updated_by IS '最后更新人用户ID';
+
+-- 问题变体表
+CREATE TABLE knowledge_question_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    knowledge_id UUID NOT NULL,
+
+    -- 冗余scope字段（查询性能优化，避免JOIN）
+    scope_type VARCHAR(20) NOT NULL,
+    scope_id UUID NOT NULL,
+
+    -- 变体内容
+    variant_question TEXT NOT NULL,
+    variant_embedding VECTOR(2048),  -- 变体问题向量（允许NULL）
+
+    -- 来源标记
+    source VARCHAR(20) DEFAULT 'manual',  -- 'manual', 'ai_generated', 'user_feedback'
+    confidence_score DECIMAL(3,2),  -- AI生成时的置信度（0.00-1.00，允许NULL）
+
+    -- 状态
+    status VARCHAR(20) DEFAULT 'active',  -- 'active', 'deleted'
+
+    -- 时间戳
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE knowledge_question_variants IS '知识库问题变体表（存储同一问题的不同问法）';
+COMMENT ON COLUMN knowledge_question_variants.id IS '变体ID（主键）';
+COMMENT ON COLUMN knowledge_question_variants.tenant_id IS '租户ID';
+COMMENT ON COLUMN knowledge_question_variants.knowledge_id IS '关联的知识库条目ID';
+COMMENT ON COLUMN knowledge_question_variants.scope_type IS '作用域类型（冗余字段，提高查询性能）';
+COMMENT ON COLUMN knowledge_question_variants.scope_id IS '作用域ID（冗余字段，提高查询性能）';
+COMMENT ON COLUMN knowledge_question_variants.variant_question IS '变体问题（相似问法）';
+COMMENT ON COLUMN knowledge_question_variants.variant_embedding IS '变体问题向量（2048维，允许NULL）';
+COMMENT ON COLUMN knowledge_question_variants.source IS '变体来源: manual-HR手动添加, ai_generated-AI自动生成, user_feedback-候选人反馈生成';
+COMMENT ON COLUMN knowledge_question_variants.confidence_score IS 'AI生成变体的置信度（0.00-1.00），用于HR审核筛选';
+COMMENT ON COLUMN knowledge_question_variants.status IS '状态: active-启用, deleted-已删除';
+COMMENT ON COLUMN knowledge_question_variants.created_at IS '创建时间';
+COMMENT ON COLUMN knowledge_question_variants.updated_at IS '更新时间';
+
+-- 知识库命中日志表
+CREATE TABLE knowledge_hit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+
+    -- 关联信息
+    knowledge_id UUID NOT NULL,  -- 命中的知识库条目ID
+    variant_id UUID,  -- 如果是通过变体命中，记录变体ID（允许NULL）
+    conversation_id UUID,  -- 关联的会话ID
+
+    -- 检索信息
+    user_question TEXT,  -- 候选人原始问题
+
+    -- 匹配信息
+    match_method VARCHAR(20),  -- 'vector', 'bm25', 'hybrid'
+    match_score DECIMAL(5,4),  -- 匹配分数（0.0000-1.0000）
+    rank_position INTEGER,  -- 在检索结果列表中的排名（1,2,3...）
+
+    -- 时间戳
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE knowledge_hit_logs IS '知识库命中日志表（记录每次知识库检索命中详情，用于数据分析和优化）';
+COMMENT ON COLUMN knowledge_hit_logs.id IS '日志ID（主键）';
+COMMENT ON COLUMN knowledge_hit_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN knowledge_hit_logs.knowledge_id IS '命中的知识库条目ID';
+COMMENT ON COLUMN knowledge_hit_logs.variant_id IS '如果通过变体问题命中，记录变体ID';
+COMMENT ON COLUMN knowledge_hit_logs.conversation_id IS '关联的候选人会话ID';
+COMMENT ON COLUMN knowledge_hit_logs.user_question IS '候选人原始问题（完整文本）';
+COMMENT ON COLUMN knowledge_hit_logs.match_method IS '匹配方法: vector-向量检索, bm25-全文检索, hybrid-混合检索';
+COMMENT ON COLUMN knowledge_hit_logs.match_score IS '匹配分数（0.0000-1.0000）';
+COMMENT ON COLUMN knowledge_hit_logs.rank_position IS '在检索结果中的排名位置';
+COMMENT ON COLUMN knowledge_hit_logs.created_at IS '命中时间';
+
+-- ==============================================
 -- 9. 系统日志表
 -- ==============================================
 
@@ -898,6 +1031,37 @@ CREATE INDEX idx_email_logs_tenant_id ON email_logs(tenant_id);
 CREATE INDEX idx_email_logs_status ON email_logs(status);
 CREATE INDEX idx_email_logs_resume_id ON email_logs(resume_id);
 
+-- 知识库主表索引
+CREATE INDEX idx_knowledge_tenant_scope
+ON job_knowledge_base(tenant_id, scope_type, scope_id, status);
+
+-- 向量索引（HNSW，适用于PostgreSQL + pgvector >= 0.5.0）
+CREATE INDEX idx_knowledge_embedding
+ON job_knowledge_base USING hnsw (question_embedding vector_cosine_ops)
+WHERE question_embedding IS NOT NULL;
+
+-- 全文检索索引（BM25）
+CREATE INDEX idx_knowledge_fulltext
+ON job_knowledge_base USING gin(
+    to_tsvector('simple', question || ' ' || COALESCE(keywords, ''))
+);
+
+-- 变体表索引
+CREATE INDEX idx_variants_knowledge
+ON knowledge_question_variants(knowledge_id) WHERE status = 'active';
+
+CREATE INDEX idx_variants_scope
+ON knowledge_question_variants(tenant_id, scope_type, scope_id, status);
+
+CREATE INDEX idx_variants_embedding
+ON knowledge_question_variants USING hnsw (variant_embedding vector_cosine_ops)
+WHERE variant_embedding IS NOT NULL;
+
+-- 日志表索引
+CREATE INDEX idx_hit_logs_tenant_time
+ON knowledge_hit_logs(tenant_id, created_at DESC);
+
+
 -- ==============================================
 -- 11. 初始化数据（示例）
 -- ==============================================
@@ -963,3 +1127,64 @@ CREATE INDEX idx_email_logs_resume_id ON email_logs(resume_id);
 
 -- 示例12：搜索包含特定要求的职位
 -- SELECT * FROM jobs WHERE tenant_id = 'tenant-uuid' AND requirements LIKE '%精通React%';
+
+-- 示例13：插入公司级知识库
+-- INSERT INTO job_knowledge_base (tenant_id, scope_type, scope_id, categories, question, answer, keywords) VALUES
+-- ('tenant-uuid', 'company', 'tenant-uuid', '{"culture", "benefits"}',
+--  '公司福利有哪些？',
+--  '公司提供五险一金、年终奖、带薪年假15天、定期团建、节日礼品等福利。',
+--  '福利,待遇,五险一金,年终奖,年假');
+
+-- 示例14：插入岗位级知识库
+-- INSERT INTO job_knowledge_base (tenant_id, scope_type, scope_id, categories, question, answer, keywords) VALUES
+-- ('tenant-uuid', 'job', 'job-uuid', '{"tech_stack", "salary"}',
+--  '这个岗位的技术栈是什么？',
+--  '主要使用React、TypeScript、Node.js、PostgreSQL，薪资范围15k-25k。',
+--  'React,TypeScript,技术栈,薪资');
+
+-- 示例15：插入问题变体
+-- INSERT INTO knowledge_question_variants (tenant_id, knowledge_id, scope_type, scope_id, variant_question, source) VALUES
+-- ('tenant-uuid', 'knowledge-uuid', 'company', 'tenant-uuid', '福利待遇怎么样？', 'manual'),
+-- ('tenant-uuid', 'knowledge-uuid', 'company', 'tenant-uuid', '有什么福利？', 'ai_generated');
+
+-- 示例16：记录知识库命中日志
+-- INSERT INTO knowledge_hit_logs (tenant_id, knowledge_id, conversation_id, user_question, match_method, match_score, rank_position) VALUES
+-- ('tenant-uuid', 'knowledge-uuid', 'conversation-uuid', '公司有哪些福利待遇？', 'hybrid', 0.8756, 1);
+
+-- 示例17：查询某岗位的所有知识（包括公司级）
+-- SELECT * FROM job_knowledge_base
+-- WHERE tenant_id = 'tenant-uuid'
+-- AND (
+--     (scope_type = 'job' AND scope_id = 'job-uuid') OR
+--     (scope_type = 'company' AND scope_id = 'tenant-uuid')
+-- )
+-- AND status = 'active';
+
+-- 示例18：向量检索（混合主问题和变体）
+-- SELECT kb.*,
+--        kb.question_embedding <=> '[0.1, 0.2, ...]'::vector as distance
+-- FROM job_knowledge_base kb
+-- WHERE kb.tenant_id = 'tenant-uuid'
+-- AND kb.scope_type = 'job' AND kb.scope_id = 'job-uuid'
+-- AND kb.question_embedding IS NOT NULL
+-- ORDER BY distance
+-- LIMIT 5
+-- UNION ALL
+-- SELECT kb.*,
+--        kv.variant_embedding <=> '[0.1, 0.2, ...]'::vector as distance
+-- FROM knowledge_question_variants kv
+-- JOIN job_knowledge_base kb ON kv.knowledge_id = kb.id
+-- WHERE kb.tenant_id = 'tenant-uuid'
+-- AND kv.scope_type = 'job' AND kv.scope_id = 'job-uuid'
+-- AND kv.variant_embedding IS NOT NULL
+-- ORDER BY distance
+-- LIMIT 5;
+
+-- 示例19：分析热门问题（通过日志）
+-- SELECT knowledge_id, COUNT(*) as hit_count
+-- FROM knowledge_hit_logs
+-- WHERE tenant_id = 'tenant-uuid'
+-- AND created_at > NOW() - INTERVAL '30 days'
+-- GROUP BY knowledge_id
+-- ORDER BY hit_count DESC
+-- LIMIT 10;

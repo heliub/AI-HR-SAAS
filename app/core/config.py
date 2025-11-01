@@ -57,6 +57,12 @@ class Settings(BaseSettings):
             "base_url": "https://ark.cn-beijing.volces.com/api/v3"
         }
     ]
+    EMBEDDING_PROVIDERS: List[Dict] = [
+        {
+            "provider": "volcengine",
+            "base_url": "https://ark.cn-beijing.volces.com/api/v3"
+        }
+    ]
     
     # Jaeger配置
     JAEGER_HOST: str = "localhost"
