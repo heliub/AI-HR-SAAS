@@ -51,3 +51,7 @@ class APIResponse(BaseModel):
     message: str = "成功"
     data: Optional[Any] = None
 
+class ListResponse(BaseModel):
+    """分页响应"""
+    total: int
+    list: list[Any]

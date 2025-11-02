@@ -441,7 +441,7 @@ class JobKnowledgeService(BaseService):
         job_id: UUID,
         tenant_id: UUID,
         conversation_id: Optional[UUID] = None,
-        method: SearchMethod = SearchMethod.HYBRID,
+        method: SearchMethod = SearchMethod.SIMPLE,
         top_k: int = 5
     ) -> List[Dict[str, Any]]:
         """

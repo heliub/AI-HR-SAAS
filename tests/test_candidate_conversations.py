@@ -240,3 +240,96 @@ class TestCandidateConversationService:
         )
         
         assert deleted_conversation is None
+    
+    async def test_get_conversations(self, db_session: AsyncSession, test_job: Job, test_resume: Resume, test_user: User):
+        """测试获取会话列表"""
+        service = CandidateConversationService(db_session)
+        
+        # 先创建几个会话
+        conversation1 = await service.create_conversation(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            resume_id=test_resume.id,
+            job_id=test_job.id
+        )
+        
+        # 更新第一个会话状态
+        await service.update_conversation_status(
+            conversation_id=conversation1.id,
+            tenant_id=test_user.tenant_id,
+            status="ongoing",
+            user_id=test_user.id
+        )
+        
+        # 创建第二个会话
+        from app.models import Job as JobModel, Resume as ResumeModel
+        job2 = JobModel(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            title="高级工程师",
+            description="高级工程师职位描述",
+            requirements="5年以上经验"
+        )
+        db_session.add(job2)
+        await db_session.commit()
+        await db_session.refresh(job2)
+        
+        resume2 = ResumeModel(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            name="张三",
+            email="zhangsan@example.com",
+            phone="13800138000"
+        )
+        db_session.add(resume2)
+        await db_session.commit()
+        await db_session.refresh(resume2)
+        
+        conversation2 = await service.create_conversation(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            resume_id=resume2.id,
+            job_id=job2.id
+        )
+        
+        # 获取所有会话
+        conversations, total = await service.get_conversations(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id
+        )
+        
+        assert total == 2
+        assert len(conversations) == 2
+        
+        # 按状态过滤
+        ongoing_conversations, ongoing_total = await service.get_conversations(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            status="ongoing"
+        )
+        
+        assert ongoing_total == 1
+        assert len(ongoing_conversations) == 1
+        assert ongoing_conversations[0].id == conversation1.id
+        
+        # 按职位过滤
+        job_conversations, job_total = await service.get_conversations(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            job_id=test_job.id
+        )
+        
+        assert job_total == 1
+        assert len(job_conversations) == 1
+        assert job_conversations[0].id == conversation1.id
+        
+        # 按简历过滤
+        resume_conversations, resume_total = await service.get_conversations(
+            tenant_id=test_user.tenant_id,
+            user_id=test_user.id,
+            resume_id=test_resume.id
+        )
+        
+        assert resume_total == 1
+        assert len(resume_conversations) == 1
+        assert resume_conversations[0].id == conversation1.id

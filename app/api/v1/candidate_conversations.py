@@ -7,13 +7,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
+from app.api.responses import create_success_response, create_paginated_response
 from app.models.user import User
+from app.models.job import Job
+from app.schemas.base import ListResponse
 from app.schemas.candidate_conversation import (
     ConversationMessageListResponse,
     ConversationMessageResponse,
     SendMessageRequest,
     SendMessageResponse,
-    CandidateConversationDetailResponse
+    CandidateConversationDetailResponse,
+    CreateConversationRequest,
+    ConversationListResponse,
+    CandidateConversationResponse
 )
 from app.services.candidate_chat_history_service import CandidateChatHistoryService
 from app.services.candidate_conversation_service import CandidateConversationService
@@ -26,13 +32,115 @@ from app.conversation_flow.models import (
     Message as FlowMessage,
     NodeAction
 )
+from app.api.responses import APIResponse
 
 router = APIRouter()
 
 
+@router.post(
+    "/create_conversation",
+    response_model=APIResponse,
+    summary="创建会话",
+    description="根据简历ID和职位ID创建新的候选人会话"
+)
+async def create_conversation(
+    request: CreateConversationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    创建新的候选人会话
+
+    - **resume_id**: 候选人简历ID
+    - **job_id**: 职位ID
+    """
+    # 检查是否已存在相同的会话
+    conversation_service = CandidateConversationService(db)
+    existing_conversation = await conversation_service.get_conversation_by_job_and_resume(
+        job_id=request.jobId,
+        resume_id=request.resumeId,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        is_admin=current_user.role == "admin"
+    )
+
+    if existing_conversation:
+        raise HTTPException(status_code=400, detail="该简历和职位的会话已存在")
+
+    # 创建新会话
+    conversation = await conversation_service.create_conversation(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        resume_id=request.resumeId,
+        job_id=request.jobId
+    )
+
+    # 使用统一的响应格式
+    return create_success_response(
+        message="会话创建成功",
+        data=CandidateConversationResponse.model_validate(conversation).model_dump()
+    )
+
+
+@router.get(
+    "/get_conversations",
+    response_model=APIResponse,
+    summary="获取会话列表",
+    description="获取当前用户有权限访问的会话列表"
+)
+async def get_conversations(
+    status: Optional[str] = Query(None, description="会话状态过滤"),
+    stage: Optional[str] = Query(None, description="会话阶段过滤"),
+    resume_id: Optional[UUID] = Query(None, description="简历ID过滤"),
+    job_id: Optional[UUID] = Query(None, description="职位ID过滤"),
+    limit: int = Query(20, ge=1, le=100, description="返回数量"),
+    offset: int = Query(0, ge=0, description="偏移量"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取会话列表
+
+    - **status**: 会话状态过滤 (opened, ongoing, interrupted, ended)
+    - **stage**: 会话阶段过滤 (greeting, questioning, intention, matched)
+    - **resume_id**: 简历ID过滤
+    - **job_id**: 职位ID过滤
+    - **limit**: 返回数量（默认20，最大100）
+    - **offset**: 偏移量（用于分页）
+    """
+    conversation_service = CandidateConversationService(db)
+    conversations, total = await conversation_service.get_conversations(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        is_admin=current_user.role == "admin",
+        status=status,
+        stage=stage,
+        resume_id=resume_id,
+        job_id=job_id,
+        limit=limit,
+        offset=offset
+    )
+
+    # 转换为响应格式
+    conversation_responses = [
+        CandidateConversationResponse.model_validate(conv).model_dump()
+        for conv in conversations
+    ]
+
+    # 使用统一的分页响应格式
+    page = (offset // limit) + 1 if limit > 0 else 1
+    return create_paginated_response(
+        list=conversation_responses,
+        total=total,
+        page=page,
+        page_size=limit,
+        message="获取会话列表成功"
+    )
+
+
 @router.get(
     "/{conversation_id}/messages",
-    response_model=ConversationMessageListResponse,
+    response_model=APIResponse,
     summary="获取会话消息列表",
     description="根据会话ID获取该会话的所有消息记录"
 )
@@ -56,7 +164,7 @@ async def get_conversation_messages(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
-        is_admin=current_user.is_admin
+        is_admin=current_user.role == "admin"
     )
 
     if not conversation:
@@ -80,19 +188,24 @@ async def get_conversation_messages(
 
     # 转换为响应格式
     message_responses = [
-        ConversationMessageResponse.model_validate(msg)
+        ConversationMessageResponse.model_validate(msg).model_dump()
         for msg in messages
     ]
 
-    return ConversationMessageListResponse(
+    # 使用统一的分页响应格式
+    page = (offset // limit) + 1 if limit > 0 else 1
+    return create_paginated_response(
+        list=message_responses,
         total=total,
-        messages=message_responses
+        page=page,
+        page_size=limit,
+        message="获取会话消息列表成功"
     )
 
 
 @router.post(
     "/{conversation_id}/messages",
-    response_model=SendMessageResponse,
+    response_model=APIResponse,
     summary="候选人发送消息",
     description="候选人发送消息，系统自动执行对话流程并返回AI回复"
 )
@@ -123,7 +236,7 @@ async def send_candidate_message(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
-        is_admin=current_user.is_admin
+        is_admin=current_user.role == "admin"
     )
 
     if not conversation:
@@ -166,9 +279,8 @@ async def send_candidate_message(
     # 获取职位信息
     from app.services.job_service import JobService
     job_service = JobService(db)
-    job = await job_service.get_job_by_id(
-        job_id=conversation.job_id,
-        tenant_id=current_user.tenant_id
+    job = await job_service.get_by_id(
+        Job, conversation.job_id, current_user.tenant_id
     )
 
     position_info = PositionInfo(
@@ -226,18 +338,23 @@ async def send_candidate_message(
             )
 
     # 8. 返回响应
-    return SendMessageResponse(
-        candidate_message=ConversationMessageResponse.model_validate(candidate_message),
-        ai_message=ConversationMessageResponse.model_validate(ai_message) if ai_message else None,
-        action=flow_result.action.value,
-        conversation_status=conversation.status,
-        conversation_stage=conversation.stage
+    response_data = {
+        "candidateMessage": ConversationMessageResponse.model_validate(candidate_message).model_dump(),
+        "aiMessage": ai_message.message if ai_message else None,
+        "action": flow_result.action.value,
+        "conversationStatus": conversation.status,
+        "conversationStage": conversation.stage
+    }
+
+    return create_success_response(
+        message="消息发送成功",
+        data=response_data
     )
 
 
 @router.get(
     "/{conversation_id}",
-    response_model=CandidateConversationDetailResponse,
+    response_model=APIResponse,
     summary="获取会话详情",
     description="获取会话详情，包含基本信息和最新10条消息"
 )
@@ -257,7 +374,7 @@ async def get_conversation_detail(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
-        is_admin=current_user.is_admin
+        is_admin=current_user.role == "admin"
     )
 
     if not conversation:
@@ -278,11 +395,17 @@ async def get_conversation_detail(
     )
 
     # 构建响应
-    return CandidateConversationDetailResponse(
-        **conversation.__dict__,
-        latest_messages=[
-            ConversationMessageResponse.model_validate(msg)
+    conversation_data = conversation.__dict__.copy()
+    conversation_data["latestMessages"] = [
+        ConversationMessageResponse.model_validate(msg).model_dump()
             for msg in reversed(latest_messages)  # 倒序显示（最早的在前）
-        ],
-        message_count=message_count
+    ]
+    conversation_data["messageCount"] = message_count
+
+    # 转换为camelCase格式
+    response_data = CandidateConversationDetailResponse.model_validate(conversation_data).model_dump()
+
+    return create_success_response(
+        message="获取会话详情成功",
+        data=response_data
     )

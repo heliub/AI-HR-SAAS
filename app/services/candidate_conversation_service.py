@@ -234,3 +234,61 @@ class CandidateConversationService(BaseService):
             return True
 
         return False
+
+    async def get_conversations(
+        self,
+        tenant_id: UUID,
+        user_id: Optional[UUID] = None,
+        is_admin: bool = False,
+        status: Optional[str] = None,
+        stage: Optional[str] = None,
+        resume_id: Optional[UUID] = None,
+        job_id: Optional[UUID] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> tuple[List[CandidateConversation], int]:
+        """获取会话列表"""
+        conditions = [
+            CandidateConversation.tenant_id == tenant_id,
+            CandidateConversation.status != "deleted"
+        ]
+
+        # 用户过滤 - 只有非管理员时才过滤
+        if user_id and not is_admin:
+            conditions.append(CandidateConversation.user_id == user_id)
+
+        # 状态过滤
+        if status:
+            conditions.append(CandidateConversation.status == status)
+
+        # 阶段过滤
+        if stage:
+            conditions.append(CandidateConversation.stage == stage)
+
+        # 简历ID过滤
+        if resume_id:
+            conditions.append(CandidateConversation.resume_id == resume_id)
+
+        # 职位ID过滤
+        if job_id:
+            conditions.append(CandidateConversation.job_id == job_id)
+
+        # 构建查询
+        count_query = select(func.count()).select_from(
+            select(CandidateConversation).where(and_(*conditions)).subquery()
+        )
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar()
+
+        # 获取分页数据
+        query = (
+            select(CandidateConversation)
+            .where(and_(*conditions))
+            .order_by(CandidateConversation.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(query)
+        conversations = result.scalars().all()
+
+        return list(conversations), total
