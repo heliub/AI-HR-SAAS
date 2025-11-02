@@ -1,5 +1,5 @@
 """
-N14: HR询问的问题处理（无需执行大模型）
+HR询问的问题处理（无需执行大模型）
 
 场景名: information_gathering_question
 模板变量：无需执行大模型
@@ -26,7 +26,7 @@ class QuestionHandlerNode(NodeExecutor):
     def __init__(self, db: AsyncSession):
         super().__init__(
             scene_name="information_gathering_question",
-            node_name="N14",
+            node_name="information_gathering_question",
             db=db
         )
 
@@ -49,7 +49,7 @@ class QuestionHandlerNode(NodeExecutor):
         # ========== Step1: Stage1处理 - 初始化问题 ==========
         if context.is_greeting_stage:
             logger.info(
-                "n14_stage1_init_questions",
+                "question_handler_stage1_init_questions",
                 conversation_id=str(context.conversation_id)
             )
 
@@ -102,7 +102,7 @@ class QuestionHandlerNode(NodeExecutor):
         # ========== Step2: Stage2处理 - 更新当前问题状态 ==========
         elif context.is_questioning_stage:
             logger.debug(
-                "n14_stage2_update_current_question",
+                "question_handler_stage2_update_current_question",
                 current_question_id=str(context.current_question_id) if context.current_question_id else None
             )
 
@@ -117,18 +117,10 @@ class QuestionHandlerNode(NodeExecutor):
                 logger.info("current_question_marked_completed")
 
         # ========== Step3: 查询下一个要询问的问题 ==========
-        # TODO: 性能优化 - 应该在Service层直接SQL过滤pending状态，而不是查所有再过滤
-        # 优化方案: tracking_service.get_next_pending_question(conversation_id, tenant_id)
-        # 预期收益: 减少数据传输，提升查询效率（尤其是问题数量多时）
-        all_questions: List[ConversationQuestionTracking] = await tracking_service.get_questions_by_conversation(
+        # 性能优化：直接在SQL层过滤pending状态并排序，避免查询所有问题
+        next_question: Optional[ConversationQuestionTracking] = await tracking_service.get_next_pending_question(
             conversation_id=context.conversation_id,
             tenant_id=context.tenant_id
-        )
-
-        # 找到第一个pending状态的问题
-        next_question: Optional[ConversationQuestionTracking] = next(
-            (q for q in all_questions if q.status == "pending"),
-            None
         )
 
         if not next_question:

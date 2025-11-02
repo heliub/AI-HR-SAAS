@@ -1,12 +1,12 @@
 """
-N6: 候选人的回复是否满足设定的要求
+候选人的回复是否满足设定的要求
 
 场景名: reply_match_question_requirement
 模板变量：HR（AI）设定当前正在沟通的问题、历史对话
 执行逻辑：CLG1
 模型响应结果：{"satisfied": "yes/no"}
 节点返回结果：
-- 模型响应结果是"YES"，action为NEXT_NODE，next_node为N14节点的名称
+- 模型响应结果是"YES"，action为NEXT_NODE，next_node为information_gathering_question节点的名称
 - 否则action为SUSPEND
 """
 from typing import Dict, Any
@@ -21,7 +21,7 @@ class RequirementMatchNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="reply_match_question_requirement",
-            node_name="N6"
+            node_name="reply_match_question_requirement"
         )
 
     async def _parse_llm_response(
@@ -37,7 +37,7 @@ class RequirementMatchNode(SimpleLLMNode):
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
-                next_node=["N14"],
+                next_node=["information_gathering_question"],
                 reason="候选人回复满足要求，继续询问下一个问题",
                 data={"satisfied": True}
             )

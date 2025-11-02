@@ -1,5 +1,5 @@
 """
-N12：高情商回复（结束语）
+高情商回复（结束语）
 
 场景名: high_eq_response
 模板变量：历史对话、职位信息、HR（AI）最后一句话、招聘方设置的当前职位的问题列表
@@ -20,7 +20,7 @@ class HighEQResponseNode(NodeExecutor):
     def __init__(self, db: AsyncSession = None):
         super().__init__(
             scene_name="high_eq_response",
-            node_name="N12",
+            node_name="high_eq_response",
             db=db
         )
 

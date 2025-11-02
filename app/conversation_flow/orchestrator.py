@@ -24,8 +24,8 @@ from app.conversation_flow.models import (
 # 获取tracer
 tracer = trace.get_tracer(__name__)
 from app.conversation_flow.nodes.precheck import (
-    N1TransferHumanIntentNode,
-    N2EmotionAnalysisNode
+    TransferHumanIntentNode,
+    EmotionAnalysisNode
 )
 
 logger = structlog.get_logger(__name__)
@@ -44,16 +44,16 @@ class ConversationFlowOrchestrator:
         self.db = db
 
         # 初始化前置检查节点
-        self.n1 = N1TransferHumanIntentNode()
-        self.n2 = N2EmotionAnalysisNode()
+        self.transfer_human_node = TransferHumanIntentNode()
+        self.emotion_analysis_node = EmotionAnalysisNode()
 
         # 初始化节点组执行器
         from app.conversation_flow.groups import ResponseGroupExecutor, QuestionGroupExecutor
-        from app.conversation_flow.nodes.closing import N12HighEQResponseNode
+        from app.conversation_flow.nodes.closing import HighEQResponseNode
 
         self.response_group = ResponseGroupExecutor(db)
         self.question_group = QuestionGroupExecutor(db)
-        self.n12 = N12HighEQResponseNode(db)
+        self.high_eq_node = HighEQResponseNode(db)
 
         logger.info("conversation_flow_orchestrator_initialized")
 
@@ -86,40 +86,40 @@ class ConversationFlowOrchestrator:
 
             try:
                 # ============ 阶段1：前置并行检查 ============
-                n1_result, n2_result = await self._precheck_phase(context)
-                execution_path.extend([n1_result.node_name, n2_result.node_name])
+                transfer_human_result, emotion_analysis_result = await self._precheck_phase(context)
+                execution_path.extend([transfer_human_result.node_name, emotion_analysis_result.node_name])
 
-                # 短路判断：N1转人工
-                if n1_result.action == NodeAction.SUSPEND:
-                    span.set_attribute("short_circuit", "n1_transfer_human")
+                # 短路判断：转人工
+                if transfer_human_result.action == NodeAction.SUSPEND:
+                    span.set_attribute("short_circuit", "transfer_human_intent")
                     span.set_attribute("final_action", "suspend")
                     return self._build_flow_result(
-                        node_result=n1_result,
+                        node_result=transfer_human_result,
                         execution_path=execution_path,
                         start_time=start_time
                     )
 
-                # 短路判断：N2情感极差
-                if n2_result.action == NodeAction.SUSPEND:
-                    span.set_attribute("short_circuit", "n2_bad_emotion")
+                # 短路判断：情感极差
+                if emotion_analysis_result.action == NodeAction.SUSPEND:
+                    span.set_attribute("short_circuit", "candidate_emotion")
                     span.set_attribute("final_action", "suspend")
                     return self._build_flow_result(
-                        node_result=n2_result,
+                        node_result=emotion_analysis_result,
                         execution_path=execution_path,
                         start_time=start_time
                     )
 
-                # N2情感一般：发送高情商结束语
-                if n2_result.data.get("need_closing"):
+                # 情感一般：发送高情商结束语
+                if emotion_analysis_result.data.get("need_closing"):
                     logger.info(
                         "emotion_needs_closing",
-                        score=n2_result.data.get("emotion_score")
+                        score=emotion_analysis_result.data.get("emotion_score")
                     )
-                    span.set_attribute("short_circuit", "n2_needs_closing")
-                    n12_result = await self.n12.execute(context)
-                    execution_path.append(n12_result.node_name)
+                    span.set_attribute("short_circuit", "candidate_emotion_needs_closing")
+                    high_eq_result = await self.high_eq_node.execute(context)
+                    execution_path.append(high_eq_result.node_name)
                     return self._build_flow_result(
-                        node_result=n12_result,
+                        node_result=high_eq_result,
                         execution_path=execution_path,
                         start_time=start_time
                     )
@@ -170,24 +170,24 @@ class ConversationFlowOrchestrator:
             context: 会话上下文
 
         Returns:
-            (N1结果, N2结果)
+            (转人工检测结果, 情感分析结果)
         """
         logger.debug("precheck_phase_started")
 
-        # 并行执行N1和N2
-        n1_task = asyncio.create_task(self.n1.execute(context))
-        n2_task = asyncio.create_task(self.n2.execute(context))
+        # 并行执行转人工检测和情感分析
+        transfer_human_task = asyncio.create_task(self.transfer_human_node.execute(context))
+        emotion_analysis_task = asyncio.create_task(self.emotion_analysis_node.execute(context))
 
-        n1_result, n2_result = await asyncio.gather(n1_task, n2_task)
+        transfer_human_result, emotion_analysis_result = await asyncio.gather(transfer_human_task, emotion_analysis_task)
 
         logger.debug(
             "precheck_phase_completed",
-            n1_action=n1_result.action.value,
-            n2_action=n2_result.action.value,
-            emotion_score=n2_result.data.get("emotion_score")
+            transfer_human_action=transfer_human_result.action.value,
+            emotion_analysis_action=emotion_analysis_result.action.value,
+            emotion_score=emotion_analysis_result.data.get("emotion_score")
         )
 
-        return n1_result, n2_result
+        return transfer_human_result, emotion_analysis_result
 
     async def _parallel_execution_phase(
         self,
@@ -273,7 +273,7 @@ class ConversationFlowOrchestrator:
 
         Stage2（questioning）时的优先级：
         1. 问题组有明确动作（SEND_MESSAGE或SUSPEND）-> 使用问题组结果
-        2. 对话组有知识库答案（N9成功）-> 使用对话组结果
+        2. 对话组有知识库答案（知识库回复成功）-> 使用对话组结果
         3. 问题组返回NONE（进入Stage3）-> 使用对话组结果
         4. 兜底：使用问题组结果
 
@@ -316,7 +316,7 @@ class ConversationFlowOrchestrator:
                 return FlowResult.from_node_result(question_result)
 
             # 优先级2：对话组有知识库答案（候选人发问场景）
-            if (response_result.node_name == "N9"
+            if (response_result.node_name == "answer_based_on_knowledge"
                 and response_result.action == NodeAction.SEND_MESSAGE):
                 logger.info("select_response_result_priority_2_knowledge_answer")
                 return FlowResult.from_node_result(response_result)
@@ -368,13 +368,3 @@ class ConversationFlowOrchestrator:
             },
             total_time_ms=(time.time() - start_time) * 1000
         )
-
-
-# TODO: 实现完整的节点组执行器
-# class ResponseGroupExecutor:
-#     """对话回复组执行器"""
-#     pass
-#
-# class QuestionGroupExecutor:
-#     """问题阶段处理组执行器"""
-#     pass

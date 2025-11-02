@@ -1,5 +1,5 @@
 """
-N2: 候选人情感分析
+候选人情感分析
 
 场景名: candidate_emotion
 模板变量：历史对话
@@ -25,7 +25,7 @@ class EmotionAnalysisNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="candidate_emotion",
-            node_name="N2"
+            node_name="candidate_emotion"
         )
 
     async def _parse_llm_response(
@@ -77,7 +77,7 @@ class EmotionAnalysisNode(SimpleLLMNode):
         exception: Exception = None
     ) -> NodeResult:
         """
-        N2降级策略：假定候选人情感正常(分数1)，继续流程
+        情感分析降级策略：假定候选人情感正常(分数1)，继续流程
 
         理由：除非明确负面，否则继续沟通，避免技术故障导致误判
         """

@@ -1,5 +1,5 @@
 """
-N1: 候选人是否申请转人工
+候选人是否申请转人工
 
 场景名：transfer_human_intent
 模板变量：候选人最后一条消息
@@ -21,7 +21,7 @@ class TransferHumanIntentNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="transfer_human_intent",
-            node_name="N1"
+            node_name="transfer_human_intent"
         )
 
     async def _parse_llm_response(
@@ -52,7 +52,7 @@ class TransferHumanIntentNode(SimpleLLMNode):
         exception: Exception = None
     ) -> NodeResult:
         """
-        N1降级策略：假定候选人不转人工，继续流程
+        转人工检测降级策略：假定候选人不转人工，继续流程
 
         理由：宁可AI多聊几句，也不要因为技术故障误转人工
         """

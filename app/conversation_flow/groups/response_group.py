@@ -1,8 +1,8 @@
 """
 对话回复组执行器
 
-组合节点：N3 -> N4 -> N9/N10/N11 -> N12(可选)
-投机式并行：N4 + N9 同时执行，根据N4结果选择使用哪个
+组合节点：沟通意愿判断 -> 发问检测 -> 知识库回复/兜底回复/闲聊 -> 高情商回复(可选)
+投机式并行：发问检测 + 知识库回复 同时执行，根据发问检测结果选择使用哪个
 """
 import asyncio
 from typing import Optional
@@ -11,13 +11,13 @@ import structlog
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.response import (
-    N3ContinueConversationNode,
-    N4AskQuestionNode,
-    N9KnowledgeAnswerNode,
-    N10FallbackAnswerNode,
-    N11CasualChatNode,
+    ContinueConversationNode,
+    AskQuestionNode,
+    KnowledgeAnswerNode,
+    FallbackAnswerNode,
+    CasualChatNode,
 )
-from app.conversation_flow.nodes.closing import N12HighEQResponseNode
+from app.conversation_flow.nodes.closing import HighEQResponseNode
 
 logger = structlog.get_logger(__name__)
 
@@ -33,12 +33,12 @@ class ResponseGroupExecutor:
             db: 数据库会话
         """
         self.db = db
-        self.n3 = N3ContinueConversationNode()
-        self.n4 = N4AskQuestionNode()
-        self.n9 = N9KnowledgeAnswerNode(db)
-        self.n10 = N10FallbackAnswerNode()
-        self.n11 = N11CasualChatNode()
-        self.n12 = N12HighEQResponseNode(db)
+        self.continue_conversation_node = ContinueConversationNode()
+        self.ask_question_node = AskQuestionNode()
+        self.knowledge_answer_node = KnowledgeAnswerNode(db)
+        self.fallback_answer_node = FallbackAnswerNode()
+        self.casual_chat_node = CasualChatNode()
+        self.high_eq_node = HighEQResponseNode(db)
 
         logger.info("response_group_executor_initialized")
 
@@ -47,9 +47,9 @@ class ResponseGroupExecutor:
         执行对话回复链
 
         执行流程：
-        1. 根据Stage决定是否执行N3
-        2. 并行执行N4和N9（投机式优化）
-        3. 根据N4结果选择使用N9/N10/N11
+        1. 根据Stage决定是否执行沟通意愿判断
+        2. 并行执行发问检测和知识库回复（投机式优化）
+        3. 根据发问检测结果选择回复策略
 
         Args:
             context: 会话上下文
@@ -62,50 +62,51 @@ class ResponseGroupExecutor:
             stage=context.conversation_stage.value
         )
 
-        # ========== Step1: 执行N3（条件性） ==========
-        # Stage2(questioning)和Stage3(intention)跳过N3
+        # ========== Step1: 执行沟通意愿判断（条件性） ==========
+        # Stage2(questioning)和Stage3(intention)跳过沟通意愿判断
         if context.is_questioning_stage or context.is_intention_stage:
-            logger.debug("skip_n3_for_stage", stage=context.conversation_stage.value)
-            n3_result = NodeResult(
-                node_name="N3",
+            logger.debug("skip_continue_conversation_for_stage", stage=context.conversation_stage.value)
+            continue_conversation_result = NodeResult(
+                node_name="continue_conversation_with_candidate",
                 action=NodeAction.CONTINUE,
                 data={"willing": True, "skipped": True}
             )
         else:
-            # Stage1(greeting)执行N3
-            n3_result = await self.n3.execute(context)
+            # Stage1(greeting)执行沟通意愿判断
+            continue_conversation_result = await self.continue_conversation_node.execute(context)
 
-        # N3判断：不愿意沟通 -> 发送N12高情商结束语
-        if not n3_result.data.get("willing"):
+        # 沟通意愿判断：不愿意沟通 -> 发送高情商结束语
+        if not continue_conversation_result.data.get("willing"):
             logger.info("candidate_unwilling_send_closing")
-            return await self.n12.execute(context)
+            return await self.high_eq_node.execute(context)
 
-        # ========== Step2: 并行执行N4和N9（投机式优化） ==========
-        logger.debug("parallel_execution_n4_n9_started")
+        # ========== Step2: 并行执行发问检测和知识库回复（投机式优化） ==========
+        logger.debug("parallel_execution_ask_question_knowledge_answer_started")
 
-        n4_task = asyncio.create_task(self.n4.execute(context))
-        n9_task = asyncio.create_task(self.n9.execute(context))
+        ask_question_task = asyncio.create_task(self.ask_question_node.execute(context))
+        knowledge_answer_task = asyncio.create_task(self.knowledge_answer_node.execute(context))
 
-        n4_result, n9_result = await asyncio.gather(n4_task, n9_task)
+        ask_question_result, knowledge_answer_result = await asyncio.gather(ask_question_task, knowledge_answer_task)
 
         logger.debug(
-            "parallel_execution_n4_n9_completed",
-            is_question=n4_result.data.get("is_question"),
-            knowledge_found=n9_result.data.get("found")
+            "parallel_execution_ask_question_knowledge_answer_completed",
+            is_question=ask_question_result.data.get("is_question"),
+            knowledge_found=knowledge_answer_result.data.get("found")
         )
 
-        # ========== Step3: 根据N4结果选择回复策略 ==========
-        if n4_result.data.get("is_question"):
+        # ========== Step3: 根据发问检测结果选择回复策略 ==========
+        if ask_question_result.data.get("is_question"):
             # 候选人发问了
-            if n9_result.action == NodeAction.SEND_MESSAGE:
-                # 知识库有答案，使用N9结果
+            if (knowledge_answer_result.node_name == "answer_based_on_knowledge"
+                and knowledge_answer_result.action == NodeAction.SEND_MESSAGE):
+                # 知识库有答案，使用知识库回复结果
                 logger.info("use_knowledge_answer")
-                return n9_result
+                return knowledge_answer_result
             else:
-                # 知识库无答案，使用N10兜底回复
+                # 知识库无答案，使用兜底回复
                 logger.info("use_fallback_answer")
-                return await self.n10.execute(context)
+                return await self.fallback_answer_node.execute(context)
         else:
-            # 候选人未发问，执行N11闲聊
+            # 候选人未发问，执行闲聊
             logger.info("use_casual_chat")
-            return await self.n11.execute(context)
+            return await self.casual_chat_node.execute(context)

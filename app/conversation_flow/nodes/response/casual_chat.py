@@ -1,5 +1,5 @@
 """
-N11: 陪候选人闲聊
+陪候选人闲聊
 
 场景名：casual_conversation
 模板变量：历史对话、职位信息、HR（AI）最后一句话
@@ -19,7 +19,7 @@ class CasualChatNode(NodeExecutor):
     def __init__(self):
         super().__init__(
             scene_name="casual_conversation",
-            node_name="N11"
+            node_name="casual_conversation"
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

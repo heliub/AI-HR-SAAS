@@ -1,5 +1,5 @@
 """
-N4: 候选人是否发问
+候选人是否发问
 
 场景名：candidate_ask_question
 模板变量：候选人最后一条消息、历史对话
@@ -20,7 +20,7 @@ class AskQuestionNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="candidate_ask_question",
-            node_name="N4"
+            node_name="candidate_ask_question"
         )
 
     async def _parse_llm_response(
@@ -47,7 +47,7 @@ class AskQuestionNode(SimpleLLMNode):
         exception: Exception = None
     ) -> NodeResult:
         """
-        N4降级策略：假定候选人未发问，走闲聊路径
+        发问检测降级策略：假定候选人未发问，走闲聊路径
 
         理由：闲聊是最安全的兜底策略
         """

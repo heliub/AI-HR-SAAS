@@ -8,16 +8,16 @@
 - N10: 无知识库兜底回复
 - N11: 陪候选人闲聊
 """
-from .n3_continue_conversation import N3ContinueConversationNode
-from .n4_ask_question import N4AskQuestionNode
-from .n9_knowledge_answer import N9KnowledgeAnswerNode
-from .n10_fallback_answer import N10FallbackAnswerNode
-from .n11_casual_chat import N11CasualChatNode
+from .continue_conversation import ContinueConversationNode
+from .ask_question import AskQuestionNode
+from .knowledge_answer import KnowledgeAnswerNode
+from .fallback_answer import FallbackAnswerNode
+from .casual_chat import CasualChatNode
 
 __all__ = [
-    "N3ContinueConversationNode",
-    "N4AskQuestionNode",
-    "N9KnowledgeAnswerNode",
-    "N10FallbackAnswerNode",
-    "N11CasualChatNode",
+    "ContinueConversationNode",
+    "AskQuestionNode",
+    "KnowledgeAnswerNode",
+    "FallbackAnswerNode",
+    "CasualChatNode",
 ]

@@ -1,14 +1,14 @@
 """
-N15: 问题询问阶段处理（复合节点，无需LLM）
+问题询问阶段处理（复合节点，无需LLM）
 
 前置条件：Stage1且职位存在有效的设定问题，或者Stage2
 场景名：information_gathering
 模板变量：无需执行大模型
 执行逻辑：
 1.如果是Stage1，且职位未设定有效的问题，action:NONE
-  否则：action:NEXT_NODE, next_node:N14
-2.如果是Stage2，如果当前问题属于判卷问题，action:NEXT_NODE, next_node:N5
-  否则：action:NEXT_NODE, next_node:N7
+  否则：action:NEXT_NODE, next_node:information_gathering_question
+2.如果是Stage2，如果当前问题属于判卷问题，action:NEXT_NODE, next_node:relevance_reply_and_question
+  否则：action:NEXT_NODE, next_node:candidate_communication_willingness_for_question
 3.如果是其他Stage，action:NONE
 """
 from typing import Optional
@@ -27,7 +27,7 @@ class QuestionRouterNode(NodeExecutor):
     def __init__(self, db: AsyncSession):
         super().__init__(
             scene_name="information_gathering",
-            node_name="N15",
+            node_name="information_gathering",
             db=db
         )
 
@@ -40,7 +40,7 @@ class QuestionRouterNode(NodeExecutor):
 
         # ========== 1. Stage1处理 ==========
         if context.is_greeting_stage:
-            logger.debug("n15_stage1_check_questions")
+            logger.debug("question_router_stage1_check_questions")
 
             # 查询职位是否有有效的问题
             job_question_service = JobQuestionService(self.db)
@@ -51,25 +51,25 @@ class QuestionRouterNode(NodeExecutor):
 
             if not questions:
                 # 职位未设定有效的问题
-                logger.info("n15_stage1_no_questions")
+                logger.info("question_router_stage1_no_questions")
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NONE,
                     reason="职位未设定问题"
                 )
             else:
-                # 有问题，路由到N14初始化
-                logger.info("n15_stage1_has_questions_route_to_n14")
+                # 有问题，路由到问题处理初始化
+                logger.info("question_router_stage1_has_questions_route_to_question_handler")
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NEXT_NODE,
-                    next_node=["N14"],
+                    next_node=["information_gathering_question"],
                     reason="职位有问题，初始化问题列表"
                 )
 
         # ========== 2. Stage2处理 ==========
         elif context.is_questioning_stage:
-            logger.debug("n15_stage2_check_question_type")
+            logger.debug("question_router_stage2_check_question_type")
 
             # 获取当前正在询问的问题
             tracking_service = ConversationQuestionTrackingService(self.db)
@@ -85,7 +85,7 @@ class QuestionRouterNode(NodeExecutor):
             )
 
             if not current_question:
-                logger.warning("n15_stage2_no_ongoing_question")
+                logger.warning("question_router_stage2_no_ongoing_question")
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NONE,
@@ -108,14 +108,14 @@ class QuestionRouterNode(NodeExecutor):
 
             if not job_question:
                 logger.warning(
-                    "n15_stage2_job_question_not_found",
+                    "question_router_stage2_job_question_not_found",
                     question_id=str(current_question.question_id)
                 )
                 # 默认当作非判卷问题
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NEXT_NODE,
-                    next_node=["N7"],
+                    next_node=["information_gathering_question"],
                     reason="找不到原始问题，默认非判卷"
                 )
 
@@ -124,33 +124,33 @@ class QuestionRouterNode(NodeExecutor):
             is_scoring = job_question.question_type == "assessment"
 
             logger.info(
-                "n15_stage2_question_type_determined",
+                "question_router_stage2_question_type_determined",
                 question_type=job_question.question_type,
                 is_scoring=is_scoring
             )
 
             if is_scoring:
-                # 判卷问题：路由到N5
+                # 判卷问题：路由到相关性检查
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NEXT_NODE,
-                    next_node=["N5"],
+                    next_node=["relevance_reply_and_question"],
                     reason="判卷问题，检查相关性",
                     data={"question_type": "assessment", "is_scoring": True}
                 )
             else:
-                # 非判卷问题：路由到N7
+                # 非判卷问题：路由到沟通意愿检查
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NEXT_NODE,
-                    next_node=["N7"],
+                    next_node=["information_gathering_question"],
                     reason="非判卷问题，检查沟通意愿",
                     data={"question_type": "information", "is_scoring": False}
                 )
 
         # ========== 3. 其他Stage ==========
         else:
-            logger.debug("n15_other_stage_skip", stage=context.conversation_stage.value)
+            logger.debug("question_router_other_stage_skip", stage=context.conversation_stage.value)
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NONE,

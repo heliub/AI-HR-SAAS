@@ -1,5 +1,5 @@
 """
-N13：复聊语
+复聊语
 
 场景名: resume_conversation
 模板变量：职位名称、历史对话
@@ -19,7 +19,7 @@ class ResumeConversationNode(NodeExecutor):
     def __init__(self):
         super().__init__(
             scene_name="resume_conversation",
-            node_name="N13"
+            node_name="resume_conversation"
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

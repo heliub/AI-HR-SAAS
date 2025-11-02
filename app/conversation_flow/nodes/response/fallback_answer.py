@@ -1,5 +1,5 @@
 """
-N10：无知识库时兜底回复
+无知识库时兜底回复
 
 场景名: answer_without_knowledge
 模板变量：历史对话、候选人最后一条消息
@@ -19,7 +19,7 @@ class FallbackAnswerNode(NodeExecutor):
     def __init__(self):
         super().__init__(
             scene_name="answer_without_knowledge",
-            node_name="N10"
+            node_name="answer_without_knowledge"
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
@@ -42,7 +42,7 @@ class FallbackAnswerNode(NodeExecutor):
         exception: Exception = None
     ) -> NodeResult:
         """
-        N10降级策略：返回固定的友好兜底消息
+        兜底回复降级策略：返回固定的友好兜底消息
 
         理由：即使LLM失败，也要给候选人一个友好的回复
         """

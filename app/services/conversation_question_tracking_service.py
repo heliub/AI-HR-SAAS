@@ -6,8 +6,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select, func
+from sqlalchemy.orm import joinedload
 
 from app.models.conversation_question_tracking import ConversationQuestionTracking
+from app.models.job_question import JobQuestion
 from app.services.base_service import BaseService
 
 
@@ -38,6 +40,52 @@ class ConversationQuestionTrackingService(BaseService):
         query = select(ConversationQuestionTracking).where(and_(*conditions))
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def get_next_pending_question(
+        self,
+        conversation_id: UUID,
+        tenant_id: UUID,
+        user_id: Optional[UUID] = None,
+        is_admin: bool = False
+    ) -> Optional[ConversationQuestionTracking]:
+        """
+        获取下一个待处理的问题（性能优化版）
+
+        直接在SQL层过滤pending状态并按sort_order排序，避免查询所有问题后在Python层过滤
+
+        Args:
+            conversation_id: 会话ID
+            tenant_id: 租户ID
+            user_id: 用户ID（可选）
+            is_admin: 是否管理员
+
+        Returns:
+            下一个待处理的问题，如果没有则返回None
+        """
+        conditions = [
+            ConversationQuestionTracking.conversation_id == conversation_id,
+            ConversationQuestionTracking.tenant_id == tenant_id,
+            ConversationQuestionTracking.status == "pending"  # 直接SQL过滤
+        ]
+
+        # 用户过滤 - 只有非管理员时才过滤
+        if user_id and not is_admin:
+            conditions.append(ConversationQuestionTracking.user_id == user_id)
+
+        # JOIN job_questions表以获取sort_order进行排序
+        query = (
+            select(ConversationQuestionTracking)
+            .join(
+                JobQuestion,
+                ConversationQuestionTracking.question_id == JobQuestion.id
+            )
+            .where(and_(*conditions))
+            .order_by(JobQuestion.sort_order.asc())  # 按原始问题的排序
+            .limit(1)  # 只取第一个
+        )
+
+        result = await self.db.execute(query)
+        return result.scalar()
 
     async def create_question_tracking(
         self,

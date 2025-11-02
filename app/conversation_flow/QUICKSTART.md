@@ -179,11 +179,11 @@ async def notify_hr_agent(conversation_id: str, reason: str):
 
 **候选人消息**: "你好，我想了解一下这个职位"
 
-**执行路径**: N1 → N2 → N3 → N4 → N9（知识库回复）
+**执行路径**: 转人工检测 → 情感分析 → [对话回复组 || 问题阶段组] → 根据结果选择
 
 **并行优化**:
-- N1 + N2 并行执行（前置检查）
-- N4 + N9 并行执行（投机式）
+- 转人工检测 + 情感分析 并行执行（前置检查）
+- 发问检测 + 知识库回复 并行执行（对话回复组）
 
 **预期响应时间**: 2-3秒（比串行快50%）
 
@@ -219,7 +219,7 @@ async def notify_hr_agent(conversation_id: str, reason: str):
 ### 业务异常（正常流转）
 
 ```python
-# 例如：N5判断答案不相关（C类），直接流转到N14继续下一题
+# 例如：相关性检查判断答案不相关（C类），直接流转到问题处理继续下一题
 # 不触发重试机制，这是正常的业务逻辑
 ```
 
@@ -228,7 +228,7 @@ async def notify_hr_agent(conversation_id: str, reason: str):
 ```python
 # 如果3次重试都失败，会返回兜底结果：
 # - 前置检查失败：假定正常情感、非转人工
-# - LLM节点失败：使用N10兜底回复
+# - LLM节点失败：使用兜底回复
 ```
 
 ## 📊 性能监控
@@ -281,7 +281,7 @@ structlog.configure(
 ```python
 result = await orchestrator.execute(context)
 print("执行路径:", " → ".join(result.execution_path))
-# 输出示例: N1 → N2 → N3 → N4 → N9
+# 输出示例: 转人工检测 → 情感分析 → 沟通意愿判断 → 发问检测 → 知识库回复
 ```
 
 ### 检查节点数据
@@ -295,7 +295,7 @@ print("节点数据:", result.metadata.get("node_data"))
 
 ### Q1: Stage没有自动转换？
 
-**原因**: N14节点负责Stage转换，只有在问题阶段才会自动推进Stage。
+**原因**: 问题处理节点负责Stage转换，只有在问题阶段才会自动推进Stage。
 
 **解决**: 确保 `conversation_stage` 正确设置，且数据库中有对应的JobQuestion记录。
 
@@ -304,7 +304,7 @@ print("节点数据:", result.metadata.get("node_data"))
 **原因**: 可能是知识库中没有相关内容，或者知识库服务异常。
 
 **解决**:
-- N9节点会自动搜索知识库（内部封装，无需外部调用）
+- 知识库回复节点会自动搜索知识库（内部封装，无需外部调用）
 - 检查数据库中是否有对应职位的知识库记录
 - 检查JobKnowledgeService是否正常工作
 - 查看日志中的知识库搜索结果

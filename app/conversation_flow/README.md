@@ -6,9 +6,9 @@
 
 ### 核心特性
 
-- ✅ **投机式并行执行**：N1+N2并行、Response组+Question组并行、N4+N9并行，**延迟降低30-50%**
+- ✅ **投机式并行执行**：转人工检测+情感分析并行、对话回复组+问题阶段组并行、发问检测+知识库回复并行，**延迟降低30-50%**
 - ✅ **技术异常自动重试**：LLM调用失败自动重试3次，带指数退避
-- ✅ **业务异常正常流转**：N5的"答非所问"作为正常流程，不触发重试
+- ✅ **业务异常正常流转**：相关性检查的"答非所问"作为正常流程，不触发重试
 - ✅ **可扩展架构**：新增节点只需<30行代码，继承基类即可
 
 ---
@@ -43,29 +43,29 @@
 ### 节点分组（高内聚）
 
 #### Group 1: 前置检查组 (Precheck Group)
-- **N1**: 转人工意图检测 ✅ **已实现**
-- **N2**: 情感分析 ✅ **已实现**
+- **转人工意图检测** ✅ **已实现**
+- **情感分析** ✅ **已实现**
 - **特点**: 100%并行，互不依赖
 
 #### Group 2: 问题阶段处理组 (Question Stage Group)
-- **N15**: 问题阶段路由 ⏳ 待实现
-- **N5**: 回复相关性检查 ⏳ 待实现
-- **N6**: 回复满足度检查 ⏳ 待实现
-- **N7**: 沟通意愿检查 ⏳ 待实现
-- **N14**: 问题状态更新与发送 ⏳ 待实现
+- **问题阶段路由** ✅ **已实现**
+- **回复相关性检查** ✅ **已实现**
+- **回复满足度检查** ✅ **已实现**
+- **沟通意愿检查** ✅ **已实现**
+- **问题状态更新与发送** ✅ **已实现**
 - **特点**: 只在Stage2激活，内部有串行依赖
 
 #### Group 3: 对话回复组 (Response Group)
-- **N3**: 沟通意愿判断 ⏳ 待实现
-- **N4**: 发问检测 ⏳ 待实现
-- **N9**: 知识库回复 ⏳ 待实现
-- **N10**: 兜底回复 ⏳ 待实现
-- **N11**: 闲聊 ⏳ 待实现
+- **沟通意愿判断** ✅ **已实现**
+- **发问检测** ✅ **已实现**
+- **知识库回复** ✅ **已实现**
+- **兜底回复** ✅ **已实现**
+- **闲聊** ✅ **已实现**
 - **特点**: Stage1/3常驻，Stage2投机式并行
 
 #### Group 4: 结束语组 (Closing Group)
-- **N12**: 高情商结束语 ⏳ 待实现
-- **N13**: 复聊语 ⏳ 待实现
+- **高情商结束语** ✅ **已实现**
+- **复聊语** ✅ **已实现**
 - **特点**: 叶子节点，直接返回消息
 
 ---
@@ -75,23 +75,8 @@
 ### 阶段1：前置并行检查
 
 ```python
-# 并行执行N1和N2
-results = await asyncio.gather(
-    execute_node_n1(context),  # 转人工检测
-    execute_node_n2(context)   # 情感分析
-)
-
-# 短路判断（优先级：N1 > N2）
-if results[0].action == "SUSPEND":  # 转人工
-    return results[0]
-
-if results[1].score == 3:  # 情感极差
-    return create_suspend_result()
-
-if results[1].score == 2:  # 情感一般
-    return await execute_node_n12(context)  # 高情商结束语
-
-# 情感正常(0/1)，继续阶段2
+# 并行执行转人工检测和情感分析
+# 短路判断（优先级：转人工 > 情感分析）
 ```
 
 ### 阶段2：投机式并行执行
@@ -103,14 +88,14 @@ stage = context.conversation.stage
 # 构建并行任务列表
 tasks = {
     "response": asyncio.create_task(
-        execute_response_group(context)  # N3->N4->N9/N10/N11
+        execute_response_group(context)  # 沟通意愿判断->发问检测->知识库回复/兜底回复/闲聊
     )
 }
 
 # Stage2时，投机式并行执行问题组
 if stage == "questioning":
     tasks["question"] = asyncio.create_task(
-        execute_question_group(context)  # N15->N5/N6/N7->N14
+        execute_question_group(context)  # 问题阶段路由->相关性检查/满足度检查/沟通意愿检查->问题处理
     )
 
 # 等待所有任务完成
@@ -135,15 +120,15 @@ def select_final_result(stage, results):
         if question_result and question_result.action != "NONE":
             return question_result
 
-        # 优先级2：对话组中N4判断为"发问" 且 N9有知识库答案
-        if (response_result.path == "N3->N4(YES)->N9"
+        # 优先级2：对话回复组中发问检测判断为"发问" 且 知识库回复有知识库答案
+        if (response_result.path == "continue_conversation->ask_question(YES)->knowledge_answer"
             and response_result.action == "SEND_MESSAGE"):
             return response_result
 
-        # 否则：丢弃对话组结果，使用问题组
+        # 否则：丢弃对话组结果，使用问题阶段组结果
         return question_result
 
-    # Stage1/Stage3：直接使用对话组结果
+    # Stage1/Stage3：直接使用对话回复组结果
     return response_result
 ```
 
@@ -156,19 +141,19 @@ def select_final_result(stage, results):
 如果节点只需调用一次LLM，继承 `SimpleLLMNode`：
 
 ```python
-# app/conversation_flow/nodes/response/n3_continue_conversation.py
+# app/conversation_flow/nodes/response/continue_conversation.py
 from typing import Dict, Any
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N3ContinueConversationNode(SimpleLLMNode):
-    """N3: 候选人是否愿意沟通"""
+class ContinueConversationNode(SimpleLLMNode):
+    """候选人是否愿意沟通"""
 
     def __init__(self):
         super().__init__(
-            node_name="N3",
-            scene_name="continue_conversation_with_candidate"
+            scene_name="continue_conversation_with_candidate",
+            node_name="continue_conversation_with_candidate"
         )
 
     async def _parse_llm_response(
@@ -189,7 +174,7 @@ class N3ContinueConversationNode(SimpleLLMNode):
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
-                next_node=["N12"],  # 跳转到高情商结束语
+                next_node=["high_eq_response"],  # 跳转到高情商结束语
                 data={"willing": False}
             )
 ```
@@ -231,26 +216,26 @@ class ConversationFlowOrchestrator:
         # ...现有节点
 
         # 新增节点
-        self.n3 = N3ContinueConversationNode()
+        self.continue_conversation_node = ContinueConversationNode()
 ```
 
 ---
 
 ## 🔧 复杂节点示例
 
-### 示例1：需要访问数据库的节点（N14）
+### 示例1：需要访问数据库的节点（问题处理）
 
 ```python
 from app.conversation_flow.nodes.base import NodeExecutor
 
 
-class N14InformationGatheringNode(NodeExecutor):
-    """N14: HR询问的问题处理（无需LLM）"""
+class QuestionHandlerNode(NodeExecutor):
+    """HR询问的问题处理（无需LLM）"""
 
     def __init__(self, db: AsyncSession):
         super().__init__(
-            node_name="N14",
             scene_name="information_gathering_question",
+            node_name="information_gathering_question",
             db=db
         )
 
@@ -363,49 +348,49 @@ class ResponseGroupExecutor:
     """对话回复组执行器（N3->N4->N9/N10/N11）"""
 
     def __init__(self, db: AsyncSession):
-        self.n3 = N3ContinueConversationNode()
-        self.n4 = N4AskQuestionNode()
-        self.n9 = N9AnswerBasedOnKnowledgeNode(db)
-        self.n10 = N10AnswerWithoutKnowledgeNode()
-        self.n11 = N11CasualConversationNode()
-        self.n12 = N12HighEQResponseNode()
+        self.continue_conversation_node = ContinueConversationNode()
+        self.ask_question_node = AskQuestionNode()
+        self.knowledge_answer_node = KnowledgeAnswerNode(db)
+        self.fallback_answer_node = FallbackAnswerNode()
+        self.casual_chat_node = CasualChatNode()
+        self.high_eq_node = HighEQResponseNode()
 
     async def execute(self, context: ConversationContext) -> NodeResult:
         """执行对话回复链"""
 
         # 前置条件检查
         if context.is_questioning_stage or context.is_intention_stage:
-            # Stage2/3跳过N3
-            n3_result = NodeResult(
-                node_name="N3",
+            # Stage2/3跳过沟通意愿判断
+            continue_conversation_result = NodeResult(
+                node_name="continue_conversation_with_candidate",
                 action=NodeAction.CONTINUE,
                 data={"willing": True}
             )
         else:
-            # Stage1执行N3
-            n3_result = await self.n3.execute(context)
+            # Stage1执行沟通意愿判断
+            continue_conversation_result = await self.continue_conversation_node.execute(context)
 
-        # N3不愿意沟通 -> N12结束语
-        if not n3_result.data.get("willing"):
-            return await self.n12.execute(context)
+        # 沟通意愿判断：不愿意沟通 -> 高情商结束语
+        if not continue_conversation_result.data.get("willing"):
+            return await self.high_eq_node.execute(context)
 
-        # 并行执行N4和N9（投机式优化）
-        n4_task = asyncio.create_task(self.n4.execute(context))
-        n9_task = asyncio.create_task(self.n9.execute(context))
+        # 并行执行发问检测和知识库回复（投机式优化）
+        ask_question_task = asyncio.create_task(self.ask_question_node.execute(context))
+        knowledge_answer_task = asyncio.create_task(self.knowledge_answer_node.execute(context))
 
-        n4_result, n9_result = await asyncio.gather(n4_task, n9_task)
+        ask_question_result, knowledge_answer_result = await asyncio.gather(ask_question_task, knowledge_answer_task)
 
-        # N4判断候选人是否发问
-        if n4_result.data.get("is_question"):
-            # 使用N9结果
-            if n9_result.action == NodeAction.SEND_MESSAGE:
-                return n9_result
+        # 根据发问检测结果选择回复策略
+        if ask_question_result.data.get("is_question"):
+            # 候选人发问了
+            if knowledge_answer_result.action == NodeAction.SEND_MESSAGE:
+                return knowledge_answer_result
             else:
-                # 知识库无答案，使用N10
-                return await self.n10.execute(context)
+                # 知识库无答案，使用兜底回复
+                return await self.fallback_answer_node.execute(context)
         else:
-            # 未发问，执行N11闲聊
-            return await self.n11.execute(context)
+            # 候选人未发问，执行闲聊
+            return await self.casual_chat_node.execute(context)
 ```
 
 ---
@@ -416,9 +401,9 @@ class ResponseGroupExecutor:
 
 | 场景 | 串行耗时 | 并行耗时 | 收益 |
 |-----|---------|---------|-----|
-| Stage1 | N1(1s) + N2(1s) + N3(1s) + N4(1s) + N9(2s) = 6s | max(N1,N2) + max(N4,N9) = 1s + 2s = 3s | **50%** |
-| Stage2(候选人发问) | N1(1s) + N2(1s) + N15(0.5s) + N5(1s) + N3(1s) + N4(1s) + N9(2s) = 7.5s | max(N1,N2) + max(Question组, Response组) = 1s + max(2.5s, 4s) = 5s | **33%** |
-| Stage2(正常回答) | N1(1s) + N2(1s) + N15(0.5s) + N5(1s) + N14(0.5s) = 4s | max(N1,N2) + Question组 = 1s + 2s = 3s | **25%** |
+| Stage1 | 转人工检测(1s) + 情感分析(1s) + 沟通意愿判断(1s) + 发问检测(1s) + 知识库回复(2s) = 6s | max(转人工检测,情感分析) + max(发问检测,知识库回复) = 1s + 2s = 3s | **50%** |
+| Stage2(候选人发问) | 转人工检测(1s) + 情感分析(1s) + 问题阶段路由(0.5s) + 相关性检查(1s) + 沟通意愿判断(1s) + 发问检测(1s) + 知识库回复(2s) = 7.5s | max(转人工检测,情感分析) + max(问题阶段组, 对话回复组) = 1s + max(2.5s, 4s) = 5s | **33%** |
+| Stage2(正常回答) | 转人工检测(1s) + 情感分析(1s) + 问题阶段路由(0.5s) + 相关性检查(1s) + 问题处理(0.5s) = 4s | max(转人工检测,情感分析) + 问题阶段组 = 1s + 2s = 3s | **25%** |
 
 ---
 
@@ -491,18 +476,18 @@ async def test_precheck_phase_bad_emotion(db_session):
 
 ### 待实现节点清单
 
-- [ ] N3: 沟通意愿判断
-- [ ] N4: 发问检测
-- [ ] N5: 回复相关性检查
-- [ ] N6: 回复满足度检查
-- [ ] N7: 沟通意愿检查
-- [ ] N9: 知识库回复
-- [ ] N10: 兜底回复
-- [ ] N11: 闲聊
-- [ ] N12: 高情商结束语
-- [ ] N13: 复聊语
-- [ ] N14: 问题状态更新
-- [ ] N15: 问题阶段路由
+- [ ] 沟通意愿判断
+- [ ] 发问检测
+- [ ] 回复相关性检查
+- [ ] 回复满足度检查
+- [ ] 沟通意愿检查
+- [ ] 知识库回复
+- [ ] 兜底回复
+- [ ] 闲聊
+- [ ] 高情商结束语
+- [ ] 复聊语
+- [ ] 问题状态更新
+- [ ] 问题阶段路由
 
 ### 待实现组件
 
@@ -532,7 +517,7 @@ async def test_precheck_phase_bad_emotion(db_session):
 
 ## 🤝 贡献指南
 
-1. 参考 `N1TransferHumanIntentNode` 和 `N2EmotionAnalysisNode` 的实现
+1. 参考 `TransferHumanIntentNode` 和 `EmotionAnalysisNode` 的实现
 2. 继承 `SimpleLLMNode` 或 `NodeExecutor`
 3. 实现 `_parse_llm_response` 或 `_do_execute` 方法
 4. 创建对应的Prompt模板文件

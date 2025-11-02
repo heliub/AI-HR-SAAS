@@ -8,16 +8,16 @@
 - N14: 问题状态更新与发送
 - N15: 问题阶段路由
 """
-from .n5_relevance_check import N5RelevanceCheckNode
-from .n6_requirement_match import N6RequirementMatchNode
-from .n7_question_willingness import N7QuestionWillingnessNode
-from .n14_question_handler import N14QuestionHandlerNode
-from .n15_question_router import N15QuestionRouterNode
+from .relevance_check import RelevanceCheckNode
+from .requirement_match import RequirementMatchNode
+from .question_willingness import QuestionWillingnessNode
+from .question_handler import QuestionHandlerNode
+from .question_router import QuestionRouterNode
 
 __all__ = [
-    "N5RelevanceCheckNode",
-    "N6RequirementMatchNode",
-    "N7QuestionWillingnessNode",
-    "N14QuestionHandlerNode",
-    "N15QuestionRouterNode",
+    "RelevanceCheckNode",
+    "RequirementMatchNode",
+    "QuestionWillingnessNode",
+    "QuestionHandlerNode",
+    "QuestionRouterNode",
 ]

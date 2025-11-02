@@ -1,5 +1,5 @@
 """
-N9: 基于知识库回复求职者
+基于知识库回复求职者
 
 场景名: answer_based_on_knowledge
 模板变量：职位信息、知识库信息、历史对话、候选人最后一条消息
@@ -21,7 +21,7 @@ class KnowledgeAnswerNode(NodeExecutor):
     def __init__(self, db: AsyncSession):
         super().__init__(
             scene_name="answer_based_on_knowledge",
-            node_name="N9",
+            node_name="answer_based_on_knowledge",
             db=db
         )
 
@@ -29,7 +29,7 @@ class KnowledgeAnswerNode(NodeExecutor):
         """执行节点"""
         from app.services.job_knowledge_service import JobKnowledgeService
 
-        # 1. 查询知识库（N9内部搜索，高内聚原则）
+        # 1. 查询知识库（知识库回复内部搜索，高内聚原则）
         knowledge_service = JobKnowledgeService(self.db)
 
         knowledge_results = await knowledge_service.search_for_conversation(

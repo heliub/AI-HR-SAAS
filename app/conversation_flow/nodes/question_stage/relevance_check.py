@@ -1,5 +1,5 @@
 """
-N5: 候选人回复和问题相关性
+候选人回复和问题相关性
 
 前置条件：Stage2并且当前询问问题是判卷问题
 场景名：relevance_reply_and_question
@@ -8,8 +8,8 @@ N5: 候选人回复和问题相关性
 模型响应结果：{"relevance": "A/B/C/D/E"}
 节点返回结果：
 - 模型响应结果是A、D、E，action为SUSPEND
-- 如果是B，action为NEXT_NODE，next_node为N6节点的名称
-- 如果是C，action为NEXT_NODE，next_node为N14节点的名称
+- 如果是B，action为NEXT_NODE，next_node为reply_match_question_requirement节点的名称
+- 如果是C，action为NEXT_NODE，next_node为information_gathering_question节点的名称
 """
 from typing import Dict, Any
 
@@ -23,7 +23,7 @@ class RelevanceCheckNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="relevance_reply_and_question",
-            node_name="N5"
+            node_name="relevance_reply_and_question"
         )
 
     async def _parse_llm_response(
@@ -49,12 +49,12 @@ class RelevanceCheckNode(SimpleLLMNode):
                 data={"relevance": relevance}
             )
 
-        # B：相关且有效，继续N6检查满足度
+        # B：相关且有效，继续满足度检查
         elif relevance == "B":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
-                next_node=["N6"],
+                next_node=["reply_match_question_requirement"],
                 reason="候选人回复相关且有效",
                 data={"relevance": relevance}
             )
@@ -64,7 +64,7 @@ class RelevanceCheckNode(SimpleLLMNode):
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
-                next_node=["N14"],
+                next_node=["information_gathering_question"],
                 reason="候选人答非所问，继续询问下一个问题",
                 data={"relevance": relevance}
             )

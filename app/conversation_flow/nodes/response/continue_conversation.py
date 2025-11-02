@@ -1,5 +1,5 @@
 """
-N3: 候选人是否愿意沟通
+候选人是否愿意沟通
 
 前置条件：不是Stage2并且不是Stage3
 场景名：continue_conversation_with_candidate
@@ -7,7 +7,7 @@ N3: 候选人是否愿意沟通
 执行逻辑：CLG1
 节点返回结果：
 - 模型响应结果是"YES"，action为CONTINUE，data中willing=True
-- 否则action为NEXT_NODE，next_node为N12节点的名称，data中willing=False
+- 否则action为NEXT_NODE，next_node为high_eq_response节点的名称，data中willing=False
 """
 from typing import Dict, Any
 
@@ -21,7 +21,7 @@ class ContinueConversationNode(SimpleLLMNode):
     def __init__(self):
         super().__init__(
             scene_name="continue_conversation_with_candidate",
-            node_name="N3"
+            node_name="continue_conversation_with_candidate"
         )
 
     async def _parse_llm_response(
@@ -43,7 +43,7 @@ class ContinueConversationNode(SimpleLLMNode):
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
-                next_node=["N12"],  # 跳转到高情商结束语
+                next_node=["high_eq_response"],  # 跳转到高情商结束语
                 reason="候选人沟通意愿较低",
                 data={"willing": False}
             )
@@ -54,7 +54,7 @@ class ContinueConversationNode(SimpleLLMNode):
         exception: Exception = None
     ) -> NodeResult:
         """
-        N3降级策略：假定候选人愿意沟通，继续流程
+        沟通意愿判断降级策略：假定候选人愿意沟通，继续流程
 
         理由：默认候选人是善意的，避免技术故障导致误判
         """
