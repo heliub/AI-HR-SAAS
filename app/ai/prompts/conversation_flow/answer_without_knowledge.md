@@ -57,9 +57,9 @@
 ${Other}
 
 【对话信息】如下
-${chatMessage}
+${chatHistory}
 
-“求职者question”：${question}
+”求职者question“：${lastCandidateMessage}
 
 ##输出
 请按照json格式的markdown形式输出，示例如下：

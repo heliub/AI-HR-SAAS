@@ -42,10 +42,10 @@
 ${jobDescription} 
 
 【会话语境】
-${chatMessage}
+${chatHistory}
 
 【招聘者的最新语句】
-${lastReply}
+${lastHRMessage}
 任务四：
 请以json的markdown的形式简洁的输出任务二检查后的结果，不需要输出过程。
 

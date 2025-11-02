@@ -44,14 +44,13 @@
 【jd】
 ${jobDescription}
 额外可能问到的问题及其要求（会话语境中求职者不满足则不符合用人条件）：
-${requirement}
+${jobRequirement}
 
 【会话语境】
-${chatMessage}
-
+${chatHistory}
 
 【招聘者的最新语句】
-${lastReply}
+${lastHRMessage}
 任务四：
 请以json的markdown的形式简洁的输出任务二检查后的结果，不需要输出过程。
 

@@ -5,7 +5,7 @@
 
 ## 历史对话
 
-${chatMessage}
+${chatHistory}
 
 ## 任务
 

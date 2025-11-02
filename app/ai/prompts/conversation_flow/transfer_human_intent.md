@@ -28,4 +28,4 @@
 → {"transfer": "yes"}
 
 ### 当前对话
-求职者最新消息："${content}"
+求职者最新消息："${lastCandidateMessage}"

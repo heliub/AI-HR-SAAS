@@ -7,9 +7,9 @@
 
 ## 输入信息
 【用人条件】
-${requirement}
+${jobRequirement}
 【对话信息】
-${chatMessage}
+${chatHistory}
 
 ## 任务概述
 请根据【对话信息】判断候选人是否满足【用人条件】中的标准或范围。

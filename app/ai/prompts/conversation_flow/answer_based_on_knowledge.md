@@ -15,12 +15,12 @@
 ${knowledge}
 
 第二部分：岗位JD
-${jd_desc}
+${jobDescription}
 
 ## 对话
-${chatMessage}
+${chatHistory}
 
-## 求职者问题：${content}
+## 求职者问题：${lastCandidateMessage}
 
 #输出
 以JSON格式输出

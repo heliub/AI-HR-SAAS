@@ -192,6 +192,7 @@ class ConversationContext:
     def get_template_vars(self) -> Dict[str, Any]:
         """获取Prompt模板变量"""
         return {
+            # 原有变量（保持向后兼容）
             "候选人最后一条消息": self.last_candidate_message,
             "历史对话": self.format_history(),
             "职位信息": self.position_info.to_dict(),
@@ -199,6 +200,28 @@ class ConversationContext:
             "知识库信息": self.format_knowledge_base(),
             "HR最后一句话": self.get_last_hr_message(),
             "HR（AI）设定当前正在沟通的问题": self.current_question_content or "",
+            
+            # 统一变量名（驼峰命名法）
+            "lastCandidateMessage": self.last_candidate_message,
+            "chatHistory": self.format_history(),
+            "jobInfo": self.position_info.to_dict(),
+            "jobTitle": self.position_info.name,
+            "knowledgeBase": self.format_knowledge_base(),
+            "lastHRMessage": self.get_last_hr_message(),
+            "currentQuestion": self.current_question_content or "",
+            
+            # 职位相关详细信息
+            "jobDescription": self.position_info.description or "",
+            "jobRequirement": self.position_info.requirements or "",
+            
+            # 兼容旧变量名
+            "content": self.last_candidate_message,  # 候选人最后一条消息
+            "chatMessage": self.format_history(),  # 历史对话
+            "lastReply": self.get_last_hr_message(),  # HR最后一句话
+            "jd_desc": self.position_info.description or "",  # 岗位JD
+            "requirement": self.position_info.requirements or "",  # 用人条件
+            "knowledge": self.format_knowledge_base(),  # 知识库内容
+            "question": self.current_question_content or "",  # 当前问题
         }
 
     def format_history(self, max_messages: int = 10) -> str:
