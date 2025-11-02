@@ -16,13 +16,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N7QuestionWillingnessNode(SimpleLLMNode):
-    """N7: 候选人针对问题的沟通意愿"""
+class QuestionWillingnessNode(SimpleLLMNode):
+    """候选人针对问题的沟通意愿"""
 
     def __init__(self):
         super().__init__(
-            node_name="N7",
-            scene_name="candidate_communication_willingness_for_question"
+            scene_name="candidate_communication_willingness_for_question",
+            node_name="N7"
         )
 
     async def _parse_llm_response(

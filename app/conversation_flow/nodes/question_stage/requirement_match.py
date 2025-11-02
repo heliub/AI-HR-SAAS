@@ -15,13 +15,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N6RequirementMatchNode(SimpleLLMNode):
-    """N6: 候选人的回复是否满足设定的要求"""
+class RequirementMatchNode(SimpleLLMNode):
+    """候选人的回复是否满足设定的要求"""
 
     def __init__(self):
         super().__init__(
-            node_name="N6",
-            scene_name="reply_match_question_requirement"
+            scene_name="reply_match_question_requirement",
+            node_name="N6"
         )
 
     async def _parse_llm_response(

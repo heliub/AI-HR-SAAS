@@ -15,13 +15,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N1TransferHumanIntentNode(SimpleLLMNode):
-    """N1: 候选人是否申请转人工"""
+class TransferHumanIntentNode(SimpleLLMNode):
+    """候选人是否申请转人工"""
 
     def __init__(self):
         super().__init__(
-            node_name="N1",
-            scene_name="transfer_human_intent"
+            scene_name="transfer_human_intent",
+            node_name="N1"
         )
 
     async def _parse_llm_response(

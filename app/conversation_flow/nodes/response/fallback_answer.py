@@ -13,13 +13,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import NodeExecutor
 
 
-class N10FallbackAnswerNode(NodeExecutor):
-    """N10: 无知识库兜底回复"""
+class FallbackAnswerNode(NodeExecutor):
+    """无知识库兜底回复"""
 
     def __init__(self):
         super().__init__(
-            node_name="N10",
-            scene_name="answer_without_knowledge"
+            scene_name="answer_without_knowledge",
+            node_name="N10"
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

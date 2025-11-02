@@ -13,13 +13,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import NodeExecutor
 
 
-class N11CasualChatNode(NodeExecutor):
-    """N11: 陪候选人闲聊"""
+class CasualChatNode(NodeExecutor):
+    """陪候选人闲聊"""
 
     def __init__(self):
         super().__init__(
-            node_name="N11",
-            scene_name="casual_conversation"
+            scene_name="casual_conversation",
+            node_name="N11"
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

@@ -19,13 +19,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N2EmotionAnalysisNode(SimpleLLMNode):
-    """N2: 候选人情感分析"""
+class EmotionAnalysisNode(SimpleLLMNode):
+    """候选人情感分析"""
 
     def __init__(self):
         super().__init__(
-            node_name="N2",
-            scene_name="candidate_emotion"
+            scene_name="candidate_emotion",
+            node_name="N2"
         )
 
     async def _parse_llm_response(

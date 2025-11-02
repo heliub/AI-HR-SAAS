@@ -21,13 +21,13 @@ from app.conversation_flow.nodes.base import NodeExecutor
 logger = structlog.get_logger(__name__)
 
 
-class N15QuestionRouterNode(NodeExecutor):
-    """N15: 问题询问阶段处理（路由节点，无需LLM）"""
+class QuestionRouterNode(NodeExecutor):
+    """问题询问阶段处理（路由节点，无需LLM）"""
 
     def __init__(self, db: AsyncSession):
         super().__init__(
-            node_name="N15",
             scene_name="information_gathering",
+            node_name="N15",
             db=db
         )
 

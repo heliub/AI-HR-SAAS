@@ -14,13 +14,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N4AskQuestionNode(SimpleLLMNode):
-    """N4: 候选人是否发问"""
+class AskQuestionNode(SimpleLLMNode):
+    """候选人是否发问"""
 
     def __init__(self):
         super().__init__(
-            node_name="N4",
-            scene_name="candidate_ask_question"
+            scene_name="candidate_ask_question",
+            node_name="N4"
         )
 
     async def _parse_llm_response(

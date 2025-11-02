@@ -15,13 +15,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import NodeExecutor
 
 
-class N9KnowledgeAnswerNode(NodeExecutor):
-    """N9: 基于知识库回复求职者"""
+class KnowledgeAnswerNode(NodeExecutor):
+    """基于知识库回复求职者"""
 
     def __init__(self, db: AsyncSession):
         super().__init__(
-            node_name="N9",
             scene_name="answer_based_on_knowledge",
+            node_name="N9",
             db=db
         )
 

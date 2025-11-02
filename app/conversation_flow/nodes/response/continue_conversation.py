@@ -15,13 +15,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N3ContinueConversationNode(SimpleLLMNode):
-    """N3: 候选人是否愿意沟通"""
+class ContinueConversationNode(SimpleLLMNode):
+    """候选人是否愿意沟通"""
 
     def __init__(self):
         super().__init__(
-            node_name="N3",
-            scene_name="continue_conversation_with_candidate"
+            scene_name="continue_conversation_with_candidate",
+            node_name="N3"
         )
 
     async def _parse_llm_response(

@@ -17,13 +17,13 @@ from app.conversation_flow.models import NodeResult, ConversationContext, NodeAc
 from app.conversation_flow.nodes.base import SimpleLLMNode
 
 
-class N5RelevanceCheckNode(SimpleLLMNode):
-    """N5: 候选人回复和问题相关性检查"""
+class RelevanceCheckNode(SimpleLLMNode):
+    """候选人回复和问题相关性检查"""
 
     def __init__(self):
         super().__init__(
-            node_name="N5",
-            scene_name="relevance_reply_and_question"
+            scene_name="relevance_reply_and_question",
+            node_name="N5"
         )
 
     async def _parse_llm_response(

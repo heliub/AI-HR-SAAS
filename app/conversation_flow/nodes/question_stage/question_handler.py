@@ -20,13 +20,13 @@ from app.conversation_flow.nodes.base import NodeExecutor
 logger = structlog.get_logger(__name__)
 
 
-class N14QuestionHandlerNode(NodeExecutor):
-    """N14: HR询问的问题处理（无需LLM）"""
+class QuestionHandlerNode(NodeExecutor):
+    """HR询问的问题处理（无需LLM）"""
 
     def __init__(self, db: AsyncSession):
         super().__init__(
-            node_name="N14",
             scene_name="information_gathering_question",
+            node_name="N14",
             db=db
         )
 
