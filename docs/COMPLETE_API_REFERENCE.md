@@ -1367,6 +1367,9 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 - `strengths`: 优势列表，多个优势用逗号(,)分隔
 - `weaknesses`: 劣势列表，多个劣势用逗号(,)分隔
 
+**知识库字段**:
+- `categories`: 分类标签，多个分类用逗号(,)分隔
+
 **渠道关联字段**:
 - `channels`: 关联的招聘渠道ID列表，支持UUID数组格式，通过job_channels中间表建立多对多关联
 
@@ -1383,6 +1386,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
   "strengths": "技术栈匹配,大厂背景,项目经验丰富",
   "isMatch": true,
   "matchConclusion": "候选人具备丰富的前端开发经验，技术栈完全匹配，有大厂背景，项目经验丰富。强烈推荐安排技术面试。",
+  "categories": "技术面试,前端开发",
   "channels": [
     "50000000-0000-0000-0000-000000000001",
     "50000000-0000-0000-0000-000000000002"
@@ -1395,6 +1399,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
 - **UUID数组字段**: 使用真正的JSON数组格式存储（如channels字段），通过数据库中间表实现关联
 - **布尔字段**: 使用布尔值存储（如isMatch字段）
 - **文本字段**: 使用文本类型存储（如matchConclusion字段）
+- **知识库字段**: categories字段使用逗号分隔的字符串格式存储分类标签
 
 ---
 
@@ -1597,7 +1602,7 @@ query = (
         "id": "80000000-0000-0000-0000-000000000001",
         "scopeType": "job",
         "scopeId": "30000000-0000-0000-0000-000000000001",
-        "categories": ["技术面试", "前端开发"],
+        "categories": "技术面试,前端开发",
         "question": "React Hooks的使用场景有哪些？",
         "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
         "keywords": "React,Hooks,useState,useEffect",
@@ -1632,7 +1637,7 @@ query = (
     "id": "80000000-0000-0000-0000-000000000001",
     "scopeType": "job",
     "scopeId": "30000000-0000-0000-0000-000000000001",
-    "categories": ["技术面试", "前端开发"],
+    "categories": "技术面试,前端开发",
     "question": "React Hooks的使用场景有哪些？",
     "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
     "keywords": "React,Hooks,useState,useEffect",
@@ -1658,7 +1663,7 @@ query = (
 {
   "scopeType": "job",
   "scopeId": "30000000-0000-0000-0000-000000000001",
-  "categories": ["技术面试", "前端开发"],
+  "categories": "技术面试,前端开发",
   "question": "React Hooks的使用场景有哪些？",
   "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
   "keywords": "React,Hooks,useState,useEffect",
@@ -1672,7 +1677,7 @@ query = (
 **字段说明**:
 - `scopeType` (string, required): 作用域类型 (company | job)
 - `scopeId` (UUID, required): 作用域ID
-- `categories` (array, optional): 分类标签数组
+- `categories` (string, optional): 分类标签，逗号分隔的字符串
 - `question` (string, required): 标准问题，最小长度1
 - `answer` (string, required): 标准答案，最小长度1
 - `keywords` (string, optional): BM25关键词，逗号分隔
@@ -1687,7 +1692,7 @@ query = (
     "id": "80000000-0000-0000-0000-000000000001",
     "scopeType": "job",
     "scopeId": "30000000-0000-0000-0000-000000000001",
-    "categories": ["技术面试", "前端开发"],
+    "categories": "技术面试,前端开发",
     "question": "React Hooks的使用场景有哪些？",
     "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
     "keywords": "React,Hooks,useState,useEffect",
@@ -1731,7 +1736,7 @@ query = (
     "id": "80000000-0000-0000-0000-000000000001",
     "scopeType": "job",
     "scopeId": "30000000-0000-0000-0000-000000000001",
-    "categories": ["技术面试", "前端开发", "React"],
+    "categories": "技术面试,前端开发",
     "question": "React Hooks的使用场景有哪些？",
     "answer": "React Hooks主要用于函数组件中管理状态和副作用。主要使用场景包括：1. useState用于管理组件状态；2. useEffect用于处理副作用；3. useContext用于跨组件状态共享；4. useReducer用于复杂状态管理...",
     "keywords": "React,Hooks,useState,useEffect,useContext,useReducer",
@@ -1777,13 +1782,13 @@ query = (
   "scopeId": "30000000-0000-0000-0000-000000000001",
   "items": [
     {
-      "categories": ["技术面试", "前端开发"],
+      "categories": "技术面试,前端开发",
       "question": "React Hooks的使用场景有哪些？",
       "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
       "keywords": "React,Hooks,useState,useEffect"
     },
     {
-      "categories": ["技术面试", "前端开发"],
+      "categories": "技术面试,前端开发",
       "question": "什么是虚拟DOM？",
       "answer": "虚拟DOM是真实DOM的JavaScript表示...",
       "keywords": "React,Virtual DOM,DOM"
@@ -1806,7 +1811,7 @@ query = (
         "id": "80000000-0000-0000-0000-000000000001",
         "scopeType": "job",
         "scopeId": "30000000-0000-0000-0000-000000000001",
-        "categories": ["技术面试", "前端开发"],
+        "categories": "技术面试,前端开发",
         "question": "React Hooks的使用场景有哪些？",
         "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
         "keywords": "React,Hooks,useState,useEffect",
@@ -1822,7 +1827,7 @@ query = (
         "id": "80000000-0000-0000-0000-000000000002",
         "scopeType": "job",
         "scopeId": "30000000-0000-0000-0000-000000000001",
-        "categories": ["技术面试", "前端开发"],
+        "categories": "技术面试,前端开发",
         "question": "什么是虚拟DOM？",
         "answer": "虚拟DOM是真实DOM的JavaScript表示...",
         "keywords": "React,Virtual DOM,DOM",

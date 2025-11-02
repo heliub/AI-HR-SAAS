@@ -23,7 +23,7 @@ class JobKnowledgeBase(Base):
     scope_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="作用域ID")
 
     # 分类（支持多标签）
-    categories = Column(ARRAY(String(50)), comment="分类标签数组")
+    categories = Column(String(2000), comment="分类标签，逗号分隔的字符串，如：salary,benefits,culture")
 
     # 问答内容
     question = Column(Text, nullable=False, comment="标准问题")

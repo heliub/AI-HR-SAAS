@@ -6,7 +6,8 @@ from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from app.utils.datetime_formatter import format_datetime
 
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
 
@@ -42,7 +43,7 @@ class KnowledgeBase(BaseModel):
 
     scopeType: ScopeType = Field(..., alias="scope_type", description="作用域类型")
     scopeId: UUID = Field(..., alias="scope_id", description="作用域ID")
-    categories: Optional[List[str]] = Field(default=[], description="分类标签数组")
+    categories: Optional[str] = Field(default="", description="分类标签，逗号分隔的字符串")
     question: str = Field(..., min_length=1, description="标准问题")
     answer: str = Field(..., min_length=1, description="标准答案")
     keywords: Optional[str] = Field(None, description="BM25关键词（逗号分隔）")
@@ -58,7 +59,7 @@ class KnowledgeUpdate(BaseModel):
     """更新知识库Schema"""
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    categories: Optional[List[str]] = Field(None, description="分类标签数组")
+    categories: Optional[str] = Field(None, description="分类标签，逗号分隔的字符串")
     question: Optional[str] = Field(None, min_length=1, description="标准问题")
     answer: Optional[str] = Field(None, min_length=1, description="标准答案")
     keywords: Optional[str] = Field(None, description="BM25关键词")
@@ -66,8 +67,25 @@ class KnowledgeUpdate(BaseModel):
     status: Optional[str] = Field(None, description="状态")
 
 
-class KnowledgeResponse(KnowledgeBase, IDSchema, TimestampSchema):
+class KnowledgeResponse(BaseModel):
     """知识库响应Schema"""
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
+    # ID字段
+    id: UUID
+    
+    # 时间戳字段
+    createdAt: Optional[datetime] = Field(alias="created_at")
+    updatedAt: Optional[datetime] = Field(alias="updated_at")
+    
+    # 基础字段
+    scopeType: ScopeType = Field(..., alias="scope_type", description="作用域类型")
+    scopeId: UUID = Field(..., alias="scope_id", description="作用域ID")
+    categories: Optional[str] = Field(default="", description="分类标签，逗号分隔的字符串")
+    question: str = Field(..., min_length=1, description="标准问题")
+    answer: str = Field(..., min_length=1, description="标准答案")
+    keywords: Optional[str] = Field(None, description="BM25关键词（逗号分隔）")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="扩展元数据")
     tenantId: UUID = Field(..., alias="tenant_id", description="租户ID")
     userId: Optional[UUID] = Field(None, alias="user_id", description="创建者HR用户ID")
     status: str = Field(..., description="状态")
@@ -75,6 +93,14 @@ class KnowledgeResponse(KnowledgeBase, IDSchema, TimestampSchema):
     variantsCount: int = Field(0, alias="variants_count", description="变体数量")
     createdBy: Optional[UUID] = Field(None, alias="created_by", description="创建人用户ID")
     updatedBy: Optional[UUID] = Field(None, alias="updated_by", description="最后更新人用户ID")
+    
+    # 时间戳序列化
+    @field_serializer('createdAt', 'updatedAt', when_used='always')
+    def serialize_timestamps(self, value: Optional[datetime]) -> Optional[str]:
+        """序列化时间戳"""
+        if value is None:
+            return None
+        return format_datetime(value)
 
 
 class KnowledgeListResponse(BaseModel):
@@ -134,7 +160,7 @@ class KnowledgeBatchCreate(BaseModel):
 
     scopeType: ScopeType = Field(..., alias="scope_type", description="作用域类型")
     scopeId: UUID = Field(..., alias="scope_id", description="作用域ID")
-    items: List[Dict[str, Any]] = Field(..., min_length=1, description="知识库条目列表")
+    items: List[Dict[str, Any]] = Field(..., min_length=1, description="知识库条目列表，categories字段为逗号分隔的字符串")
 
 
 class KnowledgeBatchCreateResponse(BaseModel):

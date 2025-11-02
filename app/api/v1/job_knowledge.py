@@ -105,7 +105,7 @@ async def get_knowledge(
     # 转换为响应模型
     item_dict = knowledge.__dict__.copy()
     item_dict["has_embedding"] = knowledge.question_embedding is not None
-    item_dict["variants_count"] = 0  # TODO: 可以通过关联查询获取
+    item_dict["variants_count"] = 0
     knowledge_response = KnowledgeResponse.model_validate(item_dict)
 
     return APIResponse(

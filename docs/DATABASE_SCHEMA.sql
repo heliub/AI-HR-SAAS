@@ -751,7 +751,7 @@ CREATE TABLE job_knowledge_base (
     scope_id UUID NOT NULL,
 
     -- 分类（支持多标签）
-    categories VARCHAR(50)[],  -- 如：{'salary', 'benefits', 'culture'}
+    categories VARCHAR(2000),  -- 逗号分隔的字符串，如：'salary,benefits,culture'
 
     -- 问答内容
     question TEXT NOT NULL,
@@ -782,7 +782,7 @@ COMMENT ON COLUMN job_knowledge_base.tenant_id IS '租户ID';
 COMMENT ON COLUMN job_knowledge_base.user_id IS '创建者HR用户ID';
 COMMENT ON COLUMN job_knowledge_base.scope_type IS '作用域类型: company-公司级通用知识, job-岗位特定知识';
 COMMENT ON COLUMN job_knowledge_base.scope_id IS '作用域ID: 当scope_type=company时为tenant_id，=job时为job_id';
-COMMENT ON COLUMN job_knowledge_base.categories IS '分类标签数组，如：{salary,benefits,culture,tech_stack,team,growth}';
+COMMENT ON COLUMN job_knowledge_base.categories IS '分类标签，逗号分隔的字符串，如：salary,benefits,culture,tech_stack,team,growth';
 COMMENT ON COLUMN job_knowledge_base.question IS '标准问题';
 COMMENT ON COLUMN job_knowledge_base.answer IS '标准答案';
 COMMENT ON COLUMN job_knowledge_base.keywords IS 'BM25检索关键词（逗号分隔），如：福利,待遇,五险一金';
@@ -1130,14 +1130,14 @@ ON knowledge_hit_logs(tenant_id, created_at DESC);
 
 -- 示例13：插入公司级知识库
 -- INSERT INTO job_knowledge_base (tenant_id, scope_type, scope_id, categories, question, answer, keywords) VALUES
--- ('tenant-uuid', 'company', 'tenant-uuid', '{"culture", "benefits"}',
+-- ('tenant-uuid', 'company', 'tenant-uuid', 'culture,benefits',
 --  '公司福利有哪些？',
 --  '公司提供五险一金、年终奖、带薪年假15天、定期团建、节日礼品等福利。',
 --  '福利,待遇,五险一金,年终奖,年假');
 
 -- 示例14：插入岗位级知识库
 -- INSERT INTO job_knowledge_base (tenant_id, scope_type, scope_id, categories, question, answer, keywords) VALUES
--- ('tenant-uuid', 'job', 'job-uuid', '{"tech_stack", "salary"}',
+-- ('tenant-uuid', 'job', 'job-uuid', 'tech_stack,salary',
 --  '这个岗位的技术栈是什么？',
 --  '主要使用React、TypeScript、Node.js、PostgreSQL，薪资范围15k-25k。',
 --  'React,TypeScript,技术栈,薪资');

@@ -24,7 +24,7 @@ class KnowledgeEmbeddingService:
     """知识库Embedding生成服务"""
 
     # 火山引擎embedding模型
-    EMBEDDING_MODEL = "doubao-embedding-large-text-250515"
+    EMBEDDING_MODEL = "doubao-embedding-text-240715"
     EMBEDDING_DIMENSION = 2048
 
     def __init__(self, db: AsyncSession):

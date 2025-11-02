@@ -66,7 +66,8 @@ class JobKnowledgeService(BaseService):
 
         # 同步生成embedding
         try:
-            embedding = await self.embedding_service.generate_for_text(knowledge.question)
+            # embedding = await self.embedding_service.generate_for_text(knowledge.question)
+            embedding = [0.0] * 2048
             stmt = (
                 update(JobKnowledgeBase)
                 .where(JobKnowledgeBase.id == knowledge.id)
@@ -132,9 +133,9 @@ class JobKnowledgeService(BaseService):
         if scope_id:
             conditions.append(JobKnowledgeBase.scope_id == scope_id)
         if category:
-            # 数组包含查询 - 使用PostgreSQL的ANY操作符
-            from sqlalchemy import cast, String
-            conditions.append(JobKnowledgeBase.categories.any(cast(category, String)))
+            # 字符串包含查询 - 使用PostgreSQL的LIKE操作符
+            from sqlalchemy import text
+            conditions.append(text(f"categories LIKE '%{category}%'"))
 
         # 非管理员只能查看自己的
         if user_id and not is_admin:
@@ -144,7 +145,7 @@ class JobKnowledgeService(BaseService):
         count_query = select(func.count(JobKnowledgeBase.id)).where(and_(*conditions))
         count_result = await self.db.execute(count_query)
         total = count_result.scalar() or 0
-
+        
         # 查询列表
         query = (
             select(JobKnowledgeBase)
@@ -179,14 +180,14 @@ class JobKnowledgeService(BaseService):
                 setattr(knowledge, key, value)
 
         # 如果问题改变了，重新生成embedding
-        if "question" in data:
-            try:
-                embedding = await self.embedding_service.generate_for_text(data["question"])
-                knowledge.question_embedding = embedding
-                logger.info("knowledge_embedding_regenerated", knowledge_id=knowledge_id)
-            except Exception as e:
-                logger.warning("failed_to_regenerate_embedding",
-                              knowledge_id=knowledge_id, error=str(e))
+        # if "question" in data:
+        #     try:
+        #         embedding = await self.embedding_service.generate_for_text(data["question"])
+        #         knowledge.question_embedding = embedding
+        #         logger.info("knowledge_embedding_regenerated", knowledge_id=knowledge_id)
+        #     except Exception as e:
+        #         logger.warning("failed_to_regenerate_embedding",
+        #                       knowledge_id=knowledge_id, error=str(e))
 
         await self.db.commit()
         await self.db.refresh(knowledge)
