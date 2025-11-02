@@ -22,7 +22,7 @@ class JobQuestionBase(BaseModel):
 
 class JobQuestionCreate(JobQuestionBase):
     """创建职位问题Schema"""
-    jobId: UUID = Field(..., alias="job_id", description="关联职位ID")
+    jobId: Optional[UUID] = Field(None, alias="job_id", description="关联职位ID")
 
 
 class JobQuestionUpdate(BaseModel):
