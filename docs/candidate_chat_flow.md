@@ -49,7 +49,7 @@ message: str， action为SEND_MESSAGE时有值，表示要发送的消息
     "原因": ""
 }
 节点返回结果：
-分数为0和1，action为NEXT_NODE，next_node为N3的节点名称、N15的节点名称zh
+分数为0和1，action为NEXT_NODE，next_node为N3的节点名称点、N15的节点名称
 分数为2，action为NEXT_NODE，next_node为N12节点的名称
 分数为3，action为SUSPEND
 
@@ -111,7 +111,7 @@ message: str， action为SEND_MESSAGE时有值，表示要发送的消息
 模板变量：职位信息、知识库信息、历史对话、候选人最后一条消息
 执行逻辑：额外查询职位对应的知识库信息，和入参中上下文中已存在的其他模板变量，继续执行CLG1
 节点返回结果：
-模型响应结果是”not_found“，action为NEXT_NODE，next_node为N10
+模型响应结果是”not_found“，action为NEXT_NODE，next_node为N10节点的名称
 否则action为SEND_MESSAGE，message为模型响应的消息
 
 
@@ -143,13 +143,25 @@ action为SEND_MESSAGE，message为模型响应的消息
 节点返回结果：
 action为SEND_MESSAGE，message为模型响应的消息
 
-### N14：HR询问的问题处理
+### N14：HR询问的问题处理（无需执行大模型）
 场景名: information_gathering_question
+模板变量：无需执行大模型
 执行逻辑：
 step1.如果当前会话处于Stage1，查询职位设定的要询问的问题，如果没有设定问题，更新会话阶段为Stage3对应的状态值；如果有问题，则初始化职位问题到当前会话问题中，同时设定会话阶段为Stage2对应的状态值，并执行step3
 step2.如果当前会话处于Stage2，查询当前会话正在询问的问题，更新状态为完成
 step3.查询会话下一个要询问的问题，如果没有，更新会话阶段为state3对应的状态值，返回：action为None
 有下一个要询问的问题，更新会话问题状态为沟通中，返回：action为SEND_MESSAGE，message为要询问的问题
+
+### N15: 问题询问阶段处理（复合节点，无需执行大模型）
+前置条件：Stage1且职位存在有效的设定问题，或者Stage2
+场景名：information_gathering
+模板变量：无需执行大模型
+执行逻辑：
+1.如果是Stage1，且职位未设定有效的问题，action:None，否则：action:NEXT_NODE,next_node:N14
+2.如果是Stage2，如果当前职位属于判卷问题，action:NEXT_NODE,next_node:N5；否则：action:NEXT_NODE,next_node:N7
+3.如果是其他Stage，action:None
+
+
 
 
 # 通用执行逻辑
@@ -177,16 +189,22 @@ Stage4：撮合完成
 
 
 # 业务执行流程
-触发时机：候选人发送一条消息
-执行流程：
-step1: 并行调用节点BRN1、BRN2，同时下述条件判断并行执行对应的意愿判断节点：
-IF Stage2 THEN BRN7 ELSEIF Stage3 THEN BRN8 ELSE BRN3
+会话开启：
+当HR（AI）主动联系候选人时，触发HR(AI)会话的创建及会话消息的保存；
+当候选人投递或主动联系HR时，触发HR(AI)会话的创建，如果是有消息，同时触发会话消息的保存；
 
-step2: 
-IF BRN1=YES 中断本次流程执行
-IF BRN2 = 3 THEN 中断本次流程执行
-ELSE IF BRN2 = 3 THEN ACN3
-ELSE 
+过程沟通：
+触发时机：接收到候选人的消息
+先保存候选人的消息到HR和候选人的消息表
+执行流程：
+基于流程节点的串行状态转移和执行，耗时过长，为了提高响应时间，对细分的节点组合成多个大节点，同时并行操作，提高响应效率，具体如下：
+CombineNode1:前置过滤判断，组合N1、N2
+
+CombineNode2: 问题阶段处理逻辑，等同于N15节点，组合N5、N6、N7、N14
+CombineNode3: 消息回复方法，组合N3、N4、N9、N10、N11
+
+你是一个研发专家，请你基于节点的定义和流转逻辑，完善业务执行流程的方案设计，主要是节点组合及并行，提高响应时间，有问题可以询问我，和我进行充分的方案沟通
+
 
 
 

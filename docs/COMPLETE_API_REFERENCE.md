@@ -10,6 +10,8 @@
 - [渠道管理](#渠道管理)
 - [任务管理](#任务管理)
 - [面试管理](#面试管理)
+- [知识库管理](#知识库管理)
+- [职位问题管理](#职位问题管理)
 - [统计数据](#统计数据)
 - [错误处理](#错误处理)
 
@@ -1562,6 +1564,764 @@ query = (
 - **邮箱**: `wang@demo.com`
 - **密码**: `123456`
 - **权限**: 只能查看自己负责的数据
+
+---
+
+## 知识库管理
+
+### 📚 获取知识库列表
+
+**GET** `/knowledge`
+
+获取知识库列表，管理员可查看所有知识库，HR只能查看自己创建的知识库
+
+**查询参数**:
+- `scopeType` (string, optional): 作用域类型 (company | job)
+- `scopeId` (UUID, optional): 作用域ID
+- `category` (string, optional): 分类标签
+- `status` (string, optional): 状态，默认为"active"
+- `page` (int, optional): 页码，默认1，最小值1
+- `pageSize` (int, optional): 每页数量，默认20，范围1-100
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "total": 50,
+    "page": 1,
+    "pageSize": 20,
+    "list": [
+      {
+        "id": "80000000-0000-0000-0000-000000000001",
+        "scopeType": "job",
+        "scopeId": "30000000-0000-0000-0000-000000000001",
+        "categories": ["技术面试", "前端开发"],
+        "question": "React Hooks的使用场景有哪些？",
+        "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+        "keywords": "React,Hooks,useState,useEffect",
+        "status": "active",
+        "hasEmbedding": true,
+        "variantsCount": 3,
+        "tenantId": "10000000-0000-0000-0000-000000000001",
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### 📖 获取知识库详情
+
+**GET** `/knowledge/{knowledge_id}`
+
+获取指定知识库条目的详细信息
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "id": "80000000-0000-0000-0000-000000000001",
+    "scopeType": "job",
+    "scopeId": "30000000-0000-0000-0000-000000000001",
+    "categories": ["技术面试", "前端开发"],
+    "question": "React Hooks的使用场景有哪些？",
+    "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+    "keywords": "React,Hooks,useState,useEffect",
+    "status": "active",
+    "hasEmbedding": true,
+    "variantsCount": 3,
+    "tenantId": "10000000-0000-0000-0000-000000000001",
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T10:30:00Z"
+  }
+}
+```
+
+### ➕ 创建知识库条目
+
+**POST** `/knowledge`
+
+创建新的知识库条目
+
+**请求体**:
+```json
+{
+  "scopeType": "job",
+  "scopeId": "30000000-0000-0000-0000-000000000001",
+  "categories": ["技术面试", "前端开发"],
+  "question": "React Hooks的使用场景有哪些？",
+  "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+  "keywords": "React,Hooks,useState,useEffect",
+  "metadata": {
+    "difficulty": "medium",
+    "tags": ["react", "hooks", "frontend"]
+  }
+}
+```
+
+**字段说明**:
+- `scopeType` (string, required): 作用域类型 (company | job)
+- `scopeId` (UUID, required): 作用域ID
+- `categories` (array, optional): 分类标签数组
+- `question` (string, required): 标准问题，最小长度1
+- `answer` (string, required): 标准答案，最小长度1
+- `keywords` (string, optional): BM25关键词，逗号分隔
+- `metadata` (object, optional): 扩展元数据
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": "80000000-0000-0000-0000-000000000001",
+    "scopeType": "job",
+    "scopeId": "30000000-0000-0000-0000-000000000001",
+    "categories": ["技术面试", "前端开发"],
+    "question": "React Hooks的使用场景有哪些？",
+    "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+    "keywords": "React,Hooks,useState,useEffect",
+    "status": "active",
+    "hasEmbedding": false,
+    "variantsCount": 0,
+    "tenantId": "10000000-0000-0000-0000-000000000001",
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T10:30:00Z"
+  }
+}
+```
+
+### ✏️ 更新知识库条目
+
+**PUT** `/knowledge/{knowledge_id}`
+
+更新指定知识库条目信息
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**请求体**:
+```json
+{
+  "categories": ["技术面试", "前端开发", "React"],
+  "question": "React Hooks的使用场景有哪些？",
+  "answer": "React Hooks主要用于函数组件中管理状态和副作用。主要使用场景包括：1. useState用于管理组件状态；2. useEffect用于处理副作用；3. useContext用于跨组件状态共享；4. useReducer用于复杂状态管理...",
+  "keywords": "React,Hooks,useState,useEffect,useContext,useReducer",
+  "status": "active"
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": "80000000-0000-0000-0000-000000000001",
+    "scopeType": "job",
+    "scopeId": "30000000-0000-0000-0000-000000000001",
+    "categories": ["技术面试", "前端开发", "React"],
+    "question": "React Hooks的使用场景有哪些？",
+    "answer": "React Hooks主要用于函数组件中管理状态和副作用。主要使用场景包括：1. useState用于管理组件状态；2. useEffect用于处理副作用；3. useContext用于跨组件状态共享；4. useReducer用于复杂状态管理...",
+    "keywords": "React,Hooks,useState,useEffect,useContext,useReducer",
+    "status": "active",
+    "hasEmbedding": true,
+    "variantsCount": 3,
+    "tenantId": "10000000-0000-0000-0000-000000000001",
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T11:00:00Z"
+  }
+}
+```
+
+### 🗑️ 删除知识库条目
+
+**DELETE** `/knowledge/{knowledge_id}`
+
+删除指定知识库条目（软删除）
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+### 📦 批量创建知识库条目
+
+**POST** `/knowledge/batch`
+
+批量创建知识库条目
+
+**请求体**:
+```json
+{
+  "scopeType": "job",
+  "scopeId": "30000000-0000-0000-0000-000000000001",
+  "items": [
+    {
+      "categories": ["技术面试", "前端开发"],
+      "question": "React Hooks的使用场景有哪些？",
+      "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+      "keywords": "React,Hooks,useState,useEffect"
+    },
+    {
+      "categories": ["技术面试", "前端开发"],
+      "question": "什么是虚拟DOM？",
+      "answer": "虚拟DOM是真实DOM的JavaScript表示...",
+      "keywords": "React,Virtual DOM,DOM"
+    }
+  ]
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "批量创建完成，成功2条，失败0条",
+  "data": {
+    "total": 2,
+    "success": 2,
+    "failed": 0,
+    "items": [
+      {
+        "id": "80000000-0000-0000-0000-000000000001",
+        "scopeType": "job",
+        "scopeId": "30000000-0000-0000-0000-000000000001",
+        "categories": ["技术面试", "前端开发"],
+        "question": "React Hooks的使用场景有哪些？",
+        "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+        "keywords": "React,Hooks,useState,useEffect",
+        "status": "active",
+        "hasEmbedding": false,
+        "variantsCount": 0,
+        "tenantId": "10000000-0000-0000-0000-000000000001",
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      },
+      {
+        "id": "80000000-0000-0000-0000-000000000002",
+        "scopeType": "job",
+        "scopeId": "30000000-0000-0000-0000-000000000001",
+        "categories": ["技术面试", "前端开发"],
+        "question": "什么是虚拟DOM？",
+        "answer": "虚拟DOM是真实DOM的JavaScript表示...",
+        "keywords": "React,Virtual DOM,DOM",
+        "status": "active",
+        "hasEmbedding": false,
+        "variantsCount": 0,
+        "tenantId": "10000000-0000-0000-0000-000000000001",
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      }
+    ],
+    "errors": []
+  }
+}
+```
+
+---
+
+## 问题变体管理
+
+### 📋 获取问题变体列表
+
+**GET** `/knowledge/{knowledge_id}/variants`
+
+获取指定知识库条目的问题变体列表
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "variants": [
+      {
+        "id": "81000000-0000-0000-0000-000000000001",
+        "knowledgeId": "80000000-0000-0000-0000-000000000001",
+        "variantQuestion": "React Hooks有哪些常见的使用场景？",
+        "source": "manual",
+        "confidenceScore": 0.95,
+        "hasEmbedding": true,
+        "status": "active",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      },
+      {
+        "id": "81000000-0000-0000-0000-000000000002",
+        "knowledgeId": "80000000-0000-0000-0000-000000000001",
+        "variantQuestion": "在什么情况下应该使用React Hooks？",
+        "source": "ai_generated",
+        "confidenceScore": 0.88,
+        "hasEmbedding": true,
+        "status": "active",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### ➕ 添加问题变体
+
+**POST** `/knowledge/{knowledge_id}/variants`
+
+手动添加问题变体
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**请求体**:
+```json
+{
+  "variantQuestion": "React Hooks在函数组件中如何使用？"
+}
+```
+
+**字段说明**:
+- `variantQuestion` (string, required): 变体问题，最小长度1
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "添加成功",
+  "data": {
+    "id": "81000000-0000-0000-0000-000000000003",
+    "knowledgeId": "80000000-0000-0000-0000-000000000001",
+    "variantQuestion": "React Hooks在函数组件中如何使用？",
+    "source": "manual",
+    "confidenceScore": null,
+    "hasEmbedding": false,
+    "status": "active",
+    "createdAt": "2025-01-27T11:00:00Z",
+    "updatedAt": "2025-01-27T11:00:00Z"
+  }
+}
+```
+
+### 🤖 AI生成问题变体
+
+**POST** `/knowledge/{knowledge_id}/variants/ai-generate`
+
+AI智能生成问题变体建议
+
+**路径参数**:
+- `knowledge_id` (UUID): 知识库条目ID
+
+**请求体**:
+```json
+{
+  "maxVariants": 5
+}
+```
+
+**字段说明**:
+- `maxVariants` (int, optional): 最大生成数量，默认5，范围1-10
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "生成成功",
+  "data": {
+    "suggestions": [
+      {
+        "variant": "React Hooks有哪些常见的使用场景？",
+        "confidence": 0.95
+      },
+      {
+        "variant": "在什么情况下应该使用React Hooks？",
+        "confidence": 0.88
+      },
+      {
+        "variant": "React Hooks相比类组件有什么优势？",
+        "confidence": 0.82
+      }
+    ]
+  }
+}
+```
+
+### 🗑️ 删除问题变体
+
+**DELETE** `/variants/{variant_id}`
+
+删除指定问题变体（软删除）
+
+**路径参数**:
+- `variant_id` (UUID): 变体ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+## 数据分析
+
+### 🔥 获取热门问题分析
+
+**GET** `/knowledge/analytics/hot-questions`
+
+获取指定作用域内的热门问题分析
+
+**查询参数**:
+- `scopeId` (UUID, required): 作用域ID（职位ID或公司ID）
+- `days` (int, optional): 统计天数，默认30，范围1-365
+- `limit` (int, optional): 返回数量，默认20，范围1-100
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "items": [
+      {
+        "knowledgeId": "80000000-0000-0000-0000-000000000001",
+        "question": "React Hooks的使用场景有哪些？",
+        "answer": "React Hooks主要用于函数组件中管理状态和副作用...",
+        "hitCount": 25,
+        "lastHitAt": "2025-01-27T10:30:00Z"
+      },
+      {
+        "knowledgeId": "80000000-0000-0000-0000-000000000002",
+        "question": "什么是虚拟DOM？",
+        "answer": "虚拟DOM是真实DOM的JavaScript表示...",
+        "hitCount": 18,
+        "lastHitAt": "2025-01-27T09:15:00Z"
+      }
+    ]
+  }
+}
+```
+
+### ❓ 获取未命中问题分析
+
+**GET** `/knowledge/analytics/missed-questions`
+
+获取指定作用域内的未命中问题分析
+
+**查询参数**:
+- `scopeId` (UUID, required): 作用域ID（职位ID或公司ID）
+- `days` (int, optional): 统计天数，默认7，范围1-90
+- `minOccurrences` (int, optional): 最小出现次数，默认3，范围1-100
+- `limit` (int, optional): 返回数量，默认20，范围1-100
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "items": [
+      {
+        "question": "React 18的新特性有哪些？",
+        "count": 5,
+        "suggestedCategories": ["技术面试", "前端开发", "React"]
+      },
+      {
+        "question": "如何优化React应用的性能？",
+        "count": 4,
+        "suggestedCategories": ["技术面试", "前端开发", "性能优化"]
+      }
+    ]
+  }
+}
+```
+
+### 📊 获取知识库覆盖率统计
+
+**GET** `/knowledge/analytics/coverage`
+
+获取指定作用域的知识库覆盖率统计
+
+**查询参数**:
+- `scopeId` (UUID, required): 作用域ID（职位ID或公司ID）
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "totalKnowledge": 50,
+    "withEmbedding": 45,
+    "withVariants": 30,
+    "avgHitScore": 0.85,
+    "embeddingCoverage": 0.9
+  }
+}
+```
+
+---
+
+## 职位问题管理
+
+### 📋 获取职位问题列表
+
+**GET** `/jobs/{job_id}/questions`
+
+获取指定职位的问题列表
+
+**路径参数**:
+- `job_id` (UUID): 职位ID
+
+**查询参数**:
+- `page` (int, optional): 页码，默认1，最小值1
+- `pageSize` (int, optional): 每页数量，默认10，范围1-100
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "total": 15,
+    "page": 1,
+    "pageSize": 10,
+    "list": [
+      {
+        "id": "90000000-0000-0000-0000-000000000001",
+        "jobId": "30000000-0000-0000-0000-000000000001",
+        "question": "请介绍一下你最近参与的一个项目",
+        "questionType": "information",
+        "isRequired": true,
+        "evaluationCriteria": null,
+        "sortOrder": 1,
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "status": "active",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      },
+      {
+        "id": "90000000-0000-0000-0000-000000000002",
+        "jobId": "30000000-0000-0000-0000-000000000001",
+        "question": "你在项目中遇到的最大挑战是什么？如何解决的？",
+        "questionType": "assessment",
+        "isRequired": true,
+        "evaluationCriteria": "考察候选人解决问题的能力和思维方式",
+        "sortOrder": 2,
+        "userId": "10000000-0000-0000-0000-000000000004",
+        "status": "active",
+        "createdAt": "2025-01-27T10:30:00Z",
+        "updatedAt": "2025-01-27T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### 📖 获取职位问题详情
+
+**GET** `/questions/{question_id}`
+
+获取指定职位问题的详细信息
+
+**路径参数**:
+- `question_id` (UUID): 问题ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": {
+    "id": "90000000-0000-0000-0000-000000000001",
+    "jobId": "30000000-0000-0000-0000-000000000001",
+    "question": "请介绍一下你最近参与的一个项目",
+    "questionType": "information",
+    "isRequired": true,
+    "evaluationCriteria": null,
+    "sortOrder": 1,
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "status": "active",
+    "createdAt": "2025-01-27T10:30:00Z",
+    "updatedAt": "2025-01-27T10:30:00Z"
+  }
+}
+```
+
+### ➕ 创建职位问题
+
+**POST** `/jobs/{job_id}/questions`
+
+为指定职位创建新问题
+
+**路径参数**:
+- `job_id` (UUID): 职位ID
+
+**请求体**:
+```json
+{
+  "question": "请描述一下你在React项目中的性能优化经验",
+  "questionType": "assessment",
+  "isRequired": true,
+  "evaluationCriteria": "考察候选人React性能优化的实际经验和能力",
+  "sortOrder": 3
+}
+```
+
+**字段说明**:
+- `question` (string, required): 问题内容，最小长度1
+- `questionType` (string, required): 问题类型 (information-信息采集, assessment-考察评估)
+- `isRequired` (boolean, optional): 是否必须满足该要求，默认false
+- `evaluationCriteria` (string, optional): 判断标准（考察类问题使用）
+- `sortOrder` (int, optional): 显示排序，越小越靠前，默认0
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": "90000000-0000-0000-0000-000000000003",
+    "jobId": "30000000-0000-0000-0000-000000000001",
+    "question": "请描述一下你在React项目中的性能优化经验",
+    "questionType": "assessment",
+    "isRequired": true,
+    "evaluationCriteria": "考察候选人React性能优化的实际经验和能力",
+    "sortOrder": 3,
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "status": "active",
+    "createdAt": "2025-01-27T11:00:00Z",
+    "updatedAt": "2025-01-27T11:00:00Z"
+  }
+}
+```
+
+### ✏️ 更新职位问题
+
+**PUT** `/questions/{question_id}`
+
+更新指定职位问题信息
+
+**路径参数**:
+- `question_id` (UUID): 问题ID
+
+**请求体**:
+```json
+{
+  "question": "请描述一下你在React项目中的性能优化经验，并举例说明",
+  "questionType": "assessment",
+  "isRequired": true,
+  "evaluationCriteria": "考察候选人React性能优化的实际经验和能力，以及具体案例",
+  "sortOrder": 3
+}
+```
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": "90000000-0000-0000-0000-000000000003",
+    "jobId": "30000000-0000-0000-0000-000000000001",
+    "question": "请描述一下你在React项目中的性能优化经验，并举例说明",
+    "questionType": "assessment",
+    "isRequired": true,
+    "evaluationCriteria": "考察候选人React性能优化的实际经验和能力，以及具体案例",
+    "sortOrder": 3,
+    "userId": "10000000-0000-0000-0000-000000000004",
+    "status": "active",
+    "createdAt": "2025-01-27T11:00:00Z",
+    "updatedAt": "2025-01-27T11:30:00Z"
+  }
+}
+```
+
+### 🗑️ 删除职位问题
+
+**DELETE** `/questions/{question_id}`
+
+删除指定职位问题
+
+**路径参数**:
+- `question_id` (UUID): 问题ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+### 🔄 重新排序职位问题
+
+**POST** `/jobs/{job_id}/questions/reorder`
+
+重新排序指定职位的问题列表
+
+**路径参数**:
+- `job_id` (UUID): 职位ID
+
+**请求体**:
+```json
+{
+  "questions": [
+    {
+      "questionId": "90000000-0000-0000-0000-000000000002",
+      "sortOrder": 1
+    },
+    {
+      "questionId": "90000000-0000-0000-0000-000000000001",
+      "sortOrder": 2
+    },
+    {
+      "questionId": "90000000-0000-0000-0000-000000000003",
+      "sortOrder": 3
+    }
+  ]
+}
+```
+
+**字段说明**:
+- `questions` (array, required): 问题排序列表
+  - `questionId` (UUID, required): 问题ID
+  - `sortOrder` (int, required): 显示排序，越小越靠前
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "排序成功",
+  "data": null
+}
+```
 
 ---
 
