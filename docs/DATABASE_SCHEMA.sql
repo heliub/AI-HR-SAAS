@@ -618,12 +618,12 @@ COMMENT ON COLUMN chat_messages.updated_at IS '更新时间';
 -- 候选人AI聊天历史表（增强：支持多种消息类型）
 CREATE TABLE candidate_chat_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID,
     tenant_id UUID NOT NULL,
     resume_id UUID NOT NULL,
     sender VARCHAR(20) ,
     message TEXT,
     message_type VARCHAR(50) DEFAULT 'text',
-    metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -635,7 +635,7 @@ COMMENT ON COLUMN candidate_chat_history.resume_id IS '简历ID';
 COMMENT ON COLUMN candidate_chat_history.sender IS '发送者: ai-AI助手, candidate-候选人';
 COMMENT ON COLUMN candidate_chat_history.message IS '消息内容';
 COMMENT ON COLUMN candidate_chat_history.message_type IS '消息类型: text-普通文本, greeting-问候, question-提问, answer-回答, document_request-文档请求, schedule-日程安排';
-COMMENT ON COLUMN candidate_chat_history.metadata IS '消息元数据（JSONB格式），如：{"document_type":"resume","status":"sent","scheduled_time":"2025-01-15 14:00"}';
+COMMENT ON COLUMN candidate_chat_history.conversation_id IS '会话ID（关联candidate_conversations表）';
 COMMENT ON COLUMN candidate_chat_history.created_at IS '消息发送时间';
 COMMENT ON COLUMN candidate_chat_history.updated_at IS '更新时间';
 -- ==============================================

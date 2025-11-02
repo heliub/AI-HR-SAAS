@@ -1,7 +1,7 @@
 """
 Candidate Chat History model
 """
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, String, Text, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
@@ -13,6 +13,7 @@ class CandidateChatHistory(Base):
     __tablename__ = "candidate_chat_history"
     
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    conversation_id = Column(UUID(as_uuid=True), index=True, comment="会话ID（关联candidate_conversations表）")
     resume_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="简历ID")
     sender = Column(String(20), nullable=False, comment="发送者: ai-AI助手, candidate-候选人")
     message = Column(Text, nullable=False, comment="消息内容")
@@ -22,5 +23,4 @@ class CandidateChatHistory(Base):
     
     
     def __repr__(self) -> str:
-        return f"<CandidateChatHistory(id={self.id}, sender={self.sender})>"
-
+        return f"<CandidateChatHistory(id={self.id}, conversation_id={self.conversation_id}, sender={self.sender})>"
