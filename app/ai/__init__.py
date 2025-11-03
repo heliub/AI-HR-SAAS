@@ -18,6 +18,7 @@ from .llm import (  # noqa: F401
     LLMAuthenticationError,
     LLMValidationError,
 )
+from .llm_caller import LLMCaller, get_llm_caller  # noqa: F401
 
 __all__ = [
     "get_llm",
@@ -33,4 +34,6 @@ __all__ = [
     "LLMRateLimitError",
     "LLMAuthenticationError",
     "LLMValidationError",
+    "LLMCaller",
+    "get_llm_caller",
 ]

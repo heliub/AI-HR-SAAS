@@ -13,7 +13,7 @@ from opentelemetry import trace
 
 from app.ai.llm.errors import LLMError
 from app.conversation_flow.models import NodeResult, ConversationContext
-from app.conversation_flow.utils import get_llm_caller, LLMCaller
+from app.ai import get_llm_caller, LLMCaller
 
 logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)

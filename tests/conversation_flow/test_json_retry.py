@@ -61,7 +61,7 @@ class TestJSONParseRetry:
     @pytest.mark.asyncio
     async def test_json_parse_error_is_wrapped_as_llm_error(self, sample_context):
         """验证JSONDecodeError被包装成LLMError"""
-        from app.conversation_flow.utils.llm_caller import LLMCaller
+        from app.ai import LLMCaller
 
         llm_caller = LLMCaller()
 
@@ -119,7 +119,7 @@ class TestJSONParseRetry:
         }
 
         # 直接测试LLMCaller的解析
-        from app.conversation_flow.utils.llm_caller import LLMCaller
+        from app.ai import LLMCaller
         llm_caller = LLMCaller()
         result = llm_caller._parse_json_response(
             '```json\n{"transfer": "no"}\n```',
@@ -131,7 +131,7 @@ class TestJSONParseRetry:
     @pytest.mark.asyncio
     async def test_json_with_simple_code_block(self, sample_context):
         """LLM返回带```的响应（不带json标记），也应该能解析"""
-        from app.conversation_flow.utils.llm_caller import LLMCaller
+        from app.ai import LLMCaller
         llm_caller = LLMCaller()
 
         result = llm_caller._parse_json_response(
