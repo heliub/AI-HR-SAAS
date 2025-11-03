@@ -12,6 +12,7 @@
 - [面试管理](#面试管理)
 - [知识库管理](#知识库管理)
 - [职位问题管理](#职位问题管理)
+- [人岗匹配](#人岗匹配)
 - [统计数据](#统计数据)
 - [错误处理](#错误处理)
 
@@ -645,6 +646,7 @@ AI智能生成职位描述和要求，根据多个参数智能生成完整的职
         "email": "zhangwei@example.com",
         "phone": "13800138000",
         "position": "高级前端工程师",
+        "jobId": "20000000-0000-0000-0000-000000000001",
         "status": "pending",
         "source": "智联招聘",
         "experienceYears": "6年",
@@ -1576,7 +1578,7 @@ query = (
 
 ### 📚 获取知识库列表
 
-**GET** `/knowledge`
+**GET** `/job-knowledge/knowledge`
 
 获取知识库列表，管理员可查看所有知识库，HR只能查看自己创建的知识库
 
@@ -1621,7 +1623,7 @@ query = (
 
 ### 📖 获取知识库详情
 
-**GET** `/knowledge/{knowledge_id}`
+**GET** `/job-knowledge/knowledge/{knowledge_id}`
 
 获取指定知识库条目的详细信息
 
@@ -1654,7 +1656,7 @@ query = (
 
 ### ➕ 创建知识库条目
 
-**POST** `/knowledge`
+**POST** `/job-knowledge/knowledge`
 
 创建新的知识库条目
 
@@ -1709,7 +1711,7 @@ query = (
 
 ### ✏️ 更新知识库条目
 
-**PUT** `/knowledge/{knowledge_id}`
+**PUT** `/job-knowledge/knowledge/{knowledge_id}`
 
 更新指定知识库条目信息
 
@@ -1753,7 +1755,7 @@ query = (
 
 ### 🗑️ 删除知识库条目
 
-**DELETE** `/knowledge/{knowledge_id}`
+**DELETE** `/job-knowledge/knowledge/{knowledge_id}`
 
 删除指定知识库条目（软删除）
 
@@ -1771,7 +1773,7 @@ query = (
 
 ### 📦 批量创建知识库条目
 
-**POST** `/knowledge/batch`
+**POST** `/job-knowledge/knowledge/batch`
 
 批量创建知识库条目
 
@@ -1851,7 +1853,7 @@ query = (
 
 ### 📋 获取问题变体列表
 
-**GET** `/knowledge/{knowledge_id}/variants`
+**GET** `/job-knowledge/knowledge/{knowledge_id}/variants`
 
 获取指定知识库条目的问题变体列表
 
@@ -1894,7 +1896,7 @@ query = (
 
 ### ➕ 添加问题变体
 
-**POST** `/knowledge/{knowledge_id}/variants`
+**POST** `/job-knowledge/knowledge/{knowledge_id}/variants`
 
 手动添加问题变体
 
@@ -1932,7 +1934,7 @@ query = (
 
 ### 🤖 AI生成问题变体
 
-**POST** `/knowledge/{knowledge_id}/variants/ai-generate`
+**POST** `/job-knowledge/knowledge/{knowledge_id}/variants/ai-generate`
 
 AI智能生成问题变体建议
 
@@ -1975,7 +1977,7 @@ AI智能生成问题变体建议
 
 ### 🗑️ 删除问题变体
 
-**DELETE** `/variants/{variant_id}`
+**DELETE** `/job-knowledge/variants/{variant_id}`
 
 删除指定问题变体（软删除）
 
@@ -1997,7 +1999,7 @@ AI智能生成问题变体建议
 
 ### 🔥 获取热门问题分析
 
-**GET** `/knowledge/analytics/hot-questions`
+**GET** `/job-knowledge/knowledge/analytics/hot-questions`
 
 获取指定作用域内的热门问题分析
 
@@ -2034,7 +2036,7 @@ AI智能生成问题变体建议
 
 ### ❓ 获取未命中问题分析
 
-**GET** `/knowledge/analytics/missed-questions`
+**GET** `/job-knowledge/knowledge/analytics/missed-questions`
 
 获取指定作用域内的未命中问题分析
 
@@ -2068,7 +2070,7 @@ AI智能生成问题变体建议
 
 ### 📊 获取知识库覆盖率统计
 
-**GET** `/knowledge/analytics/coverage`
+**GET** `/job-knowledge/knowledge/analytics/coverage`
 
 获取指定作用域的知识库覆盖率统计
 
@@ -2096,7 +2098,7 @@ AI智能生成问题变体建议
 
 ### 📋 获取职位问题列表
 
-**GET** `/jobs/{job_id}/questions`
+**GET** `/job-questions/{job_id}/questions`
 
 获取指定职位的问题列表
 
@@ -2150,7 +2152,7 @@ AI智能生成问题变体建议
 
 ### 📖 获取职位问题详情
 
-**GET** `/questions/{question_id}`
+**GET** `/job-questions/questions/{question_id}`
 
 获取指定职位问题的详细信息
 
@@ -2180,7 +2182,7 @@ AI智能生成问题变体建议
 
 ### ➕ 创建职位问题
 
-**POST** `/jobs/{job_id}/questions`
+**POST** `/job-questions/{job_id}/questions`
 
 为指定职位创建新问题
 
@@ -2228,7 +2230,7 @@ AI智能生成问题变体建议
 
 ### ✏️ 更新职位问题
 
-**PUT** `/questions/{question_id}`
+**PUT** `/job-questions/questions/{question_id}`
 
 更新指定职位问题信息
 
@@ -2269,7 +2271,7 @@ AI智能生成问题变体建议
 
 ### 🗑️ 删除职位问题
 
-**DELETE** `/questions/{question_id}`
+**DELETE** `/job-questions/questions/{question_id}`
 
 删除指定职位问题
 
@@ -2287,7 +2289,7 @@ AI智能生成问题变体建议
 
 ### 🔄 重新排序职位问题
 
-**POST** `/jobs/{job_id}/questions/reorder`
+**POST** `/job-questions/{job_id}/questions/reorder`
 
 重新排序指定职位的问题列表
 
@@ -2324,6 +2326,61 @@ AI智能生成问题变体建议
 {
   "code": 200,
   "message": "排序成功",
+  "data": null
+}
+```
+
+---
+
+## 人岗匹配
+
+### 🎯 执行人岗匹配
+
+**POST** `/job-candidate-match/match`
+
+执行人岗匹配分析，评估候选人与职位的匹配度
+
+**请求体**:
+```json
+{
+  "jobId": "30000000-0000-0000-0000-000000000001",
+  "resumeId": "40000000-0000-0000-0000-000000000001"
+}
+```
+
+**字段说明**:
+- `jobId` (UUID, required): 职位ID
+- `resumeId` (UUID, required): 简历ID
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "匹配成功",
+  "data": {
+    "matchId": "90000000-0000-0000-0000-000000000001",
+    "isMatch": true,
+    "matchScore": 85,
+    "reason": "候选人具备丰富的前端开发经验，技术栈与职位要求高度匹配，有大厂背景，项目经验丰富。薪资期望略高于预算，但整体匹配度高。",
+    "jobId": "30000000-0000-0000-0000-000000000001",
+    "resumeId": "40000000-0000-0000-0000-000000000001"
+  }
+}
+```
+
+**字段说明**:
+- `matchId` (UUID): 匹配结果ID
+- `isMatch` (boolean): 是否匹配
+- `matchScore` (int): 匹配分数（0-100）
+- `reason` (string): 匹配原因说明
+- `jobId` (UUID): 职位ID
+- `resumeId` (UUID): 简历ID
+
+**错误响应**:
+```json
+{
+  "code": 500,
+  "message": "匹配失败，请稍后重试",
   "data": null
 }
 ```

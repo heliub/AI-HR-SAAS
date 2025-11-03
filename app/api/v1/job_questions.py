@@ -21,7 +21,7 @@ from app.models.job_question import JobQuestion as JobQuestionModel
 router = APIRouter()
 
 
-@router.get("/jobs/{job_id}/questions", response_model=APIResponse)
+@router.get("/{job_id}/questions", response_model=APIResponse)
 async def get_job_questions(
     job_id: UUID,
     page: int = Query(1, ge=1),
@@ -112,7 +112,7 @@ async def get_job_question(
     )
 
 
-@router.post("/jobs/{job_id}/questions", response_model=APIResponse)
+@router.post("/{job_id}/questions", response_model=APIResponse)
 async def create_job_question(
     job_id: UUID,
     question_data: JobQuestionCreate,
@@ -211,7 +211,7 @@ async def delete_job_question(
     )
 
 
-@router.post("/jobs/{job_id}/questions/reorder", response_model=APIResponse)
+@router.post("/{job_id}/questions/reorder", response_model=APIResponse)
 async def reorder_job_questions(
     job_id: UUID,
     reorder_data: JobQuestionReorderRequest,

@@ -107,6 +107,7 @@ class ResumeBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     position: str
+    jobId: Optional[UUID] = Field(alias="job_id")
     source: Optional[str] = None
     experienceYears: Optional[str] = Field(alias="experience_years")
     educationLevel: Optional[str] = Field(alias="education_level")
