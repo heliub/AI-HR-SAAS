@@ -11,34 +11,11 @@ import structlog
 from app.ai.llm.factory import get_llm
 from app.ai.llm.types import LLMRequest, Message
 from app.ai.llm.errors import LLMError
-from .prompt_loader import get_prompt_loader
-from .variable_substitution import substitute_variables
+from app.ai.prompts.prompt_loader import get_prompt_loader
+from app.ai.prompts.variable_substitution import substitute_variables
+from app.ai.prompts.prompt_config import PROMPT_CONFIG
 
 logger = structlog.get_logger(__name__)
-
-
-def _load_prompt_config() -> Dict[str, Any]:
-    """加载prompt配置文件"""
-    config_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        "ai/prompts/prompt_config.py"
-    )
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        content = f.read()
-        # 使用exec执行Python字典定义
-        config_dict = {}
-        exec(content, config_dict)
-        # 返回字典（排除内置变量）
-        return {k: v for k, v in config_dict.items() if not k.startswith("__")}
-
-
-# 全局加载配置
-try:
-    PROMPT_CONFIG = _load_prompt_config()
-except Exception as e:
-    logger.warning("failed_to_load_prompt_config", error=str(e))
-    PROMPT_CONFIG = {}
 
 
 class LLMCaller:
@@ -115,28 +92,19 @@ class LLMCaller:
         final_max_tokens = max_tokens or scene_config.get("max_tokens") or self.default_max_tokens
         final_top_p = top_p if top_p is not None else scene_config.get("top_p")
         final_system = system_prompt or scene_config.get("system")
-
-        # 3. 加载Prompt模板
-        prompt_file = scene_config.get("prompt", f"{scene_name}.md")
+        
         try:
-            # 移除.md后缀（如果有）
-            template_name = prompt_file.replace(".md", "")
-            prompt_template = self.prompt_loader.load_template(template_name)
+            prompt = self.prompt_loader.load_prompt(
+                scene_name=scene_name,
+                template_vars=template_vars
+            )
         except FileNotFoundError as e:
             logger.error(
                 "prompt_template_not_found",
                 scene_name=scene_name,
-                prompt_file=prompt_file,
                 error=str(e)
             )
             raise
-
-        # 4. 替换模板变量
-        prompt = substitute_variables(
-            template=prompt_template,
-            values=template_vars,
-            missing_key_behavior="empty"  # 缺失变量替换为空字符串
-        )
 
         # 5. 调用LLM
         return await self.call_with_prompt(

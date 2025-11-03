@@ -1,4 +1,4 @@
-{
+PROMPT_CONFIG = {
     "matching": {
         "provider": "volcengine",
         "model": "volcengine/qwen-plus",
@@ -7,6 +7,7 @@
         "prompt": "matching.md"
     },
     "transfer_human_intent": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "doubao-1.5-pro-32k-250115",
         "temperature": 0.1,
@@ -17,6 +18,7 @@
         "alias_name": "TransferHumanIntent"
     },
     "candidate_emotion": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "deepseek-r1",
         "temperature": 0.01,
@@ -26,6 +28,7 @@
         "alias_name": "emotionToC_NEW"
     },
     "candidate_communication_willingness": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "ernie-4.5-turbo-32k",
         "temperature": 0.01,
@@ -36,6 +39,7 @@
         "alias_name": "bigCustomerUserReplyChatAgain_NEW"
     },
     "candidate_first_communication_willingness": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "ernie-4.5-turbo-32k",
         "temperature": 0.01,
@@ -46,6 +50,7 @@
         "alias_name": "agreeInterviewApplyEvaluation_NEW"
     },
     "candidate_ask_question": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "glm-4-0520",
         "temperature": 0.08,
@@ -55,6 +60,7 @@
         "alias_name": "semanticSelectOnHelpChatWithKnowledgePure_NEW"
     },
     "answer_based_on_knowledge": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "deepseek-r1",
         "temperature": 0.01,
@@ -65,6 +71,7 @@
         "alias_name": "KnowledgeBaseJDandQA_NEW"
     },
     "answer_without_knowledge": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "deepseek-r1",
         "temperature": 0.01,
@@ -75,6 +82,7 @@
         "alias_name": "PersonalizedQAfallbackV2"
     },
     "casual_conversation": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "qwen-max",
         "temperature": 0.1,
@@ -85,6 +93,7 @@
         "alias_name": "casualConversation"
     },
     "high_eq_response": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "qwen-max",
         "temperature": 0.01,
@@ -94,6 +103,7 @@
         "alias_name": "changeToGoodWord_NEW"
     },
     "resume_conversation": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "qwen-plus",
         "temperature": 0.01,
@@ -104,6 +114,7 @@
         "alias_name": "aiChatAgain"
     },
     "relevance_reply_and_question": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "glm-4-0520",
         "temperature": 0.1,
@@ -114,6 +125,7 @@
         "alias_name": "identifyIntention_NEW"
     },
     "reply_match_question_requirement": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "glm-4-0520",
         "temperature": 0.01,
@@ -123,6 +135,7 @@
         "alias_name": "matchCondition_NEW"
     },
     "candidate_communication_willingness_for_question": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "ernie-4.5-turbo-32k",
         "temperature": 0.1,
@@ -132,6 +145,7 @@
         "alias_name": "interviewApplyQuestionSemanticAnalysis_NEW"
     },
     "answer_based_on_knowledge_without_job_description": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "glm-4-0520",
         "temperature": 0.08,
@@ -142,6 +156,7 @@
         "alias_name": "KnowledgeBaseRAG_NEW"
     },
     "continue_conversation_with_candidate": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "glm-4-0520",
         "temperature": 0.01,
@@ -151,6 +166,7 @@
         "alias_name": "comprehensive_intentional_judgment_general"
     },
     "candidate_position_willingness": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "ernie-4.5-turbo-32k",
         "temperature": 0.01,
@@ -159,6 +175,7 @@
         "alias_name": "agreeInterviewApplySemanticAnalysis_NEW"
     },
     "generate_question_variants": {
+        "module": "conversation_flow",
         "provider": "volcengine",
         "model": "doubao-1.5-pro-32k-250115",
         "temperature": 0.1,
@@ -166,6 +183,27 @@
         "max_tokens": 2000,
         "system": "你是一个专业的HR助手，负责为知识库问题生成相似的问法变体。",
         "prompt": "generate_question_variants.md"
+    },
+    "job_candidate_match.job_candidate_match_for_sales": {
+        "module": "job_candidate_match",
+        "provider": "volcengine",
+        "model": "deepseek-v3",
+        "temperature": 0.01,
+        "top_p": 0.01,
+        "max_tokens": None,
+        "prompt": "job_candidate_match_for_sales.md",
+        "alias_name": "doSalesResumeBlackScore"
+    },
+    "job_candidate_match.job_candidate_match_for_strong_skills": {
+        "module": "job_candidate_match",
+        "provider": "volcengine",
+        "model": "doubao-1.5-pro-32k-250115",
+        "temperature": 0.01,
+        "top_p": 0.01,
+        "max_tokens": None,
+        "system": "你是一个 AI 助手，你能根据我的要求给我准确的回复，并且会简明扼要的回答。",
+        "prompt": "job_candidate_match_for_strong_skills.md",
+        "alias_name": "doItDouBaoResumeBlackScore"
     }
 }
 

@@ -5,8 +5,8 @@
 ### 1. 基础架构（100%）
 - ✅ 数据模型（models.py）
 - ✅ 节点执行器基类（nodes/base.py）
-- ✅ Prompt加载器（utils/prompt_loader.py）
-- ✅ 变量替换工具（utils/variable_substitution.py）
+- ✅ Prompt加载器（app/ai/prompts/prompt_loader.py）
+- ✅ 变量替换工具（app/ai/prompts/variable_substitution.py）
 - ✅ LLM调用封装（utils/llm_caller.py）- **支持prompt_config.py自动配置**
 
 ### 2. 已实现节点（10/14 = 71%）

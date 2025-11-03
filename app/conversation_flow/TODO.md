@@ -15,8 +15,8 @@
 ### 基础架构
 - [x] 数据模型（models.py）
 - [x] 节点执行器基类（nodes/base.py）
-- [x] Prompt加载器（utils/prompt_loader.py）
-- [x] 变量替换工具（utils/variable_substitution.py）
+- [x] Prompt加载器（app/ai/prompts/prompt_loader.py）
+- [x] 变量替换工具（app/ai/prompts/variable_substitution.py）
 - [x] LLM调用封装（utils/llm_caller.py）
 
 ### 已实现节点（14/14）✅

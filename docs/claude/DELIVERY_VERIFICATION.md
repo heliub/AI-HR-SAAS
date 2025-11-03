@@ -14,8 +14,8 @@
 |------|---------|---------|------|
 | 数据模型 | `app/conversation_flow/models.py` | ✅ Pass | ✅ 完成 |
 | 节点基类 | `app/conversation_flow/nodes/base.py` | ✅ Pass | ✅ 完成 |
-| Prompt加载器 | `app/conversation_flow/utils/prompt_loader.py` | ✅ Pass | ✅ 完成 |
-| 变量替换 | `app/conversation_flow/utils/variable_substitution.py` | ✅ Pass | ✅ 完成 |
+| Prompt加载器 | `app/ai/prompts/prompt_loader.py` | ✅ Pass | ✅ 完成 |
+| 变量替换 | `app/ai/prompts/variable_substitution.py` | ✅ Pass | ✅ 完成 |
 | LLM调用器 | `app/conversation_flow/utils/llm_caller.py` | ✅ Pass | ✅ 完成 |
 
 **关键特性**:

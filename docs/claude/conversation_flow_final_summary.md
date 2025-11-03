@@ -16,8 +16,8 @@
 |------|---------|------|
 | 数据模型 | `app/conversation_flow/models.py` | NodeResult、FlowResult、ConversationContext等 |
 | 节点基类 | `app/conversation_flow/nodes/base.py` | NodeExecutor、SimpleLLMNode |
-| Prompt加载器 | `app/conversation_flow/utils/prompt_loader.py` | 模板文件加载和缓存 |
-| 变量替换 | `app/conversation_flow/utils/variable_substitution.py` | 类似Java的StringSubstitutor |
+| Prompt加载器 | `app/ai/prompts/prompt_loader.py` | 模板文件加载和缓存 |
+| 变量替换 | `app/ai/prompts/variable_substitution.py` | 类似Java的StringSubstitutor |
 | LLM调用器 | `app/conversation_flow/utils/llm_caller.py` | **支持prompt_config.py自动配置** |
 
 ### 2. 节点实现（14个节点）✅
