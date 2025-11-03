@@ -1,7 +1,7 @@
 """
 AI Match Result model
 """
-from sqlalchemy import Column, Integer, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, Text, Boolean, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -22,9 +22,10 @@ class AIMatchResult(Base):
     strengths = Column(Text, comment="优势列表（多个优势用分隔符分开，如逗号）")
     weaknesses = Column(Text, comment="劣势列表（多个劣势用分隔符分开，如逗号）")
     recommendation = Column(Text, comment="AI推荐意见")
+    status = Column(String(20), default="valid", comment="状态: valid-有效, invalid-失效, deleted-已删除")
     analyzed_at = Column(DateTime(timezone=True), comment="AI分析时间")
     
     
     def __repr__(self) -> str:
-        return f"<AIMatchResult(id={self.id}, match_score={self.match_score}, is_match={self.is_match})>"
+        return f"<AIMatchResult(id={self.id}, match_score={self.match_score}, is_match={self.is_match}, status={self.status})>"
 

@@ -81,6 +81,7 @@ class AIMatchBase(BaseModel):
     strengths: Optional[str] = None
     weaknesses: Optional[str] = None
     recommendation: Optional[str] = None
+    status: Optional[str] = None
 
     model_config = {
         "from_attributes": True,

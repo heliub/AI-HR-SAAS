@@ -391,6 +391,9 @@ class JobCandidateMatchService(BaseService):
         Returns:
             保存的匹配结果对象
         """
+        # 在保存新匹配结果前，先将当前有效的匹配结果置为失效状态
+        await self._invalidate_previous_match_results(job_id, resume_id, tenant_id)
+        
         # 根据不同策略解析结果
         if "job_candidate_match_for_sales" in strategy:
             # 销售类匹配结果格式: {"分析过程": "", "判断结果": "[是/否]"}
@@ -415,11 +418,41 @@ class JobCandidateMatchService(BaseService):
             "strengths": "",  # 当前prompt未返回此字段
             "weaknesses": "",  # 当前prompt未返回此字段
             "recommendation": reason,  # 当前prompt未返回此字段
+            "status": "valid",  # 新创建的匹配结果默认为有效状态
             "analyzed_at": datetime.utcnow()
         }
         print(match_data)
 
         return await self.create(AIMatchResult, match_data)
+    
+    async def _invalidate_previous_match_results(
+        self,
+        job_id: UUID,
+        resume_id: UUID,
+        tenant_id: UUID
+    ) -> None:
+        """
+        将当前有效的匹配结果置为失效状态
+
+        Args:
+            job_id: 职位ID
+            resume_id: 简历ID
+            tenant_id: 租户ID
+        """
+        from sqlalchemy import update
+        
+        # 使用批量更新操作，将所有有效的匹配结果置为失效状态
+        stmt = update(AIMatchResult).where(
+            and_(
+                AIMatchResult.job_id == job_id,
+                AIMatchResult.resume_id == resume_id,
+                AIMatchResult.tenant_id == tenant_id,
+                AIMatchResult.status == "valid"
+            )
+        ).values(status="invalid")
+        
+        await self.db.execute(stmt)
+        # 不需要显式提交，因为 BaseService 的 create 方法会处理事务
 
     async def _update_resume_match_info(
         self,

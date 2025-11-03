@@ -450,6 +450,7 @@ CREATE TABLE ai_match_results (
     strengths TEXT,
     weaknesses TEXT,
     recommendation TEXT,
+    status VARCHAR(20) DEFAULT 'valid',
     analyzed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -467,6 +468,7 @@ COMMENT ON COLUMN ai_match_results.reason IS 'AI分析原因';
 COMMENT ON COLUMN ai_match_results.strengths IS '优势列表（多个优势用分隔符分开，如逗号）';
 COMMENT ON COLUMN ai_match_results.weaknesses IS '劣势列表（多个劣势用分隔符分开，如逗号）';
 COMMENT ON COLUMN ai_match_results.recommendation IS 'AI推荐意见';
+COMMENT ON COLUMN ai_match_results.status IS '状态: valid-有效, invalid-失效, deleted-已删除';
 COMMENT ON COLUMN ai_match_results.analyzed_at IS 'AI分析时间';
 COMMENT ON COLUMN ai_match_results.created_at IS '创建时间';
 COMMENT ON COLUMN ai_match_results.updated_at IS '更新时间';
@@ -990,6 +992,7 @@ CREATE INDEX idx_job_preferences_resume_id ON job_preferences(resume_id);
 -- AI匹配结果索引
 CREATE INDEX idx_ai_match_results_tenant_resume ON ai_match_results(tenant_id, resume_id);
 CREATE INDEX idx_ai_match_results_tenant_job ON ai_match_results(tenant_id, job_id);
+CREATE INDEX idx_ai_match_results_status ON ai_match_results(status);
 
 -- 招聘任务表索引
 CREATE INDEX idx_recruitment_tasks_tenant_status ON recruitment_tasks(tenant_id, status);

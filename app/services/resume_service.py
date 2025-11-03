@@ -47,7 +47,6 @@ class ResumeService(BaseService):
 
         # 并行查询所有关联数据，而不是顺序查询
         from asyncio import gather
-
         # 构建所有查询任务
         tasks = [
             self._get_work_experiences(resume_id, tenant_id),
@@ -72,7 +71,6 @@ class ResumeService(BaseService):
         email_logs = results[5] if not isinstance(results[5], Exception) else []
         ai_match_results = results[6] if not isinstance(results[6], Exception) else []
         chat_histories = results[7] if not isinstance(results[7], Exception) else []
-
         return {
             "resume": resume,
             "work_experiences": work_experiences,
@@ -504,7 +502,8 @@ class ResumeService(BaseService):
         query = select(AIMatchResult).where(
             and_(
                 AIMatchResult.resume_id == resume_id,
-                AIMatchResult.tenant_id == tenant_id
+                AIMatchResult.tenant_id == tenant_id,
+                AIMatchResult.status == 'valid'  # 只查询有效的AI评价
             )
         ).order_by(AIMatchResult.created_at.desc())
         result = await self.db.execute(query)
