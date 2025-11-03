@@ -31,13 +31,27 @@ class AskQuestionNode(SimpleLLMNode):
         """解析LLM响应"""
         # 获取判断结果
         is_question_str = llm_response.get("is_question", "no").upper()
+        question_type = llm_response.get("question_type", "")
+        
+        # 如果没有is_question字段，尝试从content中解析
+        if "is_question" not in llm_response and "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取是否是问题
+            if content.upper().startswith("YES"):
+                is_question_str = "YES"
+            elif content.upper().startswith("NO"):
+                is_question_str = "NO"
+            else:
+                # 默认为不是问题，以避免误判
+                is_question_str = "NO"
+            question_type = ""
 
         return NodeResult(
             node_name=self.node_name,
             action=NodeAction.CONTINUE,
             data={
                 "is_question": is_question_str == "YES",
-                "question_type": llm_response.get("question_type", "")
+                "question_type": question_type
             }
         )
 

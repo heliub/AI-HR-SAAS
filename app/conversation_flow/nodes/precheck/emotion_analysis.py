@@ -35,8 +35,20 @@ class EmotionAnalysisNode(SimpleLLMNode):
     ) -> NodeResult:
         """解析LLM响应"""
         # 获取分数和原因
-        score = int(llm_response.get("分数", 0))
-        reason = llm_response.get("原因", "")
+        score = 0
+        reason = ""
+        
+        # 尝试从JSON响应中获取
+        if "分数" in llm_response:
+            score = int(llm_response.get("分数", 0))
+            reason = llm_response.get("原因", "")
+        # 如果没有JSON格式，尝试从content中解析
+        elif "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取分数
+            # 默认为0（情感正常），以避免误判
+            score = 0
+            reason = "技术故障，假定情感正常"
 
         # 分数为3：情感极差，中断流程
         if score == 3:

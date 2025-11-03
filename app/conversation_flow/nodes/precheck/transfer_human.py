@@ -31,6 +31,18 @@ class TransferHumanIntentNode(SimpleLLMNode):
     ) -> NodeResult:
         """解析LLM响应"""
         transfer = llm_response.get("transfer", "no").lower()
+        
+        # 如果没有transfer字段，尝试从content中解析
+        if "transfer" not in llm_response and "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取转人工意图
+            if content.upper().startswith("YES"):
+                transfer = "yes"
+            elif content.upper().startswith("NO"):
+                transfer = "no"
+            else:
+                # 默认为不转人工，以避免误判
+                transfer = "no"
 
         if transfer == "yes":
             return NodeResult(

@@ -32,6 +32,18 @@ class ContinueConversationNode(SimpleLLMNode):
         """解析LLM响应"""
         # 获取判断结果
         willing_str = llm_response.get("willing", "no").upper()
+        
+        # 如果没有willing字段，尝试从content中解析
+        if "willing" not in llm_response and "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取意愿
+            if content.upper().startswith("YES"):
+                willing_str = "YES"
+            elif content.upper().startswith("NO"):
+                willing_str = "NO"
+            else:
+                # 默认为愿意，以避免误判
+                willing_str = "YES"
 
         if willing_str == "YES":
             return NodeResult(

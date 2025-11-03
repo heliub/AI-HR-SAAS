@@ -32,6 +32,18 @@ class RequirementMatchNode(SimpleLLMNode):
         """解析LLM响应"""
         # 获取判断结果
         satisfied = llm_response.get("satisfied", "no").upper()
+        
+        # 如果没有satisfied字段，尝试从content中解析
+        if "satisfied" not in llm_response and "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取满足度
+            if content.upper().startswith("YES"):
+                satisfied = "YES"
+            elif content.upper().startswith("NO"):
+                satisfied = "NO"
+            else:
+                # 默认为不满足，以避免误判
+                satisfied = "NO"
 
         if satisfied == "YES":
             return NodeResult(

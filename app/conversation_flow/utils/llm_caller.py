@@ -92,6 +92,7 @@ class LLMCaller:
         final_max_tokens = max_tokens or scene_config.get("max_tokens") or self.default_max_tokens
         final_top_p = top_p if top_p is not None else scene_config.get("top_p")
         final_system = system_prompt or scene_config.get("system")
+        final_json_output = parse_json or scene_config.get("json_output")   
         
         try:
             prompt = self.prompt_loader.load_prompt(
@@ -114,7 +115,7 @@ class LLMCaller:
             temperature=final_temperature,
             max_tokens=final_max_tokens,
             top_p=final_top_p,
-            parse_json=parse_json,
+            parse_json=final_json_output,
             scene_name=scene_name
         )
 

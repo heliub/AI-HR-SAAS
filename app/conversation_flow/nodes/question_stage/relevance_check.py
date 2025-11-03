@@ -34,6 +34,18 @@ class RelevanceCheckNode(SimpleLLMNode):
         """解析LLM响应"""
         # 获取相关性等级
         relevance = llm_response.get("relevance", "E").upper()
+        
+        # 如果没有relevance字段，尝试从content中解析
+        if "relevance" not in llm_response and "content" in llm_response:
+            content = llm_response["content"]
+            # 尝试从自然语言响应中提取相关性等级
+            # 默认为E（无法判断），以避免误判
+            relevance = "E"
+            # 检查内容中是否包含A/B/C/D/E
+            for char in ["A", "B", "C", "D", "E"]:
+                if char in content.upper():
+                    relevance = char
+                    break
 
         # A、D、E：异常情况，中断流程
         if relevance in ["A", "D", "E"]:

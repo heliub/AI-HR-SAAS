@@ -853,7 +853,8 @@ CREATE TABLE knowledge_hit_logs (
     rank_position INTEGER,  -- 在检索结果列表中的排名（1,2,3...）
 
     -- 时间戳
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE knowledge_hit_logs IS '知识库命中日志表（记录每次知识库检索命中详情，用于数据分析和优化）';
@@ -867,6 +868,7 @@ COMMENT ON COLUMN knowledge_hit_logs.match_method IS '匹配方法: vector-向�
 COMMENT ON COLUMN knowledge_hit_logs.match_score IS '匹配分数（0.0000-1.0000）';
 COMMENT ON COLUMN knowledge_hit_logs.rank_position IS '在检索结果中的排名位置';
 COMMENT ON COLUMN knowledge_hit_logs.created_at IS '命中时间';
+COMMENT ON COLUMN knowledge_hit_logs.updated_at IS '更新时间';
 
 -- ==============================================
 -- 9. 系统日志表
