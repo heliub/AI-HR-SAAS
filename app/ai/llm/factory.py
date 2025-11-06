@@ -77,8 +77,7 @@ def get_llm(
     # 如果没有显式传参，从settings读取
     if base_url is None:
         provider_config = _get_provider_config(provider)
-        if base_url is None:
-            base_url = provider_config.get("base_url")
+        base_url = provider_config.get("base_url")
 
     api_key = os.getenv(f"{provider.upper()}_API_KEY")
     # 验证api_key
@@ -157,8 +156,7 @@ def get_embedding(
     # 如果没有显式传参，从settings读取
     if base_url is None:
         provider_config = _get_embedding_provider_config(provider)
-        if base_url is None:
-            base_url = provider_config.get("base_url")
+        base_url = provider_config.get("base_url")
 
     api_key = os.getenv(f"{provider.upper()}_API_KEY")
     # 验证api_key
@@ -204,12 +202,12 @@ def clear_cache(provider: Optional[str] = None) -> None:
     """
     with _CACHE_LOCK:
         if provider is None:
-            _CLIENT_CACHE.clear()
+            _LLM_CLIENT_CACHE.clear()
         else:
             # 清除特定provider的缓存
-            keys_to_remove = [k for k in _CLIENT_CACHE.keys() if k.startswith(f"{provider}:")]
+            keys_to_remove = [k for k in _LLM_CLIENT_CACHE.keys() if k.startswith(f"{provider}")]
             for key in keys_to_remove:
-                del _CLIENT_CACHE[key]
+                del _LLM_CLIENT_CACHE[key]
 
 
 def clear_embedding_cache(provider: Optional[str] = None) -> None:
@@ -238,8 +236,8 @@ def get_cache_info() -> Dict[str, int]:
     """
     with _CACHE_LOCK:
         cache_info = {}
-        for key in _CLIENT_CACHE.keys():
-            provider = key.split(":")[0]
+        for key in _LLM_CLIENT_CACHE.keys():
+            provider = key  # 缓存键就是provider名称
             cache_info[provider] = cache_info.get(provider, 0) + 1
         return cache_info
 
@@ -254,7 +252,7 @@ def get_embedding_cache_info() -> Dict[str, int]:
     with _EMBEDDING_CACHE_LOCK:
         cache_info = {}
         for key in _EMBEDDING_CLIENT_CACHE.keys():
-            provider = key.split(":")[0]
+            provider = key  # 缓存键就是provider名称
             cache_info[provider] = cache_info.get(provider, 0) + 1
         return cache_info
 

@@ -66,7 +66,7 @@
 #### 2. 自动配置加载 🔧
 所有节点从 `app/ai/prompts/prompt_config.py` 自动读取：
 - model（如glm-4-0520、deepseek-r1等）
-- temperature、top_p、max_tokens
+- temperature、top_p、max_completion_tokens
 - system prompt
 
 #### 3. 技术异常重试 🛡️

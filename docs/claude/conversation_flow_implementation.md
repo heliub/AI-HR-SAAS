@@ -318,7 +318,7 @@ elif result.action == NodeAction.NONE:
 - model
 - temperature
 - top_p
-- max_tokens
+- max_completion_tokens
 - system
 
 ### 2. 投机式并行

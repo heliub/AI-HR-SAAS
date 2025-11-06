@@ -36,7 +36,7 @@ AI_PROVIDERS: List[Dict] = [
 #### 非流式对话
 
 ```python
-from app.ai import get_llm, LLMRequest, Message
+from app.ai import get_llm, LLMRequest, UserMessage, SystemMessage, AssistantMessage, ToolMessage
 
 # 创建客户端（从配置读取）
 llm = get_llm(provider="openai")
@@ -46,7 +46,7 @@ request = LLMRequest(
     model="gpt-4",
     system="你是专业的HR助手",
     messages=[
-        Message(role="user", content="请帮我分析这份简历")
+        UserMessage(content="请帮我分析这份简历")
     ],
     temperature=0.7
 )
@@ -63,7 +63,7 @@ print(response.usage.total_tokens)  # token使用量
 request = LLMRequest(
     model="gpt-4",
     system="你是专业的HR助手",
-    messages=[Message(role="user", content="介绍一下你自己")],
+    messages=[UserMessage(content="介绍一下你自己")],
     stream=True
 )
 
@@ -82,7 +82,7 @@ async for chunk in llm.stream_chat(request):
 messages = []
 
 # 第一轮
-messages.append(Message(role="user", content="我需要招聘一个Python工程师"))
+messages.append(UserMessage(content="我需要招聘一个Python工程师"))
 response = await llm.chat(LLMRequest(
     model="gpt-4",
     system="你是HR助手",
@@ -91,7 +91,7 @@ response = await llm.chat(LLMRequest(
 messages.append(response.message)  # 添加assistant的回复
 
 # 第二轮
-messages.append(Message(role="user", content="需要哪些技能要求？"))
+messages.append(UserMessage(content="需要哪些技能要求？"))
 response = await llm.chat(LLMRequest(
     model="gpt-4",
     system="你是HR助手",
@@ -126,7 +126,7 @@ tools = [
 request = LLMRequest(
     model="gpt-4",
     system="你是HR助手，可以调用工具查询简历",
-    messages=[Message(role="user", content="查看ID为123的简历")],
+    messages=[UserMessage(content="查看ID为123的简历")],
     tools=tools
 )
 
@@ -145,8 +145,7 @@ if response.finish_reason == "tool_calls":
 
         # 继续对话
         request.messages.append(response.message)  # assistant的tool_calls
-        request.messages.append(Message(
-            role="tool",
+        request.messages.append(ToolMessage(
             tool_call_id=tool_call.id,
             content=str(result)
         ))
@@ -161,7 +160,7 @@ if response.finish_reason == "tool_calls":
 ```python
 request = LLMRequest(
     model="o1-preview",
-    messages=[Message(role="user", content="复杂的数学问题...")]
+    messages=[UserMessage(content="复杂的数学问题...")]
 )
 
 response = await llm.chat(request)

@@ -334,8 +334,8 @@ class JobKnowledgeService(BaseService):
         Returns:
             变体建议列表
         """
-        from app.ai.llm.factory import get_llm_client
-        from app.ai.llm.types import LLMRequest, Message
+        from app.ai.llm.factory import get_llm
+        from app.ai.llm.types import LLMRequest, UserMessage
 
         # 验证知识库存在
         knowledge = await self.get_knowledge_by_id(knowledge_id, tenant_id, user_id, is_admin)
@@ -359,13 +359,13 @@ class JobKnowledgeService(BaseService):
 
         # 调用LLM
         try:
-            llm_client = get_llm_client("volcengine")
+            llm_client = get_llm("volcengine")
             request = LLMRequest(
                 model="doubao-1.5-pro-32k-250115",
-                messages=[Message(role="user", content=user_prompt)],
+                messages=[UserMessage(content=user_prompt)],
                 system="你是一个专业的HR助手，负责为知识库问题生成相似的问法变体。",
                 temperature=0.1,
-                max_tokens=2000,
+                max_completion_tokens=2000,
             )
 
             response = await llm_client.chat(request)

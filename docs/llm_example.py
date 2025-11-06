@@ -4,7 +4,7 @@ LLM封装使用示例
 演示基本用法和常见场景
 """
 import asyncio
-from app.ai import get_llm, LLMRequest, Message
+from app.ai import get_llm, LLMRequest, UserMessage, SystemMessage, AssistantMessage
 
 
 async def example_basic_chat():
@@ -19,10 +19,10 @@ async def example_basic_chat():
         model="ep-20241028112534-4sjqw",  # 根据实际模型调整
         system="你是专业的HR助手，帮助分析简历和职位匹配度。",
         messages=[
-            Message(role="user", content="你好，介绍一下你自己")
+            UserMessage(content="你好，介绍一下你自己")
         ],
         temperature=0.7,
-        max_tokens=500
+        max_completion_tokens=500
     )
 
     # 调用
@@ -43,7 +43,7 @@ async def example_stream_chat():
         model="ep-20241028112534-4sjqw",
         system="你是专业的HR助手",
         messages=[
-            Message(role="user", content="请简要介绍Python工程师需要的核心技能")
+            UserMessage(content="请简要介绍Python工程师需要的核心技能")
         ],
         stream=True,
         temperature=0.7
@@ -68,7 +68,7 @@ async def example_multi_turn():
     messages = []
 
     # 第一轮
-    messages.append(Message(role="user", content="我需要招聘一个Python后端工程师"))
+    messages.append(UserMessage(content="我需要招聘一个Python后端工程师"))
     response = await llm.chat(LLMRequest(
         model="ep-20241028112534-4sjqw",
         system="你是HR助手",
@@ -79,7 +79,7 @@ async def example_multi_turn():
     messages.append(response.message)
 
     # 第二轮
-    messages.append(Message(role="user", content="需要几年工作经验？"))
+    messages.append(UserMessage(content="需要几年工作经验？"))
     response = await llm.chat(LLMRequest(
         model="ep-20241028112534-4sjqw",
         system="你是HR助手",
@@ -109,8 +109,8 @@ async def example_error_handling():
         request = LLMRequest(
             model="ep-20241028112534-4sjqw",
             messages=[
-                Message(role="system", content="错误的用法"),  # 这会报错
-                Message(role="user", content="你好")
+                SystemMessage(content="错误的用法"),  # 这会报错
+                UserMessage(content="你好")
             ]
         )
         await llm.chat(request)

@@ -4,7 +4,7 @@ LLM模块
 统一的LLM调用封装，支持多厂商（OpenAI、火山引擎等）
 
 Examples:
-    >>> from app.ai.llm import get_llm, LLMRequest, Message
+    >>> from app.ai.llm import get_llm, LLMRequest, UserMessage
 
     >>> # 创建客户端
     >>> llm = get_llm(provider="openai")
@@ -13,7 +13,7 @@ Examples:
     >>> request = LLMRequest(
     ...     model="gpt-4",
     ...     system="你是HR助手",
-    ...     messages=[Message(role="user", content="你好")]
+    ...     messages=[UserMessage(content="你好")]
     ... )
     >>> response = await llm.chat(request)
     >>> print(response.content)
@@ -24,12 +24,40 @@ Examples:
 """
 from .factory import get_llm, clear_cache, get_cache_info
 from .types import (
-    Message,
-    ToolCall,
+    # 请求和响应
     LLMRequest,
     LLMResponse,
     StreamChunk,
     Usage,
+    # 输入消息类型
+    BaseMessage,
+    SystemMessage,
+    DeveloperMessage,
+    UserMessage,
+    AssistantMessage,
+    ToolMessage,
+    FunctionMessage,
+    InputMessage,
+    # 输出消息类型
+    AssistantOutputMessage,
+    # Content Part 类型
+    TextContent,
+    ImageUrl,
+    ImageUrlContent,
+    InputAudio,
+    InputAudioContent,
+    FileData,
+    FileContent,
+    RefusalContent,
+    ContentPart,
+    # Tool Call 类型
+    FunctionCall,
+    FunctionToolCall,
+    CustomCall,
+    CustomToolCall,
+    ToolCall,
+    # 音频输出
+    AudioOutput,
 )
 from .errors import (
     LLMError,
@@ -46,13 +74,40 @@ __all__ = [
     "get_llm",
     "clear_cache",
     "get_cache_info",
-    # 类型
-    "Message",
-    "ToolCall",
+    # 请求和响应
     "LLMRequest",
     "LLMResponse",
     "StreamChunk",
     "Usage",
+    # 输入消息类型
+    "BaseMessage",
+    "SystemMessage",
+    "DeveloperMessage",
+    "UserMessage",
+    "AssistantMessage",
+    "ToolMessage",
+    "FunctionMessage",
+    "InputMessage",
+    # 输出消息类型
+    "AssistantOutputMessage",
+    # Content Part 类型
+    "TextContent",
+    "ImageUrl",
+    "ImageUrlContent",
+    "InputAudio",
+    "InputAudioContent",
+    "FileData",
+    "FileContent",
+    "RefusalContent",
+    "ContentPart",
+    # Tool Call 类型
+    "FunctionCall",
+    "FunctionToolCall",
+    "CustomCall",
+    "CustomToolCall",
+    "ToolCall",
+    # 音频输出
+    "AudioOutput",
     # 错误
     "LLMError",
     "LLMAPIError",

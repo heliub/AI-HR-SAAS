@@ -5,7 +5,7 @@ AI module for LLM integration
 """
 from .llm import (  # noqa: F401
     get_llm,
-    Message,
+    BaseMessage,  # Changed from Message to BaseMessage
     ToolCall,
     LLMRequest,
     LLMResponse,
@@ -22,7 +22,7 @@ from .llm_caller import LLMCaller, get_llm_caller  # noqa: F401
 
 __all__ = [
     "get_llm",
-    "Message",
+    "BaseMessage",
     "ToolCall",
     "LLMRequest",
     "LLMResponse",

@@ -8,7 +8,25 @@ from typing import AsyncIterator, Any, Dict, List
 from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError, AuthenticationError
 
 from ..base import BaseLLMClient
-from ..types import LLMRequest, LLMResponse, StreamChunk, Message, Usage, ToolCall
+from ..types import (
+    LLMRequest,
+    LLMResponse,
+    StreamChunk,
+    Usage,
+    # 输入消息类型
+    InputMessage,
+    SystemMessage,
+    AssistantMessage,
+    # 输出消息类型
+    AssistantOutputMessage,
+    # Tool Call 类型
+    FunctionCall,
+    FunctionToolCall,
+    CustomCall,
+    CustomToolCall,
+    # 音频输出
+    AudioOutput,
+)
 from ..errors import (
     LLMError,
     LLMAPIError,
@@ -42,7 +60,7 @@ class OpenAIClient(BaseLLMClient):
 
     def _build_messages(self, request: LLMRequest) -> List[Dict[str, Any]]:
         """
-        构建消息列表，自动处理system prompt
+        构建消息列表，自动处理 system prompt
 
         Args:
             request: LLM请求
@@ -52,32 +70,31 @@ class OpenAIClient(BaseLLMClient):
         """
         messages = []
 
-        # 如果有system，插入到最前面
+        # 如果有 system 参数，插入到最前面
         if request.system:
             messages.append({"role": "system", "content": request.system})
 
         # 添加对话消息
         for msg in request.messages:
-            msg_dict = {"role": msg.role}
+            # 先获取基础字段
+            msg_dict = msg.model_dump(exclude_none=True)
 
-            # content
-            if msg.content is not None:
-                msg_dict["content"] = msg.content
-
-            # tool_calls (assistant调用工具)
-            if msg.tool_calls:
-                msg_dict["tool_calls"] = [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": tc.function,
-                    }
-                    for tc in msg.tool_calls
+            # 特殊处理 content 数组（如果包含对象，需要序列化）
+            if hasattr(msg, "content") and isinstance(msg.content, list):
+                msg_dict["content"] = [
+                    part if isinstance(part, str) else part.model_dump(exclude_none=True)
+                    for part in msg.content
                 ]
 
-            # tool_call_id (tool角色返回结果)
-            if msg.tool_call_id:
-                msg_dict["tool_call_id"] = msg.tool_call_id
+            # 特殊处理 tool_calls（确保序列化）
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                msg_dict["tool_calls"] = [
+                    tc.model_dump(exclude_none=True) for tc in msg.tool_calls
+                ]
+
+            # 特殊处理 audio（确保格式正确）
+            if hasattr(msg, "audio") and msg.audio:
+                msg_dict["audio"] = msg.audio.model_dump(exclude_none=True)
 
             messages.append(msg_dict)
 
@@ -88,13 +105,17 @@ class OpenAIClient(BaseLLMClient):
         params = {
             "model": request.model,
             "messages": self._build_messages(request),
-            "temperature": request.temperature,
             "stream": request.stream,
         }
+        
+        # GPT-5模型不支持自定义温度参数，只支持默认值1
+        # 因此对于GPT-5模型，不传递temperature参数
+        if not request.model.startswith("gpt-5"):
+            params["temperature"] = request.temperature
 
         # 可选参数
-        if request.max_tokens is not None:
-            params["max_tokens"] = request.max_tokens
+        if request.max_completion_tokens is not None:
+            params["max_completion_tokens"] = request.max_completion_tokens
         if request.top_p is not None:
             params["top_p"] = request.top_p
         if request.frequency_penalty is not None:
@@ -107,31 +128,68 @@ class OpenAIClient(BaseLLMClient):
             params["tools"] = request.tools
         if request.tool_choice is not None:
             params["tool_choice"] = request.tool_choice
+        
+        # 推理模型参数（如 o1 系列）
+        if request.reasoning_effort is not None:
+            params["reasoning_effort"] = request.reasoning_effort
+        
+        # 动态参数，支持不同模型的差异化参数
+        if request.additional_params is not None:
+            params.update(request.additional_params)
 
         return params
 
-    def _parse_message(self, choice: Any) -> Message:
+    def _parse_message(self, choice: Any) -> AssistantOutputMessage:
         """解析响应消息"""
         msg = choice.message
-        message = Message(role="assistant")
+        message = AssistantOutputMessage(role="assistant")
 
         # content
         if hasattr(msg, "content") and msg.content is not None:
             message.content = msg.content
 
+        # refusal
+        if hasattr(msg, "refusal") and msg.refusal is not None:
+            message.refusal = msg.refusal
+
+        # audio (完整的音频数据)
+        if hasattr(msg, "audio") and msg.audio is not None:
+            message.audio = AudioOutput(
+                data=msg.audio.data,
+                expires_at=msg.audio.expires_at,
+                id=msg.audio.id,
+                transcript=msg.audio.transcript,
+            )
+
         # tool_calls
         if hasattr(msg, "tool_calls") and msg.tool_calls:
-            message.tool_calls = [
-                ToolCall(
-                    id=tc.id,
-                    type=tc.type,
-                    function={"name": tc.function.name, "arguments": tc.function.arguments},
-                )
-                for tc in msg.tool_calls
-            ]
+            parsed_calls = []
+            for tc in msg.tool_calls:
+                if tc.type == "function":
+                    parsed_calls.append(
+                        FunctionToolCall(
+                            id=tc.id,
+                            type="function",
+                            function=FunctionCall(
+                                name=tc.function.name,
+                                arguments=tc.function.arguments,
+                            ),
+                        )
+                    )
+                elif tc.type == "custom":
+                    parsed_calls.append(
+                        CustomToolCall(
+                            id=tc.id,
+                            type="custom",
+                            custom=CustomCall(
+                                name=tc.custom.name,
+                                input=tc.custom.input,
+                            ),
+                        )
+                    )
+            message.tool_calls = parsed_calls
 
         # reasoning_content (o1等推理模型)
-        # OpenAI的o1模型会在message中返回reasoning_content字段
         if hasattr(msg, "reasoning_content") and msg.reasoning_content is not None:
             message.reasoning_content = msg.reasoning_content
 
@@ -222,7 +280,6 @@ class OpenAIClient(BaseLLMClient):
                 self.client.chat.completions.create,
                 **params,
             )
-
             choice = response.choices[0]
             message = self._parse_message(choice)
             usage = self._parse_usage(response.usage)
@@ -255,7 +312,7 @@ class OpenAIClient(BaseLLMClient):
                     # 最后一个chunk可能没有choices，只有usage
                     if hasattr(chunk, "usage") and chunk.usage:
                         yield StreamChunk(
-                            delta=Message(role="assistant"),
+                            delta=AssistantOutputMessage(role="assistant"),
                             usage=self._parse_usage(chunk.usage),
                             model=chunk.model,
                         )
@@ -264,26 +321,46 @@ class OpenAIClient(BaseLLMClient):
                 choice = chunk.choices[0]
                 delta = choice.delta
 
-                # 构建delta message
-                delta_msg = Message(role=delta.role if hasattr(delta, "role") else "assistant")
+                # 构建 delta message
+                delta_msg = AssistantOutputMessage(role="assistant")
 
                 if hasattr(delta, "content") and delta.content is not None:
                     delta_msg.content = delta.content
 
+                if hasattr(delta, "refusal") and delta.refusal is not None:
+                    delta_msg.refusal = delta.refusal
+
+                if hasattr(delta, "audio") and delta.audio is not None:
+                    # 流式响应中的 audio 可能是增量数据
+                    delta_msg.audio = AudioOutput(
+                        data=delta.audio.data if hasattr(delta.audio, "data") else "",
+                        expires_at=delta.audio.expires_at if hasattr(delta.audio, "expires_at") else 0,
+                        id=delta.audio.id if hasattr(delta.audio, "id") else "",
+                        transcript=delta.audio.transcript if hasattr(delta.audio, "transcript") else "",
+                    )
+
                 if hasattr(delta, "tool_calls") and delta.tool_calls:
-                    delta_msg.tool_calls = [
-                        ToolCall(
-                            id=tc.id if hasattr(tc, "id") else "",
-                            type=tc.type if hasattr(tc, "type") else "function",
-                            function=tc.function if hasattr(tc, "function") else {},
-                        )
-                        for tc in delta.tool_calls
-                    ]
+                    parsed_delta_calls = []
+                    for tc in delta.tool_calls:
+                        tc_type = tc.type if hasattr(tc, "type") else "function"
+                        if tc_type == "function":
+                            func_call = FunctionCall(
+                                name=tc.function.name if hasattr(tc.function, "name") else "",
+                                arguments=tc.function.arguments if hasattr(tc.function, "arguments") else "",
+                            )
+                            parsed_delta_calls.append(
+                                FunctionToolCall(
+                                    id=tc.id if hasattr(tc, "id") else "",
+                                    type="function",
+                                    function=func_call,
+                                )
+                            )
+                    delta_msg.tool_calls = parsed_delta_calls if parsed_delta_calls else None
 
                 if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
                     delta_msg.reasoning_content = delta.reasoning_content
 
-                # usage在最后的chunk中
+                # usage 在最后的 chunk 中
                 usage = None
                 if hasattr(chunk, "usage") and chunk.usage:
                     usage = self._parse_usage(chunk.usage)

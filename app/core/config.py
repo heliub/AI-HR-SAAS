@@ -55,6 +55,9 @@ class Settings(BaseSettings):
         {
             "provider": "volcengine",
             "base_url": "https://ark.cn-beijing.volces.com/api/v3"
+        },
+        {
+            "provider": "openai"        
         }
     ]
     EMBEDDING_PROVIDERS: List[Dict] = [
