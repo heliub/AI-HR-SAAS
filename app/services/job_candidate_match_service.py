@@ -109,23 +109,27 @@ class JobCandidateMatchService(BaseService):
                     )
                     return None
 
-        # 保存匹配结果
-        ai_match_result = await self._save_match_result(
-            job_id=job_id,
-            resume_id=resume_id,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            match_result=match_result,
-            strategy=match_strategy
-        )
+        # 解析匹配结果
+        parsed_match_result = self._parse_match_result(match_result, match_strategy)
 
         # 更新简历表
-        await self._update_resume_match_info(
-            resume_id=resume_id,
-            tenant_id=tenant_id,
-            is_match=ai_match_result.is_match,
-            match_conclusion=ai_match_result.reason
-        )
+        # 只有当 is_match 不为 None 时才更新简历匹配信息
+        is_match = parsed_match_result["is_match"]
+        if is_match is not None:
+             # 保存匹配结果
+            ai_match_result = await self._save_match_result(
+                job_id=job_id,
+                resume_id=resume_id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                match_result=parsed_match_result
+            )
+            await self._update_resume_match_info(
+                resume_id=resume_id,
+                tenant_id=tenant_id,
+                is_match=is_match,
+                match_conclusion=parsed_match_result["reason"]
+            )
 
         return ai_match_result
 
@@ -305,7 +309,7 @@ class JobCandidateMatchService(BaseService):
         match_strategy: str,
         job_description: str,
         resume_description: str
-    ) -> Dict[str, Any]:
+    ) -> str:
         """
         执行AI匹配
 
@@ -315,58 +319,153 @@ class JobCandidateMatchService(BaseService):
             resume_description: 简历描述
 
         Returns:
-            AI匹配结果
+            AI匹配结果（原始返回结果，字符串）
         """
         template_vars = {
             "jobDescription": job_description,
             "resumeDesc": resume_description
         }
 
-        # 对于技术类匹配，需要特殊处理返回结果，因为模板输出不是标准JSON
+        # 统一不进行JSON解析，直接返回原始结果
+        result = await self.llm_caller.call_with_scene(
+            scene_name=match_strategy,
+            template_vars=template_vars,
+            parse_json=False  # 统一不解析为JSON，保留原始返回结果
+        )
+        
+        # 直接返回原始结果，不做任何处理
+        return result
+
+    def _parse_match_result(self, match_result: str, match_strategy: str) -> Dict[str, Any]:
+        """
+        解析匹配结果
+
+        Args:
+            match_result: AI匹配结果（原始返回结果，字符串）
+            match_strategy: 匹配策略
+
+        Returns:
+            解析后的匹配结果字典，包含is_match和reason字段
+        """
+        # 如果模型返回结果是空或错误，返回空结果
+        if not match_result or not match_result.strip():
+            return {"is_match": None, "reason": "模型返回结果为空"}
+        
+        # 根据不同策略调用相应的解析方法
         if "job_candidate_match_for_strong_skills" in match_strategy:
-            result = await self.llm_caller.call_with_scene(
-                scene_name=match_strategy,
-                template_vars=template_vars,
-                parse_json=False  # 不解析为JSON，因为模板输出不是标准JSON格式
-            )
-            
-            # 手动解析返回结果
-            content = result
-            
-            # 尝试从内容中提取判断结果和判断依据
-            is_match = False
-            reason = ""
-            
-            # 查找"判断结果"字段
-            if '"判断结果"' in content and '"是"' in content:
-                is_match = True
-            
-            # 查找"判断依据"字段
-            if '"判断依据"' in content:
-                # 提取判断依据内容
-                start_idx = content.find('"判断依据"') + len('"判断依据"')
-                # 查找下一个引号或行尾
-                end_idx = content.find('"', start_idx)
-                if end_idx == -1:
-                    end_idx = len(content)
-                
-                # 跳过可能的冒号和空格
-                while start_idx < end_idx and (content[start_idx] == ':' or content[start_idx] == ' '):
-                    start_idx += 1
-                
-                reason = content[start_idx:end_idx].strip()
-            
-            return {
-                "判断结果": "是" if is_match else "否",
-                "判断依据": reason
-            }
+            return self._parse_tech_match_result(match_result)
+        elif "job_candidate_match_for_sales" in match_strategy:
+            return self._parse_sales_match_result(match_result)
         else:
-            # 销售类匹配，使用标准JSON解析
-            return await self.llm_caller.call_with_scene(
-                scene_name=match_strategy,
-                template_vars=template_vars,
-                parse_json=True
+            # 未知策略，返回空结果
+            return {"is_match": None, "reason": "未知匹配策略"}
+    
+    def _parse_tech_match_result(self, match_result: str) -> Dict[str, Any]:
+        """
+        解析技术类匹配结果
+
+        Args:
+            match_result: AI匹配结果（原始返回结果，字符串）
+
+        Returns:
+            解析后的匹配结果字典，包含is_match和reason字段
+        """
+        try:
+            # 获取原始内容
+            content = match_result
+            
+            # 技术类匹配结果解析
+            # 输出格式: "判断结果":"是/否","判断依据":"xxx"
+            # 使用正则表达式提取判断结果和判断依据
+            import re
+            
+            # 提取判断结果
+            result_match = re.search(r'"判断结果"\s*:\s*"([^"]*)"', content)
+            if result_match:
+                result_value = result_match.group(1).strip()
+                is_match = result_value == "是"
+            else:
+                # 如果没有找到标准格式，返回None
+                is_match = None
+            
+            # 提取判断依据
+            reason_match = re.search(r'"判断依据"\s*:\s*"([^"]*)"', content)
+            if reason_match:
+                reason = reason_match.group(1).strip()
+            else:
+                reason = "未找到判断依据"
+            
+            return {"is_match": is_match, "reason": reason}
+        except Exception as e:
+            logger.error(
+                "failed_to_parse_tech_match_result",
+                error=str(e)
             )
+            return {"is_match": None, "reason": f"解析技术类匹配结果失败: {str(e)}"}
+    
+    def _parse_sales_match_result(self, match_result: str) -> Dict[str, Any]:
+        """
+        解析销售类匹配结果
+
+        Args:
+            match_result: AI匹配结果（原始返回结果，字符串）
+
+        Returns:
+            解析后的匹配结果字典，包含is_match和reason字段
+        """
+        try:
+            # 获取原始内容
+            content = match_result
+            
+            # 销售类匹配结果解析
+            # 输出格式: {"分析过程": "", "判断结果": "[是/否]"}
+            # 尝试解析JSON格式
+            try:
+                # 移除markdown代码块标记
+                json_content = content
+                if "```json" in content:
+                    json_content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content:
+                    json_content = content.split("```")[1].split("```")[0].strip()
+                
+                # 尝试解析JSON
+                import json
+                parsed_result = json.loads(json_content)
+                
+                # 获取判断结果和分析过程
+                result = parsed_result.get("判断结果", None)
+                if result is not None:
+                    is_match = "是" in result
+                else:
+                    is_match = None
+                    
+                reason = parsed_result.get("分析过程", "")
+                
+                return {"is_match": is_match, "reason": reason}
+            except (json.JSONDecodeError, Exception):
+                # 如果解析失败，尝试从原始内容中查找判断结果
+                import re
+                result_match = re.search(r'"判断结果"\s*:\s*"([^"]*)"', content)
+                if result_match:
+                    result_value = result_match.group(1).strip()
+                    is_match = result_value == "是"
+                else:
+                    is_match = None
+                
+                # 尝试查找分析过程
+                process_match = re.search(r'"分析过程"\s*:\s*"([^"]*)"', content)
+                if process_match:
+                    reason = process_match.group(1).strip()
+                else:
+                    reason = "未找到分析过程"
+                
+                return {"is_match": is_match, "reason": reason}
+        except Exception as e:
+            logger.error(
+                "failed_to_parse_sales_match_result",
+                error=str(e)
+            )
+            return {"is_match": None, "reason": f"解析销售类匹配结果失败: {str(e)}"}
 
     async def _save_match_result(
         self,
@@ -374,8 +473,7 @@ class JobCandidateMatchService(BaseService):
         resume_id: UUID,
         tenant_id: UUID,
         user_id: Optional[UUID],
-        match_result: Dict[str, Any],
-        strategy: str
+        match_result: Dict[str, Any]
     ) -> AIMatchResult:
         """
         保存匹配结果
@@ -386,7 +484,6 @@ class JobCandidateMatchService(BaseService):
             tenant_id: 租户ID
             user_id: 用户ID
             match_result: AI匹配结果
-            strategy: 匹配策略
 
         Returns:
             保存的匹配结果对象
@@ -394,16 +491,14 @@ class JobCandidateMatchService(BaseService):
         # 在保存新匹配结果前，先将当前有效的匹配结果置为失效状态
         await self._invalidate_previous_match_results(job_id, resume_id, tenant_id)
         
-        # 根据不同策略解析结果
-        if "job_candidate_match_for_sales" in strategy:
-            # 销售类匹配结果格式: {"分析过程": "", "判断结果": "[是/否]"}
-            is_match = match_result.get("判断结果", "否") == "是"
-            reason = match_result.get("分析过程", "")
-            match_score = 100 if is_match else 0
+        # 根据解析结果设置匹配信息
+        is_match = match_result.get("is_match")
+        reason = match_result.get("reason", "")
+        
+        # 如果 is_match 为 None，说明无法确定匹配结果，不设置分数
+        if is_match is None:
+            match_score = 0
         else:
-            # 技术类匹配结果格式: {"判断结果": "是/否", "判断依据": "xxx"}
-            is_match = match_result.get("判断结果", "否") == "是"
-            reason = match_result.get("判断依据", "")
             match_score = 100 if is_match else 0
 
         # 创建匹配结果记录
