@@ -27,7 +27,16 @@ class ResumeConversationNode(NodeExecutor):
         # 调用LLM生成复聊语
         llm_response = await self.call_llm(context, parse_json=False)
 
-        content = llm_response.strip()
+        # 处理 llm_response 可能是字典或字符串的情况
+        # 根据 resume_conversation.md，输出格式为 {"result": }
+        if isinstance(llm_response, dict):
+            # 如果是字典，尝试获取 result 字段
+            content = llm_response.get("result", "")
+        else:
+            # 如果是字符串，直接使用
+            content = llm_response
+        
+        content = str(content).strip()
 
         return NodeResult(
             node_name=self.node_name,
