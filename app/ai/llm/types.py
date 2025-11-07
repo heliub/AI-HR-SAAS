@@ -260,8 +260,8 @@ class LLMRequest(BaseModel):
     max_completion_tokens: Optional[int] = Field(default=None, ge=1)
     stream: bool = False
 
-    # 推理模型参数（如 o1 系列）
-    reasoning_effort: Optional[Literal["minimal", "low", "medium", "high"]] = None
+    # # 推理模型参数（如 o1 系列）
+    # reasoning_effort: Optional[Literal["minimal", "low", "medium", "high"]] = None
 
     # 工具调用
     tools: Optional[List[dict]] = None

@@ -129,9 +129,9 @@ class OpenAIClient(BaseLLMClient):
         if request.tool_choice is not None:
             params["tool_choice"] = request.tool_choice
         
-        # 推理模型参数（如 o1 系列）
-        if request.reasoning_effort is not None:
-            params["reasoning_effort"] = request.reasoning_effort
+        # # 推理模型参数（如 o1 系列）
+        # if request.reasoning_effort is not None:
+        #     params["reasoning_effort"] = request.reasoning_effort
         
         # 动态参数，支持不同模型的差异化参数
         if request.additional_params is not None:
