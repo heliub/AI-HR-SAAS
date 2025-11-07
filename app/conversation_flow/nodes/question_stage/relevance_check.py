@@ -11,7 +11,7 @@
 - 如果是B，action为NEXT_NODE，next_node为reply_match_question_requirement节点的名称
 - 如果是C，action为NEXT_NODE，next_node为information_gathering_question节点的名称
 """
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -28,16 +28,19 @@ class RelevanceCheckNode(SimpleLLMNode):
 
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
         # 获取相关性等级
-        relevance = llm_response.get("relevance", "E").upper()
+        relevance = "E"  # 默认值
         
-        # 如果没有relevance字段，尝试从content中解析
-        if "relevance" not in llm_response and "content" in llm_response:
-            content = llm_response["content"]
+        # 如果llm_response是字典，尝试获取relevance字段
+        if isinstance(llm_response, dict):
+            relevance = llm_response.get("relevance", "E").upper()
+        # 如果是字符串，直接解析
+        else:
+            content = llm_response.strip()
             # 尝试从自然语言响应中提取相关性等级
             # 默认为E（无法判断），以避免误判
             relevance = "E"

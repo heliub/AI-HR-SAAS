@@ -5,7 +5,7 @@ LLM调用封装
 """
 import json
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 import structlog
 
 from app.ai.llm.factory import get_llm
@@ -60,7 +60,7 @@ class LLMCaller:
         max_completion_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         parse_json: bool = True
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], str]:
         """
         基于场景名称调用LLM（CLG1通用逻辑）
 
@@ -77,7 +77,8 @@ class LLMCaller:
             parse_json: 是否解析JSON响应（默认True）
 
         Returns:
-            LLM响应结果（已解析为字典）
+            LLM响应结果（parse_json=True时为字典，parse_json=False时为原始字符串）
+            类型为Union[Dict[str, Any], str]
 
         Raises:
             LLMError: LLM调用失败
@@ -129,7 +130,7 @@ class LLMCaller:
         top_p: Optional[float] = None,
         parse_json: bool = True,
         scene_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], str]:
         """
         直接使用Prompt调用LLM
 
@@ -144,7 +145,8 @@ class LLMCaller:
             scene_name: 场景名称（用于日志记录）
 
         Returns:
-            LLM响应结果
+            LLM响应结果（parse_json=True时为字典，parse_json=False时为原始字符串，JSON解析失败时为原始字符串）
+            类型为Union[Dict[str, Any], str]
         """
         # 使用默认值
         model = model or self.default_model
@@ -186,9 +188,20 @@ class LLMCaller:
 
             # 解析JSON
             if parse_json:
-                return self._parse_json_response(content, scene_name)
+                try:
+                    return self._parse_json_response(content)
+                except LLMError as e:
+                    logger.warning(
+                        "json_parse_failed_returning_raw_content",
+                        scene_name=scene_name,
+                        model=model,
+                        error=str(e)
+                    )
+                    # JSON解析失败时返回原始内容，以便上游进行针对性处理
+                    return content
             else:
-                return {"content": content}
+                # 直接返回原始响应内容，而不是封装成{"content": content}结构
+                return content
 
         except LLMError as e:
             logger.error(
@@ -201,15 +214,13 @@ class LLMCaller:
 
     def _parse_json_response(
         self,
-        content: str,
-        scene_name: Optional[str] = None
+        content: str
     ) -> Dict[str, Any]:
         """
         解析JSON响应
 
         Args:
             content: LLM响应内容
-            scene_name: 场景名称（用于日志）
 
         Returns:
             解析后的字典
@@ -225,20 +236,9 @@ class LLMCaller:
 
         try:
             result = json.loads(content)
-            logger.debug(
-                "json_response_parsed",
-                scene_name=scene_name,
-                keys=list(result.keys()) if isinstance(result, dict) else None
-            )
             return result
 
         except json.JSONDecodeError as e:
-            logger.error(
-                "failed_to_parse_json_response",
-                scene_name=scene_name,
-                content=content[:200],  # 只记录前200字符
-                error=str(e)
-            )
             # 包装成LLMError，触发重试机制
             raise LLMError(f"JSON解析失败: {str(e)}，原始内容: {content[:100]}...")
 

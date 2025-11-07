@@ -193,7 +193,7 @@ class JobCandidateMatchService(BaseService):
                 parse_json=False
             )
             
-            job_type = result.get("content", "").strip()
+            job_type = result.strip()
             
             if "销售" in job_type:
                 return "job_candidate_match.job_candidate_match_for_sales"
@@ -331,7 +331,7 @@ class JobCandidateMatchService(BaseService):
             )
             
             # 手动解析返回结果
-            content = result.get("content", "")
+            content = result
             
             # 尝试从内容中提取判断结果和判断依据
             is_match = False

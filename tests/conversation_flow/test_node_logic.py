@@ -232,9 +232,7 @@ class TestN9KnowledgeAnswer:
         mock_job_knowledge_service.search_for_conversation.return_value = mock_knowledge
 
         # Mock: LLM生成回答
-        mock_llm_caller.call_with_scene.return_value = {
-            "content": "根据职位信息，薪资范围是15-25K。"
-        }
+        mock_llm_caller.call_with_scene.return_value = "根据职位信息，薪资范围是15-25K。"
 
         result = await node.execute(sample_context)
 

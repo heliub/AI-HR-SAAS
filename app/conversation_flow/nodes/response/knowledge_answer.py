@@ -56,7 +56,7 @@ class KnowledgeAnswerNode(NodeExecutor):
         llm_response = await self.call_llm(temp_context, parse_json=False)
 
         # 4. 检查是否为"not_found"
-        content = llm_response.get("content", "").strip()
+        content = llm_response.strip()
 
         if content.lower() == "not_found" or "not_found" in content.lower():
             return NodeResult(

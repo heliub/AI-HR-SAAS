@@ -9,7 +9,7 @@
 - 执行结果为yes，action为SUSPEND
 - 否则为action为CONTINUE
 """
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -26,15 +26,18 @@ class TransferHumanIntentNode(SimpleLLMNode):
 
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        transfer = llm_response.get("transfer", "no").lower()
+        transfer = "no"  # 默认值
         
-        # 如果没有transfer字段，尝试从content中解析
-        if "transfer" not in llm_response and "content" in llm_response:
-            content = llm_response["content"]
+        # 如果llm_response是字典，尝试获取transfer字段
+        if isinstance(llm_response, dict):
+            transfer = llm_response.get("transfer", "no").lower()
+        # 如果是字符串，直接解析
+        else:
+            content = llm_response.strip()
             # 尝试从自然语言响应中提取转人工意图
             if content.upper().startswith("YES"):
                 transfer = "yes"

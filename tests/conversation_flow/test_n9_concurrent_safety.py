@@ -126,7 +126,7 @@ class TestN9ConcurrentSafety:
         async def mock_call_llm(context, **kwargs):
             nonlocal with_knowledge_context
             with_knowledge_context = context
-            return {"content": "测试回复"}
+            return "测试回复"
 
         node.call_llm = mock_call_llm
 

@@ -13,7 +13,7 @@
 - 分数为2，action为CONTINUE，data中标记需要发送结束语
 - 分数为3，action为SUSPEND
 """
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -30,7 +30,7 @@ class EmotionAnalysisNode(SimpleLLMNode):
 
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
@@ -38,13 +38,12 @@ class EmotionAnalysisNode(SimpleLLMNode):
         score = 0
         reason = ""
         
-        # 尝试从JSON响应中获取
-        if "分数" in llm_response:
+        # 如果llm_response是字典，尝试获取分数和原因
+        if isinstance(llm_response, dict):
             score = int(llm_response.get("分数", 0))
             reason = llm_response.get("原因", "")
-        # 如果没有JSON格式，尝试从content中解析
-        elif "content" in llm_response:
-            content = llm_response["content"]
+        # 如果是字符串，使用默认值
+        else:
             # 尝试从自然语言响应中提取分数
             # 默认为0（情感正常），以避免误判
             score = 0

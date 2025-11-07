@@ -67,3 +67,5 @@ dmypy.json
 # Docker
 docker-compose.override.yml
 
+# Examples
+examples/

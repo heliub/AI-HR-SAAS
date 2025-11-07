@@ -27,7 +27,7 @@ class FallbackAnswerNode(NodeExecutor):
         # 调用LLM生成兜底回复
         llm_response = await self.call_llm(context, parse_json=False)
 
-        content = llm_response.get("content", "").strip()
+        content = llm_response.strip()
 
         return NodeResult(
             node_name=self.node_name,

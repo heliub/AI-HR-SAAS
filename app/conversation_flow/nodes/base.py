@@ -6,7 +6,7 @@
 import time
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 from opentelemetry import trace
@@ -161,7 +161,7 @@ class NodeExecutor(ABC):
         scene_name: Optional[str] = None,
         system_prompt: Optional[str] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], str]:
         """
         调用LLM（CLG1通用逻辑）
 
@@ -172,7 +172,8 @@ class NodeExecutor(ABC):
             **kwargs: 其他LLM调用参数
 
         Returns:
-            LLM响应结果（已解析为字典）
+            LLM响应结果（parse_json=True时为字典，parse_json=False时为原始字符串）
+            类型为Union[Dict[str, Any], str]
         """
         # 懒加载LLM调用器
         if self.llm_caller is None:
@@ -254,7 +255,7 @@ class SimpleLLMNode(NodeExecutor):
     @abstractmethod
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """

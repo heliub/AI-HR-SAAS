@@ -29,7 +29,7 @@ class HighEQResponseNode(NodeExecutor):
         # 调用LLM生成高情商结束语
         llm_response = await self.call_llm(context, parse_json=False)
 
-        content = llm_response.get("content", "").strip()
+        content = llm_response.strip()
 
         return NodeResult(
             node_name=self.node_name,

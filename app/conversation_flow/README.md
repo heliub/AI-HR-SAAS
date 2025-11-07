@@ -158,7 +158,7 @@ class ContinueConversationNode(SimpleLLMNode):
 
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""

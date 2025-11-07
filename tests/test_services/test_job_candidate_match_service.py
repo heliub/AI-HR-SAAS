@@ -138,9 +138,7 @@ async def test_match_job_candidate_success(job_candidate_match_service, sample_j
     job_candidate_match_service.llm_caller = mock_llm_caller
     
     # 模拟AI返回结果 - 对于技术类匹配，返回非JSON格式的内容
-    mock_llm_caller.call_with_scene.return_value = {
-        "content": '"判断结果":"是","判断依据":"候选人技能匹配职位要求"'
-    }
+    mock_llm_caller.call_with_scene.return_value = '"判断结果":"是","判断依据":"候选人技能匹配职位要求"'
     
     # 模拟服务方法
     job_candidate_match_service.job_service.get_by_id = AsyncMock(side_effect=[sample_job, sample_resume])

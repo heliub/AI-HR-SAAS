@@ -20,8 +20,8 @@ class TestJSONParseRetry:
 
         # Mock: 前2次返回无效JSON，第3次返回有效JSON
         mock_llm_caller.call_with_scene.side_effect = [
-            {"content": "这不是JSON"},  # 第1次：无效JSON
-            {"content": "{incomplete"},  # 第2次：不完整JSON
+            "这不是JSON",  # 第1次：无效JSON
+            "{incomplete",  # 第2次：不完整JSON
             {"transfer": "no"}           # 第3次：有效JSON
         ]
 
@@ -42,9 +42,9 @@ class TestJSONParseRetry:
 
         # Mock: 3次都返回无效JSON
         mock_llm_caller.call_with_scene.side_effect = [
-            {"content": "invalid json 1"},
-            {"content": "invalid json 2"},
-            {"content": "invalid json 3"}
+            "invalid json 1",
+            "invalid json 2",
+            "invalid json 3"
         ]
 
         # 执行节点
@@ -67,7 +67,7 @@ class TestJSONParseRetry:
 
         # 直接测试_parse_json_response方法
         with pytest.raises(LLMError) as exc_info:
-            llm_caller._parse_json_response("这不是有效的JSON", scene_name="test")
+            llm_caller._parse_json_response("这不是有效的JSON")
 
         # 验证异常类型
         assert "JSON解析失败" in str(exc_info.value)
@@ -79,8 +79,8 @@ class TestJSONParseRetry:
 
         # Mock: 前2次失败，第3次成功
         mock_llm_caller.call_with_scene.side_effect = [
-            {"content": "invalid 1"},
-            {"content": "invalid 2"},
+            "invalid 1",
+            "invalid 2",
             {"transfer": "no"}
         ]
 
@@ -114,16 +114,13 @@ class TestJSONParseRetry:
         node = N1TransferHumanIntentNode()
 
         # Mock: 返回带```json```的响应
-        mock_llm_caller.call_with_scene.return_value = {
-            "content": '```json\n{"transfer": "no"}\n```'
-        }
+        mock_llm_caller.call_with_scene.return_value = '```json\n{"transfer": "no"}\n```'
 
         # 直接测试LLMCaller的解析
         from app.ai import LLMCaller
         llm_caller = LLMCaller()
         result = llm_caller._parse_json_response(
-            '```json\n{"transfer": "no"}\n```',
-            scene_name="test"
+            '```json\n{"transfer": "no"}\n```'
         )
 
         assert result == {"transfer": "no"}
@@ -135,8 +132,7 @@ class TestJSONParseRetry:
         llm_caller = LLMCaller()
 
         result = llm_caller._parse_json_response(
-            '```\n{"transfer": "yes"}\n```',
-            scene_name="test"
+            '```\n{"transfer": "yes"}\n```'
         )
 
         assert result == {"transfer": "yes"}

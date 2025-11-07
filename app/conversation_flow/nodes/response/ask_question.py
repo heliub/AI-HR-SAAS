@@ -8,7 +8,7 @@
 - 模型响应结果是"YES"，action为CONTINUE，data中is_question=True
 - 否则action为CONTINUE，data中is_question=False
 """
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -25,17 +25,21 @@ class AskQuestionNode(SimpleLLMNode):
 
     async def _parse_llm_response(
         self,
-        llm_response: Dict[str, Any],
+        llm_response: Union[Dict[str, Any], str],
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
         # 获取判断结果
-        is_question_str = llm_response.get("is_question", "no").upper()
-        question_type = llm_response.get("question_type", "")
+        is_question_str = "no"  # 默认值
+        question_type = ""
         
-        # 如果没有is_question字段，尝试从content中解析
-        if "is_question" not in llm_response and "content" in llm_response:
-            content = llm_response["content"]
+        # 如果llm_response是字典，尝试获取is_question和question_type字段
+        if isinstance(llm_response, dict):
+            is_question_str = llm_response.get("is_question", "no").upper()
+            question_type = llm_response.get("question_type", "")
+        # 如果是字符串，直接解析
+        else:
+            content = llm_response.strip()
             # 尝试从自然语言响应中提取是否是问题
             if content.upper().startswith("YES"):
                 is_question_str = "YES"
