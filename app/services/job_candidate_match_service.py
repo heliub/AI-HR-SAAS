@@ -87,7 +87,6 @@ class JobCandidateMatchService(BaseService):
                     job_description=job_description,
                     resume_description=resume_description
                 )
-                print(match_result)
                 break  # 成功则跳出重试循环
             except Exception as e:
                 logger.warning(
@@ -143,6 +142,8 @@ class JobCandidateMatchService(BaseService):
         Returns:
             匹配策略名称
         """
+
+        return "job_candidate_match.job_candidate_match_common"
         # 首先尝试通过category判断
         category = job.category or ""
         category_lower = category.lower()
@@ -162,56 +163,8 @@ class JobCandidateMatchService(BaseService):
         elif is_tech:
             return "job_candidate_match.job_candidate_match_for_strong_skills"
         else:
-            # 如果category无法确定，使用大模型判断
-            return await self._determine_job_type_with_llm(job)
-
-    async def _determine_job_type_with_llm(self, job: Job) -> str:
-        """
-        使用大模型判断职位类型
-
-        Args:
-            job: 职位对象
-
-        Returns:
-            匹配策略名称
-        """
-        job_info = f"""
-        职位名称: {job.title}
-        职位类别: {job.category}
-        职位描述: {job.description}
-        职位要求: {job.requirements}
-        """
-
-        template_vars = {"jobInfo": job_info}
-        
-        try:
-            # 使用简单的分类prompt
-            result = await self.llm_caller.call_with_prompt(
-                prompt=f"""
-                请根据以下职位信息，判断这个职位更偏向于"销售类"还是"技术类"？
-                只回答"销售类"或"技术类"，不要其他内容。
-
-                职位信息：
-                {job_info}
-                """,
-                parse_json=False
-            )
-            
-            job_type = result.strip()
-            
-            if "销售" in job_type:
-                return "job_candidate_match.job_candidate_match_for_sales"
-            else:
-                return "job_candidate_match.job_candidate_match_for_strong_skills"
-                
-        except Exception as e:
-            logger.error(
-                "failed_to_determine_job_type_with_llm",
-                job_id=job.id,
-                error=str(e)
-            )
-            # 默认使用技术类匹配
-            return "job_candidate_match.job_candidate_match_for_strong_skills"
+            # 如果category无法确定，使用通用匹配策略
+            return "job_candidate_match.job_candidate_match_common"
 
     def _prepare_job_description(self, job: Job) -> str:
         """
@@ -336,41 +289,80 @@ class JobCandidateMatchService(BaseService):
         # 直接返回原始结果，不做任何处理
         return result
 
-    def _parse_match_result(self, match_result: str, match_strategy: str) -> Dict[str, Any]:
+    def _parse_match_result(self, match_result, match_strategy: str) -> Dict[str, Any]:
         """
         解析匹配结果
 
         Args:
-            match_result: AI匹配结果（原始返回结果，字符串）
+            match_result: AI匹配结果（可能是字符串或字典）
             match_strategy: 匹配策略
 
         Returns:
             解析后的匹配结果字典，包含is_match和reason字段
         """
-        # 如果模型返回结果是空或错误，返回空结果
-        if not match_result or not match_result.strip():
-            return {"is_match": None, "reason": "模型返回结果为空"}
-        
         # 根据不同策略调用相应的解析方法
         if "job_candidate_match_for_strong_skills" in match_strategy:
             return self._parse_tech_match_result(match_result)
         elif "job_candidate_match_for_sales" in match_strategy:
             return self._parse_sales_match_result(match_result)
+        elif "job_candidate_match_common" in match_strategy:
+            return self._parse_common_match_result(match_result)
         else:
             # 未知策略，返回空结果
-            return {"is_match": None, "reason": "未知匹配策略"}
+            return {
+                "is_match": None,
+                "reason": None,
+                "error": "未知匹配策略"
+            }
     
-    def _parse_tech_match_result(self, match_result: str) -> Dict[str, Any]:
+    def _parse_tech_match_result(self, match_result) -> Dict[str, Any]:
         """
         解析技术类匹配结果
-
+        
         Args:
-            match_result: AI匹配结果（原始返回结果，字符串）
-
+            match_result: AI匹配结果（可能是字符串或字典）
+            
         Returns:
-            解析后的匹配结果字典，包含is_match和reason字段
+            包含以下字段的字典：
+            - is_match: 是否匹配（True/False/None）
+            - reason: 判断依据（字符串）
+            - error: 解析错误信息（如果有）或 None
         """
         try:
+            # 处理字典类型的输入
+            if isinstance(match_result, dict):
+                # 从字典中提取判断结果和判断依据
+                is_match = None
+                reason = None
+                
+                # 尝试获取判断结果
+                if "判断结果" in match_result:
+                    result_value = match_result["判断结果"]
+                    if isinstance(result_value, str):
+                        is_match = result_value == "是"
+                    elif isinstance(result_value, bool):
+                        is_match = result_value
+                
+                # 尝试获取判断依据
+                if "判断依据" in match_result:
+                    reason = match_result["判断依据"]
+                    if not isinstance(reason, str):
+                        reason = str(reason)
+                
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
+            
+            # 处理字符串类型的输入
+            if not match_result or not match_result.strip():
+                return {
+                    "is_match": None,
+                    "reason": None,
+                    "error": "模型返回结果为空"
+                }
+            
             # 获取原始内容
             content = match_result
             
@@ -386,34 +378,80 @@ class JobCandidateMatchService(BaseService):
                 is_match = result_value == "是"
             else:
                 # 如果没有找到标准格式，返回None
-                is_match = None
+                return {
+                    "is_match": None,
+                    "reason": None,
+                    "error": "未找到判断结果字段"
+                }
             
             # 提取判断依据
             reason_match = re.search(r'"判断依据"\s*:\s*"([^"]*)"', content)
             if reason_match:
                 reason = reason_match.group(1).strip()
             else:
-                reason = "未找到判断依据"
+                # 如果没有找到判断依据，仍然返回匹配结果，但reason为None
+                reason = None
             
-            return {"is_match": is_match, "reason": reason}
+            return {
+                "is_match": is_match,
+                "reason": reason,
+                "error": None
+            }
         except Exception as e:
-            logger.error(
-                "failed_to_parse_tech_match_result",
-                error=str(e)
-            )
-            return {"is_match": None, "reason": f"解析技术类匹配结果失败: {str(e)}"}
+            return {
+                "is_match": None,
+                "reason": None,
+                "error": f"解析技术类匹配结果失败: {str(e)}"
+            }
     
-    def _parse_sales_match_result(self, match_result: str) -> Dict[str, Any]:
+    def _parse_sales_match_result(self, match_result) -> Dict[str, Any]:
         """
         解析销售类匹配结果
-
+        
         Args:
-            match_result: AI匹配结果（原始返回结果，字符串）
-
+            match_result: AI匹配结果（可能是字符串或字典）
+            
         Returns:
-            解析后的匹配结果字典，包含is_match和reason字段
+            包含以下字段的字典：
+            - is_match: 是否匹配（True/False/None）
+            - reason: 判断依据（字符串）
+            - error: 解析错误信息（如果有）或 None
         """
         try:
+            # 处理字典类型的输入
+            if isinstance(match_result, dict):
+                # 从字典中提取判断结果和分析过程
+                is_match = None
+                reason = None
+                
+                # 尝试获取判断结果
+                if "判断结果" in match_result:
+                    result_value = match_result["判断结果"]
+                    if isinstance(result_value, str):
+                        is_match = "是" in result_value
+                    elif isinstance(result_value, bool):
+                        is_match = result_value
+                
+                # 尝试获取分析过程
+                if "分析过程" in match_result:
+                    reason = match_result["分析过程"]
+                    if not isinstance(reason, str):
+                        reason = str(reason)
+                
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
+            
+            # 处理字符串类型的输入
+            if not match_result or not match_result.strip():
+                return {
+                    "is_match": None,
+                    "reason": None,
+                    "error": "模型返回结果为空"
+                }
+            
             # 获取原始内容
             content = match_result
             
@@ -437,11 +475,19 @@ class JobCandidateMatchService(BaseService):
                 if result is not None:
                     is_match = "是" in result
                 else:
-                    is_match = None
+                    return {
+                        "is_match": None,
+                        "reason": None,
+                        "error": "未找到判断结果字段"
+                    }
                     
-                reason = parsed_result.get("分析过程", "")
+                reason = parsed_result.get("分析过程", None)
                 
-                return {"is_match": is_match, "reason": reason}
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
             except (json.JSONDecodeError, Exception):
                 # 如果解析失败，尝试从原始内容中查找判断结果
                 import re
@@ -450,22 +496,147 @@ class JobCandidateMatchService(BaseService):
                     result_value = result_match.group(1).strip()
                     is_match = result_value == "是"
                 else:
-                    is_match = None
+                    return {
+                        "is_match": None,
+                        "reason": None,
+                        "error": "未找到判断结果字段"
+                    }
                 
                 # 尝试查找分析过程
                 process_match = re.search(r'"分析过程"\s*:\s*"([^"]*)"', content)
                 if process_match:
                     reason = process_match.group(1).strip()
                 else:
-                    reason = "未找到分析过程"
+                    reason = None
                 
-                return {"is_match": is_match, "reason": reason}
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
         except Exception as e:
-            logger.error(
-                "failed_to_parse_sales_match_result",
-                error=str(e)
-            )
-            return {"is_match": None, "reason": f"解析销售类匹配结果失败: {str(e)}"}
+            return {
+                "is_match": None,
+                "reason": None,
+                "error": f"解析销售类匹配结果失败: {str(e)}"
+            }
+    
+    def _parse_common_match_result(self, match_result) -> Dict[str, Any]:
+        """
+        解析通用匹配结果
+        
+        Args:
+            match_result: AI匹配结果（可能是字符串或字典）
+            
+        Returns:
+            包含以下字段的字典：
+            - is_match: 是否匹配（True/False/None）
+            - reason: 判断依据（字符串）
+            - error: 解析错误信息（如果有）或 None
+        """
+        try:
+            # 处理字典类型的输入
+            if isinstance(match_result, dict):
+                # 从字典中提取过滤结果和总体说明
+                is_match = None
+                reason = None
+                
+                # 尝试获取过滤结果
+                if "过滤结果" in match_result:
+                    result_value = match_result["过滤结果"]
+                    if isinstance(result_value, str):
+                        is_match = result_value == "匹配"
+                    elif isinstance(result_value, bool):
+                        is_match = result_value
+                
+                # 尝试获取总体说明
+                if "总体说明" in match_result:
+                    reason = match_result["总体说明"]
+                    if not isinstance(reason, str):
+                        reason = str(reason)
+                
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
+            
+            # 处理字符串类型的输入
+            if not match_result or not match_result.strip():
+                return {
+                    "is_match": None,
+                    "reason": None,
+                    "error": "模型返回结果为空"
+                }
+            
+            # 获取原始内容
+            content = match_result
+            
+            # 通用匹配结果解析
+            # 输出格式: JSON格式，包含过滤结果和总体说明等字段
+            # 尝试解析JSON格式
+            try:
+                # 移除markdown代码块标记
+                json_content = content
+                if "```json" in content:
+                    json_content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content:
+                    json_content = content.split("```")[1].split("```")[0].strip()
+                
+                # 尝试解析JSON
+                import json
+                parsed_result = json.loads(json_content)
+                
+                # 获取过滤结果和总体说明
+                filter_result = parsed_result.get("过滤结果", None)
+                if filter_result is not None:
+                    is_match = filter_result == "匹配"
+                else:
+                    return {
+                        "is_match": None,
+                        "reason": None,
+                        "error": "未找到过滤结果字段"
+                    }
+                    
+                reason = parsed_result.get("总体说明", None)
+                
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
+            except (json.JSONDecodeError, Exception):
+                # 如果解析失败，尝试从原始内容中查找过滤结果
+                import re
+                result_match = re.search(r'"过滤结果"\s*:\s*"([^"]*)"', content)
+                if result_match:
+                    result_value = result_match.group(1).strip()
+                    is_match = result_value == "匹配"
+                else:
+                    return {
+                        "is_match": None,
+                        "reason": None,
+                        "error": "未找到过滤结果字段"
+                    }
+                
+                # 尝试查找总体说明
+                reason_match = re.search(r'"总体说明"\s*:\s*"([^"]*)"', content)
+                if reason_match:
+                    reason = reason_match.group(1).strip()
+                else:
+                    reason = None
+                
+                return {
+                    "is_match": is_match,
+                    "reason": reason,
+                    "error": None
+                }
+        except Exception as e:
+            return {
+                "is_match": None,
+                "reason": None,
+                "error": f"解析通用匹配结果失败: {str(e)}"
+            }
 
     async def _save_match_result(
         self,

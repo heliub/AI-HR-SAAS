@@ -216,11 +216,11 @@ PROMPT_CONFIG = {
     },
     "job_candidate_match.job_candidate_match_for_sales": {
         "module": "job_candidate_match",
-        "provider": "volcengine",
+        "provider": "openai",
         # "model": "deepseek-v3",
-        "model": "doubao-1-5-pro-32k-250115",
+        "model": "gpt-5",
         "temperature": 0.01,
-        "top_p": 0.01,
+        # "top_p": 0.01,
         "max_completion_tokens": None,
         "prompt": "job_candidate_match_for_sales.md",
         "json_output": True,
@@ -228,15 +228,65 @@ PROMPT_CONFIG = {
     },
     "job_candidate_match.job_candidate_match_for_strong_skills": {
         "module": "job_candidate_match",
-        "provider": "volcengine",
-        "model": "doubao-1-5-pro-32k-250115",
+        "provider": "openai",
+        "model": "gpt-5",
         "temperature": 0.01,
-        "top_p": 0.01,
+        # "top_p": 0.01,
         "max_completion_tokens": None,
         "system": "你是一个 AI 助手，你能根据我的要求给我准确的回复，并且会简明扼要的回答。",
         "prompt": "job_candidate_match_for_strong_skills.md",
         "json_output": False,
         "alias_name": "doItDouBaoResumeBlackScore"
+    },
+    "job_candidate_match.job_candidate_match_common": {
+        "module": "job_candidate_match",
+        "provider": "openai",
+        "model": "gpt-5",
+        "temperature": 0.01,
+        "max_completion_tokens": 20000,
+        "prompt": "job_candidate_match_common.md",
+        "json_output": True,
+        "system": """
+        你是一个智能职位–简历匹配分析器。任务：阅读职位描述（JD）与简历（Resume）文本，
+        判断候选人是否满足岗位硬性要求，并评估软性匹配度与潜力。
+
+        【核心判断标准】
+        1. 硬性要求（Hard Requirements）
+        - 必须满足，否则“不匹配”；
+        - 识别关键词：必须、需具备、至少、require、must；
+        - 包括：学历、经验年限、行业经验、证书、语言、关键技能；
+        - 若为“优先”“希望”“更佳”等字样 → 视为软性。
+            
+        2. 软性要求（Soft Requirements）
+        - 非必需，仅影响潜力与匹配度；
+        - 判断语义相似性（如“沟通能力”“团队协作”等），
+        仅作“高/中/低”打分参考，不影响过滤。
+            
+        3. 客观 / 主观判断区分
+        - 可客观验证（学历、年限、技能、行业、语言）→ 允许直接判断；
+        - 主观评价（沟通能力、性格、学习能力）→ 不作为过滤条件；
+        - 若主观条件有明确客观佐证（如“多次担任销售培训讲师”）→ 可加权入潜力评分。
+            
+        4. 稀缺 / 普遍判断
+        - 普遍技能（办公软件、基本沟通）→ 默认具备；
+        - 稀缺技能（特定行业经验、专业系统）→ 若为硬性且缺失 → 不匹配。
+            
+        5. 判断优先级
+        - 过滤结论由硬性要求决定；
+        - 软性与潜力只用于评分参考；
+        - 不进行结构化提取，只需理解文本内容。
+            
+        【输出格式】
+        {
+        "硬性要求匹配": [
+            {"要求": "…", "是否满足": "是/否", "判断理由": "…"},
+            ...
+        ],
+        "软性要求匹配度": "高 / 中 / 低",
+        "潜力评分": 0–100,
+        "过滤结果": "匹配 / 不匹配",
+        "总体说明": "简要说明逻辑与不确定点（≤50字）"
+        }
+        """
     }
 }
-

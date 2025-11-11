@@ -93,7 +93,8 @@ class LLMCaller:
         final_max_completion_tokens = max_completion_tokens or scene_config.get("max_completion_tokens") or self.default_max_completion_tokens
         final_top_p = top_p if top_p is not None else scene_config.get("top_p")
         final_system = system_prompt or scene_config.get("system")
-        final_json_output = parse_json or scene_config.get("json_output")   
+        # 修复：确保 parse_json 参数能够正确覆盖场景配置
+        final_json_output = parse_json if parse_json is not None else scene_config.get("json_output", True)
         
         try:
             prompt = self.prompt_loader.load_prompt(

@@ -178,3 +178,65 @@ async def test_match_job_candidate_not_found(job_candidate_match_service):
     
     # 验证结果
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_parse_tech_match_result(job_candidate_match_service):
+    """测试技术类匹配结果解析"""
+    # 模拟技术类匹配结果
+    tech_match_result = '"判断结果":"是","判断依据":"候选人技能匹配职位要求"'
+    
+    result = job_candidate_match_service._parse_tech_match_result(tech_match_result)
+    
+    assert result["is_match"] is True
+    assert "候选人技能匹配职位要求" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_parse_sales_match_result(job_candidate_match_service):
+    """测试销售类匹配结果解析"""
+    # 模拟销售类匹配结果
+    sales_match_result = '{"分析过程":"候选人具有良好的销售经验","判断结果":"是"}'
+    
+    result = job_candidate_match_service._parse_sales_match_result(sales_match_result)
+    
+    assert result["is_match"] is True
+    assert "候选人具有良好的销售经验" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_parse_match_result_tech(job_candidate_match_service):
+    """测试匹配结果解析 - 技术类"""
+    # 模拟技术类匹配结果
+    match_result = '"判断结果":"是","判断依据":"候选人技能匹配职位要求"'
+    strategy = "job_candidate_match.job_candidate_match_for_strong_skills"
+    
+    result = job_candidate_match_service._parse_match_result(match_result, strategy)
+    
+    assert result["is_match"] is True
+    assert "候选人技能匹配职位要求" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_parse_match_result_sales(job_candidate_match_service):
+    """测试匹配结果解析 - 销售类"""
+    # 模拟销售类匹配结果
+    match_result = '{"分析过程":"候选人具有良好的销售经验","判断结果":"是"}'
+    strategy = "job_candidate_match.job_candidate_match_for_sales"
+    
+    result = job_candidate_match_service._parse_match_result(match_result, strategy)
+    
+    assert result["is_match"] is True
+    assert "候选人具有良好的销售经验" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_parse_match_result_unknown_strategy(job_candidate_match_service):
+    """测试匹配结果解析 - 未知策略"""
+    match_result = "some content"
+    strategy = "unknown_strategy"
+    
+    result = job_candidate_match_service._parse_match_result(match_result, strategy)
+    
+    assert result["is_match"] is False
+    assert "未知匹配策略" in result["reason"]
