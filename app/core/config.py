@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # JWT配置
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    ACCESS_TOKEN_EXPIRE_HOURS: int = 24 * 30
     
     # AI配置
     AI_PROVIDERS: List[Dict] = [
@@ -76,6 +76,16 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "INFO"
     LOG_RENDERER: str = "json"  # console or json
+    LOG_TO_FILE: bool = True  # 是否写入文件
+    LOG_FILE_PATH: str = "logs/app.log"  # 日志文件路径
+    LOG_FILE_MAX_BYTES: int = 100 * 1024 * 1024  # 单个日志文件最大大小（100MB）
+    LOG_FILE_BACKUP_COUNT: int = 10  # 保留的备份文件数量
+    LOG_MAX_BODY_SIZE: int = 10000  # 最大body记录大小（字节）
+    LOG_MAX_STRING_LENGTH: int = 1000  # 最大字符串长度
+    
+    # 数据库日志配置
+    LOG_DATABASE_QUERIES: bool = True  # 是否记录所有SQL查询
+    SLOW_QUERY_THRESHOLD_MS: float = 100  # 慢查询阈值（毫秒）
     
     # RPA配置
     RPA_HEADLESS: bool = True

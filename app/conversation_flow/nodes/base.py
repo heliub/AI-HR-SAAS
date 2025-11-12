@@ -9,14 +9,13 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
-from opentelemetry import trace
 
 from app.ai.llm.errors import LLMError
 from app.conversation_flow.models import NodeResult, ConversationContext
 from app.ai import get_llm_caller, LLMCaller
+from app.observability.tracing.trace import trace_span
 
 logger = structlog.get_logger(__name__)
-tracer = trace.get_tracer(__name__)
 
 
 class NodeExecutor(ABC):
@@ -61,12 +60,7 @@ class NodeExecutor(ABC):
         start_time = time.time()
 
         # 创建span追踪节点执行
-        with tracer.start_as_current_span(f"node.{self.node_name}") as span:
-            span.set_attribute("node_name", self.node_name)
-            span.set_attribute("scene_name", self.scene_name)
-            span.set_attribute("conversation_id", str(context.conversation_id))
-            span.set_attribute("stage", context.conversation_stage.value)
-
+        with trace_span(f"node.{self.node_name}"):
             logger.info(
                 "node_execution_started",
                 node_name=self.node_name,
@@ -84,26 +78,19 @@ class NodeExecutor(ABC):
                     execution_time_ms = (time.time() - start_time) * 1000
                     result.execution_time_ms = execution_time_ms
 
-                    # 记录span属性
-                    span.set_attribute("action", result.action.value)
-                    span.set_attribute("execution_time_ms", round(execution_time_ms, 2))
-                    span.set_attribute("attempts", attempt + 1)
-                    if result.data.get("fallback"):
-                        span.set_attribute("fallback", True)
-
                     logger.info(
                         "node_execution_completed",
                         node_name=self.node_name,
                         action=result.action.value,
                         execution_time_ms=round(execution_time_ms, 2),
-                        attempt=attempt + 1
+                        attempt=attempt + 1,
+                        fallback=result.data.get("fallback", False)
                     )
 
                     return result
 
                 except LLMError as e:
                     last_exception = e
-                    span.add_event("llm_error", {"attempt": attempt + 1, "error": str(e)})
 
                     if attempt < self.max_retries - 1:
                         # 指数退避
@@ -127,19 +114,21 @@ class NodeExecutor(ABC):
 
                 except Exception as e:
                     # 非LLM异常，直接抛出
-                    span.set_attribute("error", True)
-                    span.record_exception(e)
                     logger.error(
                         "node_execution_failed_unexpected",
                         node_name=self.node_name,
                         error=str(e),
-                        error_type=type(e).__name__
+                        error_type=type(e).__name__,
+                        exc_info=True
                     )
                     raise
 
             # 超过重试次数，返回降级结果
-            span.set_attribute("fallback", True)
-            span.set_attribute("fallback_reason", "max_retries_exceeded")
+            logger.warning(
+                "node_execution_fallback",
+                node_name=self.node_name,
+                reason="max_retries_exceeded"
+            )
             return self._fallback_result(context, last_exception)
 
     @abstractmethod

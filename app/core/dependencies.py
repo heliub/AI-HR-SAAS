@@ -47,29 +47,21 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    try:
-        user_id = UUID(user_id_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
-    # 检查token是否在黑名单中
-    from app.services.auth_token_service import AuthTokenService
-    auth_token_service = AuthTokenService()
+    # # 检查token是否在黑名单中
+    # from app.services.auth_token_service import AuthTokenService
+    # auth_token_service = AuthTokenService()
 
-    if await auth_token_service.is_token_revoked(db, token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # if await auth_token_service.is_token_revoked(db, token):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Token has been revoked",
+    #         headers={"WWW-Authenticate": "Bearer"},
+    #     )
 
     # 获取用户
     user_service = UserService()
-    user = await user_service.get_by_id(db, user_id)
+    user = await user_service.get_by_id(db, user_id_str)
 
     if user is None:
         raise HTTPException(

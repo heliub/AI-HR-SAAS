@@ -8,33 +8,21 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.api.v1.router import api_router
-from app.middleware.tenant_context import TenantContextMiddleware
-from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.error_handler import ErrorHandlerMiddleware
-from app.observability.logging.setup import setup_logging
 from app.observability.logging.middleware import LoggingMiddleware
-from app.observability.tracing.setup import setup_tracing
-from app.observability.tracing.middleware import TracingMiddleware
+from app.observability.tracing.middleware import TraceMiddleware
 from app.observability.metrics.setup import setup_metrics
 from app.observability.metrics.middleware import MetricsMiddleware
-from app.infrastructure.database.session import init_db, close_db
-from app.infrastructure.cache.redis import init_redis, close_redis
 import os
+from app.init_app import init_app, close_app
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # Startup
-    setup_logging()
-    await init_db()
-    await init_redis()
-    
+    await init_app(app)
     yield
-    
-    # Shutdown
-    await close_db()
-    await close_redis()
+    await close_app(app)
 
 
 def create_application() -> FastAPI:
@@ -59,14 +47,10 @@ def create_application() -> FastAPI:
     
     # 添加中间件（注意顺序）
     app.add_middleware(ErrorHandlerMiddleware)
-    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(LoggingMiddleware)
-    app.add_middleware(MetricsMiddleware)
-    app.add_middleware(TracingMiddleware)
-    app.add_middleware(TenantContextMiddleware)
-    
-    # 配置追踪
-    setup_tracing(app)
+    # app.add_middleware(MetricsMiddleware)
+    app.add_middleware(TraceMiddleware)  # 轻量级trace中间件
+    # app.add_middleware(TenantContextMiddleware)
     
     # 配置指标
     setup_metrics(app)

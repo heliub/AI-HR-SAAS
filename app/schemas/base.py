@@ -49,6 +49,7 @@ class APIResponse(BaseModel):
     """统一API响应格式"""
     code: int = 200
     message: str = "成功"
+    time: datetime = datetime.now()
     data: Optional[Any] = None
 
 class ListResponse(BaseModel):

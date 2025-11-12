@@ -1,44 +1,31 @@
 """
-Tracing middleware
+Tracing middleware - 轻量级实现
 """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from opentelemetry import trace
 
-from app.core.config import settings
+from app.observability import context
+from app.observability.tracing.trace import trace_span
 
 
-class TracingMiddleware(BaseHTTPMiddleware):
-    """追踪中间件"""
+class TraceMiddleware(BaseHTTPMiddleware):
+    """Trace中间件 - 处理X-Trace-Id的接收和传递"""
     
     async def dispatch(self, request: Request, call_next):
-        # 即使JAEGER_ENABLED=False，也进行tracing以生成traceid用于日志
-        tracer = trace.get_tracer(__name__)
-        
-        with tracer.start_as_current_span(
-            f"{request.method} {request.url.path}",
-            kind=trace.SpanKind.SERVER,
-        ) as span:
-            # 添加请求属性
-            span.set_attribute("http.method", request.method)
-            span.set_attribute("http.url", str(request.url))
-            span.set_attribute("http.host", request.client.host if request.client else "unknown")
-            
-            # 添加租户和用户信息
-            tenant_id = getattr(request.state, 'tenant_id', None)
-            user_id = getattr(request.state, 'user_id', None)
-            
-            if tenant_id:
-                span.set_attribute("tenant.id", tenant_id)
-            if user_id:
-                span.set_attribute("user.id", user_id)
-            
-            try:
+        # 从header获取trace_id，如果没有则生成新的
+        trace_id = request.headers.get('X-Trace-Id')
+        if trace_id:
+            context.set_trace_id(trace_id)
+        else:
+            trace_id = context.new_trace_id()
+        try:
+            # 创建请求级span（不记录span日志，避免冗余）
+            with trace_span(f"{request.method} {request.url.path}", log_span=False):
                 response = await call_next(request)
-                span.set_attribute("http.status_code", response.status_code)
-                return response
-            except Exception as e:
-                span.set_attribute("error", True)
-                span.record_exception(e)
-                raise
+            # 在响应header中返回trace_id
+            response.headers['X-Trace-Id'] = trace_id
+            return response
+        finally:
+            # 清理上下文，防止协程复用导致traceId冲突
+            context.clear_context()
 

@@ -11,7 +11,6 @@ import asyncio
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
-from opentelemetry import trace
 
 from app.conversation_flow.models import (
     FlowResult,
@@ -20,13 +19,11 @@ from app.conversation_flow.models import (
     NodeAction,
     ConversationStage
 )
-
-# 获取tracer
-tracer = trace.get_tracer(__name__)
 from app.conversation_flow.nodes.precheck import (
     TransferHumanIntentNode,
     EmotionAnalysisNode
 )
+from app.observability.tracing.trace import trace_span
 
 logger = structlog.get_logger(__name__)
 
@@ -71,12 +68,7 @@ class ConversationFlowOrchestrator:
         execution_path = []
 
         # 创建span追踪整个流程
-        with tracer.start_as_current_span("conversation_flow.execute") as span:
-            span.set_attribute("conversation_id", str(context.conversation_id))
-            span.set_attribute("conversation_stage", context.conversation_stage.value)
-            span.set_attribute("tenant_id", str(context.tenant_id))
-            span.set_attribute("job_id", str(context.job_id))
-
+        with trace_span("conversation_flow.execute"):
             logger.info(
                 "flow_execution_started",
                 conversation_id=str(context.conversation_id),
@@ -91,8 +83,11 @@ class ConversationFlowOrchestrator:
 
                 # 短路判断：转人工
                 if transfer_human_result.action == NodeAction.SUSPEND:
-                    span.set_attribute("short_circuit", "transfer_human_intent")
-                    span.set_attribute("final_action", "suspend")
+                    logger.info(
+                        "flow_short_circuit",
+                        reason="transfer_human_intent",
+                        final_action="suspend"
+                    )
                     return self._build_flow_result(
                         node_result=transfer_human_result,
                         execution_path=execution_path,
@@ -101,8 +96,11 @@ class ConversationFlowOrchestrator:
 
                 # 短路判断：情感极差
                 if emotion_analysis_result.action == NodeAction.SUSPEND:
-                    span.set_attribute("short_circuit", "candidate_emotion")
-                    span.set_attribute("final_action", "suspend")
+                    logger.info(
+                        "flow_short_circuit",
+                        reason="candidate_emotion",
+                        final_action="suspend"
+                    )
                     return self._build_flow_result(
                         node_result=emotion_analysis_result,
                         execution_path=execution_path,
@@ -115,7 +113,6 @@ class ConversationFlowOrchestrator:
                         "emotion_needs_closing",
                         score=emotion_analysis_result.data.get("emotion_score")
                     )
-                    span.set_attribute("short_circuit", "candidate_emotion_needs_closing")
                     high_eq_result = await self.high_eq_node.execute(context)
                     execution_path.append(high_eq_result.node_name)
                     return self._build_flow_result(
@@ -133,11 +130,6 @@ class ConversationFlowOrchestrator:
                 # 记录总耗时
                 flow_result.total_time_ms = (time.time() - start_time) * 1000
 
-                # 记录span属性
-                span.set_attribute("final_action", flow_result.action.value)
-                span.set_attribute("execution_path", " -> ".join(flow_result.execution_path))
-                span.set_attribute("total_time_ms", round(flow_result.total_time_ms, 2))
-
                 logger.info(
                     "flow_execution_completed",
                     conversation_id=str(context.conversation_id),
@@ -149,13 +141,12 @@ class ConversationFlowOrchestrator:
                 return flow_result
 
             except Exception as e:
-                span.set_attribute("error", True)
-                span.record_exception(e)
                 logger.error(
                     "flow_execution_failed",
                     conversation_id=str(context.conversation_id),
                     error=str(e),
-                    error_type=type(e).__name__
+                    error_type=type(e).__name__,
+                    exc_info=True
                 )
                 raise
 

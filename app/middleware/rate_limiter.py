@@ -35,7 +35,10 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         client_id = self._get_client_id(request)
         
         # 检查速率限制
-        if not await self._check_rate_limit(client_id):
+        is_allowed = await self._check_rate_limit(client_id)
+        
+        if not is_allowed:
+            # 限流触发
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded. Please try again later."
