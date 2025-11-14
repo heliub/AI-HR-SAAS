@@ -44,5 +44,5 @@ class HighEQResponseNode(NodeExecutor):
             node_name=self.node_name,
             action=NodeAction.SEND_MESSAGE,
             message=content,
-            data={"type": "high_eq_closing"}
+            data={"message": content}
         )

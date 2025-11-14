@@ -33,11 +33,10 @@ class KnowledgeAnswerNode(NodeExecutor):
         knowledge_service = JobKnowledgeService(self.db)
 
         knowledge_results = await knowledge_service.search_for_conversation(
-            query=context.last_candidate_message,
             job_id=context.job_id,
             tenant_id=context.tenant_id,
             conversation_id=context.conversation_id,
-            top_k=3
+            top_k=100
         )
 
         if not knowledge_results:
@@ -74,7 +73,7 @@ class KnowledgeAnswerNode(NodeExecutor):
                 action=NodeAction.NEXT_NODE,
                 next_node=["answer_without_knowledge"],
                 reason="LLM判断知识库无法回答",
-                data={"found": False, "reason": "llm_not_found"}
+                data={"message": content}
             )
 
         # 5. 返回回复消息
@@ -82,8 +81,5 @@ class KnowledgeAnswerNode(NodeExecutor):
             node_name=self.node_name,
             action=NodeAction.SEND_MESSAGE,
             message=content,
-            data={
-                "found": True,
-                "knowledge_count": len(knowledge_results)
-            }
+            data={"message": content}
         )

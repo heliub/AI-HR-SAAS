@@ -42,5 +42,5 @@ class CasualChatNode(NodeExecutor):
             node_name=self.node_name,
             action=NodeAction.SEND_MESSAGE,
             message=content,
-            data={"type": "casual_chat"}
+            data={"message": content}
         )

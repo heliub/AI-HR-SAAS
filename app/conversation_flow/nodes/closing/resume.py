@@ -42,5 +42,5 @@ class ResumeConversationNode(NodeExecutor):
             node_name=self.node_name,
             action=NodeAction.SEND_MESSAGE,
             message=content,
-            data={"type": "resume_conversation"}
+            data={"message": content}
         )

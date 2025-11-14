@@ -459,12 +459,13 @@ class JobKnowledgeService(BaseService):
             scope_id=job_id,
             tenant_id=tenant_id,
             method=method,
-            include_company=True,
+            include_company=False,
+            method=SearchMethod.SIMPLE,
             top_k=top_k
         )
 
         # 记录日志
-        if results and conversation_id:
+        if results and conversation_id and query:
             await self._log_hits(results, query, conversation_id, tenant_id)
 
         return results
