@@ -53,7 +53,7 @@ class KnowledgeAnswerNode(NodeExecutor):
         temp_context = replace(context, knowledge_base_results=knowledge_results)
 
         # 3. 调用LLM生成回复（使用临时context）
-        llm_response = await self.call_llm(temp_context, parse_json=False)
+        llm_response = await self.call_llm(temp_context)
 
         # 4. 检查是否为"not_found"
         # 处理 llm_response 可能是字典或字符串的情况

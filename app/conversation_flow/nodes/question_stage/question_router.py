@@ -143,7 +143,7 @@ class QuestionRouterNode(NodeExecutor):
                 return NodeResult(
                     node_name=self.node_name,
                     action=NodeAction.NEXT_NODE,
-                    next_node=["information_gathering_question"],
+                    next_node=["candidate_communication_willingness_for_question"],
                     reason="非判卷问题，检查沟通意愿",
                     data={"question_type": "information", "is_scoring": False}
                 )

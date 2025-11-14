@@ -317,25 +317,25 @@ async def send_candidate_message(
             conversation_id=conversation_id,
             sender="ai",
             message=flow_result.message,
-            message_type="answer"
+            message_type="text"
         )
 
-    # 7. 更新会话状态（如果需要）
-    if flow_result.action == NodeAction.SUSPEND:
-        # 转人工
-        await conversation_service.update_conversation_status(
-            conversation_id=conversation_id,
-            tenant_id=current_user.tenant_id,
-            status="interrupted"
-        )
-    elif flow_result.action == NodeAction.SEND_MESSAGE:
-        # 继续对话
-        if conversation.status == "opened":
-            await conversation_service.update_conversation_status(
-                conversation_id=conversation_id,
-                tenant_id=current_user.tenant_id,
-                status="ongoing"
-            )
+    # # 7. 更新会话状态（如果需要）
+    # if flow_result.action == NodeAction.SUSPEND:
+    #     # 转人工
+    #     await conversation_service.update_conversation_status(
+    #         conversation_id=conversation_id,
+    #         tenant_id=current_user.tenant_id,
+    #         status="interrupted"
+    #     )
+    # elif flow_result.action == NodeAction.SEND_MESSAGE:
+    #     # 继续对话
+    #     if conversation.status == "opened":
+    #         await conversation_service.update_conversation_status(
+    #             conversation_id=conversation_id,
+    #             tenant_id=current_user.tenant_id,
+    #             status="ongoing"
+    #         )
 
     # 8. 返回响应
     response_data = {

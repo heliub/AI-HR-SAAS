@@ -25,7 +25,7 @@ class NodeExecutor(ABC):
         self,
         node_name: str,
         scene_name: Optional[str] = None,
-        max_retries: int = 3,
+        max_retries: int = 1,
         db: Optional[AsyncSession] = None
     ):
         """
@@ -84,7 +84,8 @@ class NodeExecutor(ABC):
                         action=result.action.value,
                         execution_time_ms=round(execution_time_ms, 2),
                         attempt=attempt + 1,
-                        fallback=result.data.get("fallback", False)
+                        result=result
+
                     )
 
                     return result
@@ -124,11 +125,11 @@ class NodeExecutor(ABC):
                     raise
 
             # 超过重试次数，返回降级结果
-            logger.warning(
-                "node_execution_fallback",
-                node_name=self.node_name,
-                reason="max_retries_exceeded"
-            )
+            # logger.warning(
+            #     "node_execution_fallback",
+            #     node_name=self.node_name,
+            #     reason="max_retries_exceeded"
+            # )
             return self._fallback_result(context, last_exception)
 
     @abstractmethod
@@ -202,7 +203,7 @@ class NodeExecutor(ABC):
         """
         from app.conversation_flow.models import NodeAction
 
-        # 记录详细的技术日志（内部使用）
+        # # 记录详细的技术日志（内部使用）
         logger.error(
             "node_fallback_triggered",
             node_name=self.node_name,

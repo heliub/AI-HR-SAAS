@@ -35,17 +35,6 @@ class TransferHumanIntentNode(SimpleLLMNode):
         # 如果llm_response是字典，尝试获取transfer字段
         if isinstance(llm_response, dict):
             transfer = llm_response.get("transfer", "no").lower()
-        # 如果是字符串，直接解析
-        else:
-            content = llm_response.strip()
-            # 尝试从自然语言响应中提取转人工意图
-            if content.upper().startswith("YES"):
-                transfer = "yes"
-            elif content.upper().startswith("NO"):
-                transfer = "no"
-            else:
-                # 默认为不转人工，以避免误判
-                transfer = "no"
 
         if transfer == "yes":
             return NodeResult(

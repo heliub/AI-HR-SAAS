@@ -25,7 +25,7 @@ class FallbackAnswerNode(NodeExecutor):
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
         """执行节点"""
         # 调用LLM生成兜底回复
-        llm_response = await self.call_llm(context, parse_json=False)
+        llm_response = await self.call_llm(context)
 
         # 处理 llm_response 可能是字典或字符串的情况
         # 根据 answer_without_knowledge.md，输出格式为 {"issue_class": "...", "answer": "str"}

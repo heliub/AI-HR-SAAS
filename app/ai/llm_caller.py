@@ -14,6 +14,7 @@ from app.ai.llm.errors import LLMError
 from app.ai.prompts.prompt_loader import get_prompt_loader
 from app.ai.prompts.variable_substitution import substitute_variables
 from app.ai.prompts.prompt_config import PROMPT_CONFIG
+from app.conversation_flow.utils.json_utils import JsonParser
 
 logger = structlog.get_logger(__name__)
 
@@ -198,7 +199,9 @@ class LLMCaller:
             scene_name=scene_name,
             provider=provider,
             model=model,
-            prompt_length=len(prompt)
+            prompt_length=len(prompt),
+            system_prompt=system_prompt,
+            prompt=prompt
         )
 
         try:
@@ -215,25 +218,27 @@ class LLMCaller:
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
-                response_length=len(content)
+                response_length=len(content),
+                response=response
             )
 
             # 解析JSON
             if parse_json:
                 try:
-                    return self._parse_json_response(content)
-                except LLMError as e:
-                    logger.warning(
-                        "json_parse_failed_returning_raw_content",
+                    return JsonParser.parse(content)
+                except Exception as e:
+                    logger.error(
+                        "parse_llm_response_failed",
                         scene_name=scene_name,
                         provider=provider,
                         model=model,
-                        error=str(e)
+                        error=str(e),
+                        content=content,
+                        exc_info=True
                     )
-                    # JSON解析失败时返回原始内容，以便上游进行针对性处理
                     return content
             else:
-                # 直接返回原始响应内容，而不是封装成{"content": content}结构
+                # 直接返回原始响应内容
                 return content
 
         except LLMError as e:
@@ -245,37 +250,6 @@ class LLMCaller:
                 error=str(e)
             )
             raise
-
-    def _parse_json_response(
-        self,
-        content: str
-    ) -> Dict[str, Any]:
-        """
-        解析JSON响应
-
-        Args:
-            content: LLM响应内容
-
-        Returns:
-            解析后的字典
-
-        Raises:
-            LLMError: JSON解析失败（包装JSONDecodeError，触发重试）
-        """
-        # 移除markdown代码块标记
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-
-        try:
-            result = json.loads(content)
-            return result
-
-        except json.JSONDecodeError as e:
-            # 包装成LLMError，触发重试机制
-            raise LLMError(f"JSON解析失败: {str(e)}，原始内容: {content[:100]}...")
-
 
 # 全局单例
 _default_llm_caller: Optional[LLMCaller] = None
