@@ -29,53 +29,37 @@ class AskQuestionNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        # 获取判断结果
-        is_question_str = "no"  # 默认值
-        question_type = ""
+        # 获取模型返回的是否问题
+        is_question = llm_response.get("result") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取is_question和question_type字段
-        if isinstance(llm_response, dict):
-            is_question_str = llm_response.get("is_question", "no").upper()
-            question_type = llm_response.get("question_type", "")
-        # 如果是字符串，直接解析
-        else:
-            content = llm_response.strip()
-            # 尝试从自然语言响应中提取是否是问题
-            if content.upper().startswith("YES"):
-                is_question_str = "YES"
-            elif content.upper().startswith("NO"):
-                is_question_str = "NO"
-            else:
-                # 默认为不是问题，以避免误判
-                is_question_str = "NO"
-            question_type = ""
+        # 如果无法解析有效的是否问题，返回降级结果
+        if is_question is None:
+            return self._fallback_result(context, Exception("无法解析有效的是否问题"), llm_response)
 
-        return NodeResult(
-            node_name=self.node_name,
-            action=NodeAction.CONTINUE,
-            data={
-                "is_question": is_question_str == "YES",
-                "question_type": question_type
-            }
-        )
+        is_question = str(is_question).upper()
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "is_question": is_question
+        }
+        
+        # 是问题：使用知识库回答
+        if is_question == "YES":
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.NEXT_NODE,
+                next_node=["answer_based_on_knowledge"],
+                data=data
+            )
+        
+        # 不是问题：继续闲聊
+        if is_question == "NO":
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.NEXT_NODE,
+                next_node=["casual_conversation"],
+                data=data
+            )
+        
+        # 其他值：返回降级结果
+        return self._fallback_result(context, Exception(f"是否问题值不在有效范围内: {is_question}"), llm_response)
 
-    def _fallback_result(
-        self,
-        context: ConversationContext,
-        exception: Exception = None
-    ) -> NodeResult:
-        """
-        发问检测降级策略：假定候选人未发问，走闲聊路径
-
-        理由：闲聊是最安全的兜底策略
-        """
-        return NodeResult(
-            node_name=self.node_name,
-            action=NodeAction.CONTINUE,
-            data={
-                "is_question": False,
-                "question_type": "",
-                "fallback": True,
-                "fallback_reason": str(exception) if exception else "unknown"
-            }
-        )

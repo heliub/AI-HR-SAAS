@@ -31,36 +31,39 @@ class QuestionWillingnessNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        # 获取判断结果
-        willing = "no"  # 默认值
+        # 获取模型返回的沟通意愿
+        willing = llm_response.get("result") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取willing字段
-        if isinstance(llm_response, dict):
-            willing = llm_response.get("willing", "no").upper()
-        # 如果是字符串，直接解析
-        else:
-            content = llm_response.strip()
-            # 尝试从自然语言响应中提取意愿
-            if content.upper().startswith("YES"):
-                willing = "YES"
-            elif content.upper().startswith("NO"):
-                willing = "NO"
-            else:
-                # 默认为愿意，以避免误判
-                willing = "YES"
-
+        # 如果无法解析有效沟通意愿，返回降级结果
+        if willing is None:
+            return self._fallback_result(context, Exception("无法解析有效的沟通意愿"), data=llm_response)
+        
+        # 验证willing值有效性
+        willing = str(willing).upper()
+        
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "willing": willing
+        }
+        
+        # 愿意沟通：继续询问下一个问题
         if willing == "YES":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
                 next_node=["information_gathering_question"],
                 reason="候选人愿意沟通，继续询问下一个问题",
-                data={"willing": True}
+                data=data
             )
-        else:
+        
+        # 不愿意沟通：中断流程
+        if willing == "NO":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
                 reason="候选人针对问题的沟通意愿较低",
-                data={"willing": False}
+                data=data
             )
+        
+        # 其他值：返回降级结果
+        return self._fallback_result(context, Exception(f"沟通意愿值不在有效范围内: {willing}"), data=llm_response)

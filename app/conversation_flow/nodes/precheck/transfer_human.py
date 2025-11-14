@@ -30,42 +30,36 @@ class TransferHumanIntentNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        transfer = "no"  # 默认值
+        # 获取模型返回的转人工意图
+        transfer = llm_response.get("transfer") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取transfer字段
-        if isinstance(llm_response, dict):
-            transfer = llm_response.get("transfer", "no").lower()
+        # 如果无法解析有效转人工意图，返回降级结果
+        if transfer is None:
+            return self._fallback_result(context, Exception("无法解析有效的转人工意图"), data=llm_response)
+        
+        transfer = str(transfer).upper()
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "transfer": transfer
+        }
 
-        if transfer == "yes":
+        # 转人工：中断流程
+        if transfer == "YES":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
                 reason="候选人申请转人工",
-                data={"transfer_intent": True}
+                data=data
             )
-        else:
+        
+        # 不转人工：继续情感分析
+        if transfer == "NO":
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.CONTINUE,
-                data={"transfer_intent": False}
+                action=NodeAction.NEXT_NODE,
+                next_node=["candidate_emotion"],  # 继续情感分析
+                data=data
             )
-
-    def _fallback_result(
-        self,
-        context: ConversationContext,
-        exception: Exception = None
-    ) -> NodeResult:
-        """
-        转人工检测降级策略：假定候选人不转人工，继续流程
-
-        理由：宁可AI多聊几句，也不要因为技术故障误转人工
-        """
-        return NodeResult(
-            node_name=self.node_name,
-            action=NodeAction.CONTINUE,
-            data={
-                "transfer_intent": False,
-                "fallback": True,
-                "fallback_reason": str(exception) if exception else "unknown"
-            }
-        )
+        
+        # 其他值：返回降级结果
+        return self._fallback_result(context, Exception(f"转人工意图值不在有效范围内: {transfer}"), data=llm_response)

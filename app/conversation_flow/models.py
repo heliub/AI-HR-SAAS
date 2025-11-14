@@ -72,9 +72,15 @@ class NodeResult:
     action: NodeAction  # 执行动作
     message: Optional[str] = None  # 要发送的消息
     next_node: Optional[List[str]] = None  # 下一个节点列表
-    reason: Optional[str] = None  # 原因说明
-    data: Dict[str, Any] = field(default_factory=dict)  # 额外数据
+    reason: Optional[str] = None  # 业务原因说明（为什么做这个决定）
+    
+    # 业务数据（LLM解析结果、判断结果等）
+    data: Dict[str, Any] = field(default_factory=dict)
+    
+    # 技术元数据（与业务逻辑无关）
     execution_time_ms: Optional[float] = None  # 执行耗时（毫秒）
+    is_fallback: bool = False  # 是否为降级结果
+    fallback_reason: Optional[str] = None  # 降级原因（技术故障）
 
     def __post_init__(self):
         """确保枚举类型正确"""

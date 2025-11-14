@@ -41,10 +41,12 @@ class KnowledgeAnswerNode(NodeExecutor):
         )
 
         if not knowledge_results:
-            # 没有找到知识库
+            # 没有找到知识库，fallback到兜底回复
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.CONTINUE,
+                action=NodeAction.NEXT_NODE,
+                next_node=["answer_without_knowledge"],
+                reason="未找到知识库",
                 data={"found": False, "reason": "no_knowledge_found"}
             )
 
@@ -69,7 +71,9 @@ class KnowledgeAnswerNode(NodeExecutor):
         if content.lower() == "not_found" or "not_found" in content.lower():
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.CONTINUE,
+                action=NodeAction.NEXT_NODE,
+                next_node=["answer_without_knowledge"],
+                reason="LLM判断知识库无法回答",
                 data={"found": False, "reason": "llm_not_found"}
             )
 

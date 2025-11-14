@@ -186,7 +186,8 @@ class NodeExecutor(ABC):
     def _fallback_result(
         self,
         context: ConversationContext,
-        exception: Optional[Exception] = None
+        exception: Optional[Exception] = None,
+        data: Optional[Dict[str, Any]] = None
     ) -> NodeResult:
         """
         降级结果（当技术异常超过重试次数时调用）
@@ -197,13 +198,14 @@ class NodeExecutor(ABC):
         Args:
             context: 会话上下文
             exception: 导致降级的异常
+            data: 模型响应结果（可选）
 
         Returns:
             降级的节点执行结果
         """
         from app.conversation_flow.models import NodeAction
 
-        # # 记录详细的技术日志（内部使用）
+        # 记录详细的技术日志（内部使用）
         logger.error(
             "node_fallback_triggered",
             node_name=self.node_name,
@@ -217,12 +219,10 @@ class NodeExecutor(ABC):
         return NodeResult(
             node_name=self.node_name,
             action=NodeAction.SUSPEND,
-            reason="系统繁忙，已转人工客服为您服务",  # 用户友好
-            data={
-                "fallback": True,
-                "fallback_node": self.node_name,
-                "internal_error": str(exception) if exception else "unknown"  # 技术细节
-            }
+            reason=None,  # 用户友好
+            data=data or {},  # 使用传入的data或空字典
+            is_fallback=True,  # 标记为降级结果
+            fallback_reason=str(exception) if exception else "技术异常超过重试次数"  # 技术故障原因
         )
 
 

@@ -44,24 +44,3 @@ class FallbackAnswerNode(NodeExecutor):
             message=content,
             data={"type": "fallback"}
         )
-
-    def _fallback_result(
-        self,
-        context: ConversationContext,
-        exception: Exception = None
-    ) -> NodeResult:
-        """
-        兜底回复降级策略：返回固定的友好兜底消息
-
-        理由：即使LLM失败，也要给候选人一个友好的回复
-        """
-        return NodeResult(
-            node_name=self.node_name,
-            action=NodeAction.SEND_MESSAGE,
-            message="感谢您的咨询！我会尽快为您核实相关信息，稍后回复您。如有紧急问题，请联系我们的HR团队。",
-            data={
-                "type": "fallback",
-                "technical_fallback": True,
-                "fallback_reason": str(exception) if exception else "unknown"
-            }
-        )

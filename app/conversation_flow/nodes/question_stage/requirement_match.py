@@ -30,36 +30,49 @@ class RequirementMatchNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        # 获取判断结果
-        satisfied = "no"  # 默认值
+        # 获取模型返回的满足度
+        satisfied = llm_response.get("result") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取satisfied字段
-        if isinstance(llm_response, dict):
-            satisfied = llm_response.get("satisfied", "no").upper()
-        # 如果是字符串，直接解析
-        else:
-            content = llm_response.strip()
-            # 尝试从自然语言响应中提取满足度
-            if content.upper().startswith("YES"):
-                satisfied = "YES"
-            elif content.upper().startswith("NO"):
-                satisfied = "NO"
-            else:
-                # 默认为不满足，以避免误判
-                satisfied = "NO"
+        # 如果无法解析有效满足度，返回降级结果
+        if satisfied is None:
+            return self._fallback_result(context, Exception("无法解析有效的满足度"), llm_response)
+        
+        # 验证satisfied值有效性
+        satisfied = str(satisfied).upper()
+        
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "satisfied": satisfied
+        }
 
+        # 满足要求：继续询问下一个问题
         if satisfied == "YES":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
                 next_node=["information_gathering_question"],
                 reason="候选人回复满足要求，继续询问下一个问题",
-                data={"satisfied": True}
+                data=data
             )
-        else:
+        
+        # 候选人未明确回答问题，尝试知识库回复
+        if satisfied == "QUESTION":
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.NEXT_NODE,
+                next_node=["answer_based_on_knowledge"],
+                reason="候选人未明确回答问题，尝试知识库回复",
+                data=data
+            )
+        
+        # 不满足要求：中断流程
+        if satisfied == "NO":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
                 reason="候选人回复不满足要求",
-                data={"satisfied": False}
+                data=data
             )
+        
+        # 其他值：返回降级结果
+        return self._fallback_result(context, Exception(f"满足度值不在有效范围内: {satisfied}"), llm_response)

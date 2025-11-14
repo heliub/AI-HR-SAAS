@@ -32,63 +32,67 @@ class RelevanceCheckNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        # 获取相关性等级
-        relevance = "E"  # 默认值
+        # 获取模型返回的相关性等级
+        relevance = llm_response.get("result") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取relevance字段
-        if isinstance(llm_response, dict):
-            relevance = llm_response.get("relevance", "E").upper()
-        # 如果是字符串，直接解析
-        else:
-            content = llm_response.strip()
-            # 尝试从自然语言响应中提取相关性等级
-            # 默认为E（无法判断），以避免误判
-            relevance = "E"
-            # 检查内容中是否包含A/B/C/D/E
-            for char in ["A", "B", "C", "D", "E"]:
-                if char in content.upper():
-                    relevance = char
-                    break
+        # 如果无法解析有效相关性等级，返回降级结果
+        if relevance is None:
+            return self._fallback_result(context, Exception("无法解析有效的相关性等级"), llm_response)
+        
+        # 验证relevance值有效性
+        relevance = str(relevance).upper()
+        
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "relevance": relevance
+        }
 
-        # A、D、E：异常情况，中断流程
-        if relevance in ["A", "D", "E"]:
-            reason_map = {
-                "A": "候选人拒绝回答",
-                "D": "候选人回复异常或包含敏感内容",
-                "E": "无法判断相关性"
-            }
+        # A：候选人拒绝回答
+        if relevance == "A":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
-                reason=reason_map.get(relevance, f"相关性检查异常: {relevance}"),
-                data={"relevance": relevance}
+                reason="候选人拒绝回答",
+                data=data
             )
 
         # B：相关且有效，继续满足度检查
-        elif relevance == "B":
+        if relevance == "B":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
                 next_node=["reply_match_question_requirement"],
                 reason="候选人回复相关且有效",
-                data={"relevance": relevance}
+                data=data
             )
 
         # C：答非所问，继续询问下一个问题
-        elif relevance == "C":
+        if relevance == "C":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
                 next_node=["information_gathering_question"],
                 reason="候选人答非所问，继续询问下一个问题",
-                data={"relevance": relevance}
+                data=data
             )
-
-        # 其他情况：默认中断
-        else:
+        
+        # D：候选人回复异常或包含敏感内容
+        if relevance == "D":
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
-                reason=f"未知的相关性等级: {relevance}",
-                data={"relevance": relevance}
+                reason="候选人回复异常或包含敏感内容",
+                data=data
             )
+        
+        # E：无法判断相关性
+        if relevance == "E":
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.SUSPEND,
+                reason="无法判断相关性",
+                data=data
+            )
+        
+        # 其他值：返回降级结果
+        return self._fallback_result(context, Exception(f"相关性等级值不在有效范围内: {relevance}"), llm_response)

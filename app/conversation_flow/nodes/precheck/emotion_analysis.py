@@ -34,20 +34,25 @@ class EmotionAnalysisNode(SimpleLLMNode):
         context: ConversationContext
     ) -> NodeResult:
         """解析LLM响应"""
-        # 获取分数和原因
-        score = 0
-        reason = ""
+        # 获取模型返回的分数和原因
+        score = llm_response.get("分数") if isinstance(llm_response, dict) else None
+        reason = llm_response.get("原因") if isinstance(llm_response, dict) else None
         
-        # 如果llm_response是字典，尝试获取分数和原因
-        if isinstance(llm_response, dict):
-            score = int(llm_response.get("分数", 0))
-            reason = llm_response.get("原因", "")
-        # 如果是字符串，使用默认值
-        else:
-            # 尝试从自然语言响应中提取分数
-            # 默认为0（情感正常），以避免误判
-            score = 0
-            reason = "技术故障，假定情感正常"
+        # 如果无法解析有效分数，返回降级结果
+        if score is None:
+            return self._fallback_result(context, Exception("无法解析有效的情感分数或原因"), data=llm_response)
+        
+        # 验证分数有效性
+        try:
+            score = int(score)
+        except (ValueError, TypeError):
+            return self._fallback_result(context, Exception("情感分数格式错误"), data=llm_response)
+
+        # NodeResult的data只存放解析后的模型结果
+        data = {
+            "emotion_score": score,
+            "emotion_reason": reason
+        }
 
         # 分数为3：情感极差，中断流程
         if score == 3:
@@ -55,51 +60,29 @@ class EmotionAnalysisNode(SimpleLLMNode):
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
                 reason=f"候选人情感极差(分数={score}): {reason}",
-                data={"emotion_score": score, "emotion_reason": reason}
+                data=data
             )
 
         # 分数为2：情感一般，需要发送高情商结束语
-        elif score == 2:
+        if score == 2:
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.CONTINUE,
-                data={
-                    "emotion_score": score,
-                    "emotion_reason": reason,
-                    "need_closing": True  # 标记需要发送结束语
-                }
+                action=NodeAction.NEXT_NODE,
+                next_node=["high_eq_response"],  # 发送高情商结束语
+                reason=f"候选人情感一般(分数={score})，发送高情商结束语",
+                data=data
             )
 
         # 分数为0或1：情感正常，继续后续流程
-        else:
+        if score in [0, 1]:
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.CONTINUE,
-                data={
-                    "emotion_score": score,
-                    "emotion_reason": reason,
-                    "need_closing": False
-                }
+                action=NodeAction.NEXT_NODE,
+                # 继续Response组（沟通意愿判断）和Question组（问题处理）
+                next_node=["continue_conversation_with_candidate", "information_gathering"],
+                reason=f"候选人情感正常(分数={score})，继续主流程",
+                data=data
             )
-
-    def _fallback_result(
-        self,
-        context: ConversationContext,
-        exception: Exception = None
-    ) -> NodeResult:
-        """
-        情感分析降级策略：假定候选人情感正常(分数1)，继续流程
-
-        理由：除非明确负面，否则继续沟通，避免技术故障导致误判
-        """
-        return NodeResult(
-            node_name=self.node_name,
-            action=NodeAction.CONTINUE,
-            data={
-                "emotion_score": 1,
-                "emotion_reason": "技术故障，假定情感正常",
-                "need_closing": False,
-                "fallback": True,
-                "fallback_reason": str(exception) if exception else "unknown"
-            }
-        )
+        
+        # 其他分数值：返回降级结果
+        return self._fallback_result(context, Exception(f"情感分数值不在有效范围内: {score}"), data=llm_response)
