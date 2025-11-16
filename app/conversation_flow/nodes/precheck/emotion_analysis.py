@@ -13,7 +13,7 @@
 - 分数为2，action为CONTINUE，data中标记需要发送结束语
 - 分数为3，action为SUSPEND
 """
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Optional
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -21,11 +21,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 
 class EmotionAnalysisNode(SimpleLLMNode):
     """候选人情感分析"""
-
+    node_name = "candidate_emotion"
     def __init__(self):
         super().__init__(
-            scene_name="candidate_emotion",
-            node_name="candidate_emotion"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(
@@ -85,4 +85,15 @@ class EmotionAnalysisNode(SimpleLLMNode):
             )
         
         # 其他分数值：返回降级结果
-        return self._fallback_result(context, Exception(f"情感分数值不在有效范围内: {score}"), data=llm_response)
+        return self._fallback_result(context, None, data=llm_response)
+
+    def _fallback_result(self, context: ConversationContext, exception: Optional[Exception] = None, data: Optional[Dict[str, Any]] = None) -> NodeResult:
+        """降级结果"""
+        return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.NEXT_NODE,
+                next_node=["continue_conversation_with_candidate", "information_gathering"],  # 发送高情商结束语
+                data=data or {},
+                is_fallback=True,
+                fallback_reason="无法解析有效的情感分数"
+            )

@@ -17,7 +17,7 @@ def _create_json_formatter(include_pathname: bool = True) -> jsonlogger.JsonForm
     if include_pathname:
         fmt += ' %(pathname)s %(lineno)d'
     # 添加ensure_ascii=False参数，确保中文字符不被转义
-    return jsonlogger.JsonFormatter(fmt, timestamp=True, ensure_ascii=False)
+    return jsonlogger.JsonFormatter(fmt, timestamp=True, json_ensure_ascii=False)
 
 
 def _create_file_handler(formatter: Optional[logging.Formatter] = None) -> RotatingFileHandler:

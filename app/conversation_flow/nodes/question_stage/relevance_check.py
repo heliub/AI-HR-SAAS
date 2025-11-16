@@ -20,10 +20,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class RelevanceCheckNode(SimpleLLMNode):
     """候选人回复和问题相关性检查"""
 
+    node_name = "relevance_reply_and_question"
     def __init__(self):
         super().__init__(
-            scene_name="relevance_reply_and_question",
-            node_name="relevance_reply_and_question"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(

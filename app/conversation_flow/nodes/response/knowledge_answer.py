@@ -18,10 +18,11 @@ from app.conversation_flow.nodes.base import NodeExecutor
 class KnowledgeAnswerNode(NodeExecutor):
     """基于知识库回复求职者"""
 
+    node_name = "answer_based_on_knowledge"
     def __init__(self, db: AsyncSession):
         super().__init__(
-            scene_name="answer_based_on_knowledge",
-            node_name="answer_based_on_knowledge",
+            scene_name=self.node_name,
+            node_name=self.node_name,
             db=db
         )
 

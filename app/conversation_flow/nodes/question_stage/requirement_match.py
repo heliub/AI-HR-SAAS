@@ -18,10 +18,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class RequirementMatchNode(SimpleLLMNode):
     """候选人的回复是否满足设定的要求"""
 
+    node_name = "reply_match_question_requirement"
     def __init__(self):
         super().__init__(
-            scene_name="reply_match_question_requirement",
-            node_name="reply_match_question_requirement"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(

@@ -16,11 +16,12 @@ from app.conversation_flow.nodes.base import NodeExecutor
 
 class HighEQResponseNode(NodeExecutor):
     """高情商回复（结束语）"""
+    node_name = "high_eq_response"
 
     def __init__(self, db: AsyncSession = None):
         super().__init__(
-            scene_name="high_eq_response",
-            node_name="high_eq_response",
+            scene_name=self.node_name,
+            node_name=self.node_name,
             db=db
         )
 

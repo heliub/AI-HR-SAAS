@@ -14,7 +14,7 @@ from app.ai.llm.errors import LLMError
 from app.ai.prompts.prompt_loader import get_prompt_loader
 from app.ai.prompts.variable_substitution import substitute_variables
 from app.ai.prompts.prompt_config import PROMPT_CONFIG
-from app.conversation_flow.utils.json_utils import JsonParser
+from app.utils.json_utils import JsonParser
 
 logger = structlog.get_logger(__name__)
 

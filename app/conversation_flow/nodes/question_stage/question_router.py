@@ -24,10 +24,11 @@ logger = structlog.get_logger(__name__)
 class QuestionRouterNode(NodeExecutor):
     """问题询问阶段处理（路由节点，无需LLM）"""
 
+    node_name = "information_gathering"
     def __init__(self, db: AsyncSession):
         super().__init__(
-            scene_name="information_gathering",
-            node_name="information_gathering",
+            scene_name=self.node_name,
+            node_name=self.node_name,
             db=db
         )
 
@@ -40,8 +41,6 @@ class QuestionRouterNode(NodeExecutor):
 
         # ========== 1. Stage1处理 ==========
         if context.is_greeting_stage:
-            logger.debug("question_router_stage1_check_questions")
-
             # 查询职位是否有有效的问题
             job_question_service = JobQuestionService(self.db)
             questions = await job_question_service.get_questions_by_job(

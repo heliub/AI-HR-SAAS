@@ -18,10 +18,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class ContinueConversationNode(SimpleLLMNode):
     """候选人是否愿意沟通"""
 
+    node_name = "continue_conversation_with_candidate"
     def __init__(self):
         super().__init__(
-            scene_name="continue_conversation_with_candidate",
-            node_name="continue_conversation_with_candidate"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(

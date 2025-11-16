@@ -146,3 +146,9 @@ class Language(str, Enum):
     CHINESE = "zh"
     INDONESIAN = "id"
 
+
+class QuestionType(str, Enum):
+    """问题类型"""
+    INFORMATION = "information"  # 信息采集
+    ASSESSMENT = "assessment"   # 考察评估（判卷）
+

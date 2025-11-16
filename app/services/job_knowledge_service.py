@@ -460,7 +460,6 @@ class JobKnowledgeService(BaseService):
             tenant_id=tenant_id,
             method=method,
             include_company=False,
-            method=SearchMethod.SIMPLE,
             top_k=top_k
         )
 

@@ -19,10 +19,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class QuestionWillingnessNode(SimpleLLMNode):
     """候选人针对问题的沟通意愿"""
 
+    node_name = "candidate_communication_willingness_for_question"
     def __init__(self):
         super().__init__(
-            scene_name="candidate_communication_willingness_for_question",
-            node_name="candidate_communication_willingness_for_question"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(

@@ -16,10 +16,11 @@ from app.conversation_flow.nodes.base import NodeExecutor
 class CasualChatNode(NodeExecutor):
     """陪候选人闲聊"""
 
+    node_name = "casual_conversation"
     def __init__(self):
         super().__init__(
-            scene_name="casual_conversation",
-            node_name="casual_conversation"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

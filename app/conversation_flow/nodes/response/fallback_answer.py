@@ -16,10 +16,11 @@ from app.conversation_flow.nodes.base import NodeExecutor
 class FallbackAnswerNode(NodeExecutor):
     """无知识库兜底回复"""
 
+    node_name = "answer_without_knowledge"
     def __init__(self):
         super().__init__(
-            scene_name="answer_without_knowledge",
-            node_name="answer_without_knowledge"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

@@ -17,10 +17,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class AskQuestionNode(SimpleLLMNode):
     """候选人是否发问"""
 
+    node_name = "candidate_ask_question"
     def __init__(self):
         super().__init__(
-            scene_name="candidate_ask_question",
-            node_name="candidate_ask_question"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(

@@ -15,11 +15,11 @@ from app.conversation_flow.nodes.base import NodeExecutor
 
 class ResumeConversationNode(NodeExecutor):
     """复聊语"""
-
+    node_name = "resume_conversation"
     def __init__(self):
         super().__init__(
-            scene_name="resume_conversation",
-            node_name="resume_conversation"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

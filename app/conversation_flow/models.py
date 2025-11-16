@@ -92,11 +92,11 @@ class NodeResult:
 class FlowResult:
     """流程执行结果"""
     action: NodeAction  # 最终动作
-    message: Optional[str] = None  # 要发送的消息
+    execute_node: Optional[str] = None  # 执行的节点
+    messages: List[str] = field(default_factory=list)  # 要发送的消息列表
+    message:Optional[str] = None  # 要发送的消息
     reason: Optional[str] = None  # 原因说明
-    metadata: Dict[str, Any] = field(default_factory=dict)  # 元数据
-    execution_path: List[str] = field(default_factory=list)  # 执行路径（节点名称列表）
-    total_time_ms: Optional[float] = None  # 总耗时（毫秒）
+    data: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """确保枚举类型正确"""
@@ -107,17 +107,13 @@ class FlowResult:
     def from_node_result(cls, node_result: NodeResult) -> "FlowResult":
         """从节点结果创建流程结果"""
         return cls(
+            execute_node=node_result.node_name,
             action=node_result.action,
-            message=node_result.message,
+            messages=[node_result.message] if node_result.action == NodeAction.SEND_MESSAGE else [],
+            message=node_result.message if node_result.action == NodeAction.SEND_MESSAGE else None,
             reason=node_result.reason,
-            metadata={
-                "source_node": node_result.node_name,
-                "node_data": node_result.data
-            },
-            execution_path=[node_result.node_name],
-            total_time_ms=node_result.execution_time_ms
+            data=node_result.data
         )
-
 
 @dataclass
 class PositionInfo:
@@ -162,6 +158,7 @@ class ConversationContext:
     knowledge_base_results: Optional[List[Dict[str, Any]]] = None  # 知识库检索结果
     current_question_id: Optional[UUID] = None  # 当前正在询问的问题ID
     current_question_content: Optional[str] = None  # 当前问题内容
+    current_question_requirement: Optional[str] = None  # 当前问题要求
 
     def __post_init__(self):
         """验证必填字段"""
@@ -198,44 +195,34 @@ class ConversationContext:
     def get_template_vars(self) -> Dict[str, Any]:
         """获取Prompt模板变量"""
         return {
-            # 原有变量（保持向后兼容）
-            "候选人最后一条消息": self.last_candidate_message,
-            "历史对话": self.format_history(),
-            "职位信息": self.position_info.to_dict(),
-            "职位名称": self.position_info.name,
-            "知识库信息": self.format_knowledge_base(),
-            "HR最后一句话": self.get_last_hr_message(),
-            "HR（AI）设定当前正在沟通的问题": self.current_question_content or "",
-            
             # 统一变量名（驼峰命名法）
             "lastCandidateMessage": self.last_candidate_message,
             "chatHistory": self.format_history(),
-            "jobInfo": self.position_info.to_dict(),
             "jobTitle": self.position_info.name,
-            "knowledgeBase": self.format_knowledge_base(),
             "lastHRMessage": self.get_last_hr_message(),
             "currentQuestion": self.current_question_content or "",
             
             # 职位相关详细信息
             "jobDescription": self.position_info.description or "",
-            "jobRequirement": self.position_info.requirements or "",
+            "jobRequirement": self.get_job_requirement(),
             
             # 兼容旧变量名
             "content": self.last_candidate_message,  # 候选人最后一条消息
             "chatMessage": self.format_history(),  # 历史对话
-            "lastReply": self.get_last_hr_message(),  # HR最后一句话
-            "jd_desc": self.position_info.description or "",  # 岗位JD
-            "requirement": self.position_info.requirements or "",  # 用人条件
             "knowledge": self.format_knowledge_base(),  # 知识库内容
             "question": self.current_question_content or "",  # 当前问题
         }
+
+    def get_job_requirement(self) -> str:
+        """获取职位要求"""
+        return f"问题：{self.current_question_content}，要求：{self.current_question_requirement}"
 
     def format_history(self, max_messages: int = 10) -> str:
         """格式化历史对话"""
         recent_messages = self.history[-max_messages:] if len(self.history) > max_messages else self.history
         formatted = []
         for msg in recent_messages:
-            role = "候选人" if msg.sender == "candidate" else "HR"
+            role = "求职者" if msg.sender == "candidate" else "招聘者"
             formatted.append(f"{role}: {msg.content}")
         return "\n".join(formatted)
 
@@ -253,11 +240,7 @@ class ConversationContext:
 
         formatted = []
         for idx, kb in enumerate(self.knowledge_base_results, 1):
-            formatted.append(f"知识{idx}:")
-            formatted.append(f"问题: {kb.get('question', '')}")
-            formatted.append(f"答案: {kb.get('answer', '')}")
-            formatted.append("")
-
+            formatted.append(f"|{kb.get('question', '')}|{kb.get('answer', '')}|")
         return "\n".join(formatted)
 
     @property

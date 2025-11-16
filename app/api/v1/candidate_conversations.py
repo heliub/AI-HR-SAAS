@@ -24,6 +24,7 @@ from app.schemas.candidate_conversation import (
 from app.services.candidate_chat_history_service import CandidateChatHistoryService
 from app.services.candidate_conversation_service import CandidateConversationService
 from app.conversation_flow.orchestrator import ConversationFlowOrchestrator
+from app.conversation_flow.nodes.question_stage.question_handler import QuestionHandlerNode
 from app.conversation_flow.models import (
     ConversationContext,
     ConversationStage,
@@ -33,6 +34,7 @@ from app.conversation_flow.models import (
     NodeAction
 )
 from app.api.responses import APIResponse
+from app.services.conversation_question_tracking_service import ConversationQuestionTrackingService
 
 router = APIRouter()
 
@@ -261,7 +263,7 @@ async def send_candidate_message(
     history_messages = await chat_history_service.get_latest_messages(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
-        limit=50
+        limit=30
     )
 
     # 转换为流程所需的Message格式（倒序，最早的在前）
@@ -310,7 +312,7 @@ async def send_candidate_message(
 
     # 6. 保存AI回复（如果有）
     ai_message = None
-    if flow_result.message:
+    if flow_result and flow_result.action == NodeAction.SEND_MESSAGE and flow_result.message:
         ai_message = await chat_history_service.create_message(
             tenant_id=current_user.tenant_id,
             resume_id=conversation.resume_id,
@@ -319,6 +321,14 @@ async def send_candidate_message(
             message=flow_result.message,
             message_type="text"
         )
+        if flow_result.execute_node == QuestionHandlerNode.node_name and flow_result.data and flow_result.data.get("question_tracking_id"):
+            question_tracking_id = flow_result.data.get("question_tracking_id")
+            tracking_service = ConversationQuestionTrackingService(db)
+            await tracking_service.update_question_status(
+                tracking_id=question_tracking_id,
+                tenant_id=current_user.tenant_id,
+                status="ongoing"
+            )
 
     # # 7. 更新会话状态（如果需要）
     # if flow_result.action == NodeAction.SUSPEND:
@@ -339,9 +349,7 @@ async def send_candidate_message(
 
     # 8. 返回响应
     response_data = {
-        "candidateMessage": ConversationMessageResponse.model_validate(candidate_message).model_dump(),
         "aiMessage": ai_message.message if ai_message else None,
-        "action": flow_result.action.value,
         "conversationStatus": conversation.status,
         "conversationStage": conversation.stage
     }

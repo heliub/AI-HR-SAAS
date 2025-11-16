@@ -9,7 +9,7 @@
 - 执行结果为yes，action为SUSPEND
 - 否则为action为CONTINUE
 """
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Optional
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
 from app.conversation_flow.nodes.base import SimpleLLMNode
@@ -18,10 +18,11 @@ from app.conversation_flow.nodes.base import SimpleLLMNode
 class TransferHumanIntentNode(SimpleLLMNode):
     """候选人是否申请转人工"""
 
+    node_name = "transfer_human_intent"
     def __init__(self):
         super().__init__(
-            scene_name="transfer_human_intent",
-            node_name="transfer_human_intent"
+            scene_name=self.node_name,
+            node_name=self.node_name,
         )
 
     async def _parse_llm_response(
@@ -62,4 +63,15 @@ class TransferHumanIntentNode(SimpleLLMNode):
             )
         
         # 其他值：返回降级结果
-        return self._fallback_result(context, Exception(f"转人工意图值不在有效范围内: {transfer}"), data=llm_response)
+        return self._fallback_result(context, None, data=llm_response)
+
+    def _fallback_result(self, context: ConversationContext, exception: Optional[Exception] = None, data: Optional[Dict[str, Any]] = None) -> NodeResult:
+        """降级结果"""
+        return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.NEXT_NODE,
+                next_node=["candidate_emotion"],  # 继续情感分析
+                data=data or {},
+                is_fallback=True,
+                fallback_reason="无法解析有效的转人工意图"
+            )
