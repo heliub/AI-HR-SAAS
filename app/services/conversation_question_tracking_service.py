@@ -5,18 +5,19 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, select, func
+from sqlalchemy import and_, select, func, update
 from sqlalchemy.orm import joinedload
 
 from app.models.conversation_question_tracking import ConversationQuestionTracking
 from app.models.job_question import JobQuestion
 from app.services.base_service import BaseService
+from app.infrastructure.database.session import get_db_context
 
 
 class ConversationQuestionTrackingService(BaseService):
     """会话问题跟踪服务类，处理会话问题跟踪相关的数据库操作"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         super().__init__(db)
 
     async def get_questions_by_conversation(
@@ -42,9 +43,10 @@ class ConversationQuestionTrackingService(BaseService):
         if user_id and not is_admin:
             conditions.append(ConversationQuestionTracking.user_id == user_id)
 
-        query = select(ConversationQuestionTracking).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        query = select(ConversationQuestionTracking).where(and_(*conditions))   
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return result.scalars().all()
 
     async def get_next_pending_question(
         self,
@@ -89,8 +91,9 @@ class ConversationQuestionTrackingService(BaseService):
             .limit(1)  # 只取第一个
         )
 
-        result = await self.db.execute(query)
-        return result.scalar()
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return result.scalar_one_or_none()
 
     async def create_question_tracking(
         self,
@@ -157,8 +160,9 @@ class ConversationQuestionTrackingService(BaseService):
             tracking_records.append(ConversationQuestionTracking(**tracking_data))
         
         # 批量插入
-        self.db.add_all(tracking_records)
-        await self.db.commit()
+        async with get_db_context() as session:
+            session.add_all(tracking_records)
+
 
     async def update_question_status(
         self,
@@ -169,29 +173,13 @@ class ConversationQuestionTrackingService(BaseService):
         is_admin: bool = False,
         is_satisfied: Optional[bool] = None
     ) -> Optional[ConversationQuestionTracking]:
-        """更新问题状态"""
-        conditions = [
-            ConversationQuestionTracking.id == tracking_id,
-            ConversationQuestionTracking.tenant_id == tenant_id,
-            ConversationQuestionTracking.status != "deleted"
-        ]
-
-        # 用户过滤 - 只有非管理员时才过滤
+        conditions = [ConversationQuestionTracking.id == tracking_id, ConversationQuestionTracking.tenant_id == tenant_id, ConversationQuestionTracking.status != "deleted"]
         if user_id and not is_admin:
             conditions.append(ConversationQuestionTracking.user_id == user_id)
-
-        query = select(ConversationQuestionTracking).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            db_obj.status = status
-            if is_satisfied is not None:
-                db_obj.is_satisfied = is_satisfied
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-
-        return db_obj
+        async with get_db_context() as session:
+            stmt = update(ConversationQuestionTracking).where(and_(*conditions)).values(status=status, is_satisfied=is_satisfied).returning(ConversationQuestionTracking)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def update_question_satisfaction(
         self,

@@ -44,7 +44,7 @@ class AskQuestionNode(SimpleLLMNode):
         }
         
         # 是问题：使用知识库回答
-        if is_question == "YES":
+        if is_question == "YES" or "YES" in is_question:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -53,7 +53,7 @@ class AskQuestionNode(SimpleLLMNode):
             )
         
         # 不是问题：继续闲聊
-        if is_question == "NO":
+        if is_question == "NO" or "NO" in is_question:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,

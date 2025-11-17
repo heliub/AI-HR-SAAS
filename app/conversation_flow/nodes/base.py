@@ -26,7 +26,6 @@ class NodeExecutor(ABC):
         node_name: str,
         scene_name: Optional[str] = None,
         max_retries: int = 1,
-        db: Optional[AsyncSession] = None
     ):
         """
         初始化节点执行器
@@ -35,12 +34,10 @@ class NodeExecutor(ABC):
             node_name: 节点名称（如 "N1", "N2"）
             scene_name: 场景名称（对应Prompt模板文件名）
             max_retries: 技术异常最大重试次数
-            db: 数据库会话（某些节点需要访问数据库）
         """
         self.node_name = node_name
         self.scene_name = scene_name or node_name.lower()
         self.max_retries = max_retries
-        self.db = db
         self.llm_caller: Optional[LLMCaller] = None
 
     async def execute(self, context: ConversationContext) -> NodeResult:
@@ -59,78 +56,76 @@ class NodeExecutor(ABC):
         """
         start_time = time.time()
 
-        # 创建span追踪节点执行
-        with trace_span(f"node.{self.node_name}"):
-            logger.info(
-                "node_execution_started",
-                node_name=self.node_name,
-                conversation_id=str(context.conversation_id),
-                stage=context.conversation_stage.value
-            )
+        logger.info(
+            "node_execution_started",
+            node_name=self.node_name,
+            conversation_id=str(context.conversation_id),
+            stage=context.conversation_stage.value
+        )
 
-            # 技术异常重试逻辑
-            last_exception = None
-            for attempt in range(self.max_retries):
-                try:
-                    result = await self._do_execute(context)
+        # 技术异常重试逻辑
+        last_exception = None
+        for attempt in range(self.max_retries):
+            try:
+                result = await self._do_execute(context)
 
-                    # 记录执行耗时
-                    execution_time_ms = (time.time() - start_time) * 1000
-                    result.execution_time_ms = execution_time_ms
+                # 记录执行耗时
+                execution_time_ms = (time.time() - start_time) * 1000
+                result.execution_time_ms = execution_time_ms
 
-                    logger.info(
-                        "node_execution_completed",
+                logger.info(
+                    "node_execution_completed",
+                    node_name=self.node_name,
+                    action=result.action.value,
+                    execution_time_ms=round(execution_time_ms, 2),
+                    attempt=attempt + 1,
+                    result=result
+
+                )
+
+                return result
+
+            except LLMError as e:
+                last_exception = e
+
+                if attempt < self.max_retries - 1:
+                    # 指数退避
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        "node_execution_failed_retrying",
                         node_name=self.node_name,
-                        action=result.action.value,
-                        execution_time_ms=round(execution_time_ms, 2),
                         attempt=attempt + 1,
-                        result=result
-
+                        max_retries=self.max_retries,
+                        wait_time=wait_time,
+                        error=str(e)
                     )
-
-                    return result
-
-                except LLMError as e:
-                    last_exception = e
-
-                    if attempt < self.max_retries - 1:
-                        # 指数退避
-                        wait_time = 2 ** attempt
-                        logger.warning(
-                            "node_execution_failed_retrying",
-                            node_name=self.node_name,
-                            attempt=attempt + 1,
-                            max_retries=self.max_retries,
-                            wait_time=wait_time,
-                            error=str(e)
-                        )
-                        await asyncio.sleep(wait_time)
-                    else:
-                        logger.error(
-                            "node_execution_failed_max_retries",
-                            node_name=self.node_name,
-                            max_retries=self.max_retries,
-                            error=str(e)
-                        )
-
-                except Exception as e:
-                    # 非LLM异常，直接抛出
+                    await asyncio.sleep(wait_time)
+                else:
                     logger.error(
-                        "node_execution_failed_unexpected",
+                        "node_execution_failed_max_retries",
                         node_name=self.node_name,
-                        error=str(e),
-                        error_type=type(e).__name__,
-                        exc_info=True
+                        max_retries=self.max_retries,
+                        error=str(e)
                     )
-                    raise
 
-            # 超过重试次数，返回降级结果
-            # logger.warning(
-            #     "node_execution_fallback",
-            #     node_name=self.node_name,
-            #     reason="max_retries_exceeded"
-            # )
-            return self._fallback_result(context, last_exception)
+            except Exception as e:
+                # 非LLM异常，直接抛出
+                logger.error(
+                    "node_execution_failed_unexpected",
+                    node_name=self.node_name,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True
+                )
+                raise
+
+        # 超过重试次数，返回降级结果
+        # logger.warning(
+        #     "node_execution_fallback",
+        #     node_name=self.node_name,
+        #     reason="max_retries_exceeded"
+        # )
+        return self._fallback_result(context, last_exception)
 
     @abstractmethod
     async def _do_execute(self, context: ConversationContext) -> NodeResult:

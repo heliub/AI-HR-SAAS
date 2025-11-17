@@ -45,7 +45,7 @@ class TransferHumanIntentNode(SimpleLLMNode):
         }
 
         # 转人工：中断流程
-        if transfer == "YES":
+        if transfer == "YES" or "YES" in transfer:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
@@ -54,7 +54,7 @@ class TransferHumanIntentNode(SimpleLLMNode):
             )
         
         # 不转人工：继续情感分析
-        if transfer == "NO":
+        if transfer == "NO" or "NO" in transfer:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,

@@ -39,7 +39,7 @@ def get_llm(
     provider: str,
     base_url: Optional[str] = None,
     timeout: float = 60.0,
-    max_retries: int = 3,
+    max_retries: int = 1,
 ) -> BaseLLMClient:
     """
     获取LLM客户端

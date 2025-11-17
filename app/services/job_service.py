@@ -21,7 +21,7 @@ from app.services.base_service import BaseService
 class JobService(BaseService):
     """职位服务类，处理职位相关的数据库操作"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         super().__init__(db)
 
     @staticmethod

@@ -57,7 +57,7 @@ async def create_conversation(
     - **job_id**: 职位ID
     """
     # 检查是否已存在相同的会话
-    conversation_service = CandidateConversationService(db)
+    conversation_service = CandidateConversationService()
     existing_conversation = await conversation_service.get_conversation_by_job_and_resume(
         job_id=request.jobId,
         resume_id=request.resumeId,
@@ -97,7 +97,6 @@ async def get_conversations(
     job_id: Optional[UUID] = Query(None, description="职位ID过滤"),
     limit: int = Query(20, ge=1, le=100, description="返回数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -110,7 +109,7 @@ async def get_conversations(
     - **limit**: 返回数量（默认20，最大100）
     - **offset**: 偏移量（用于分页）
     """
-    conversation_service = CandidateConversationService(db)
+    conversation_service = CandidateConversationService()
     conversations, total = await conversation_service.get_conversations(
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
@@ -150,7 +149,6 @@ async def get_conversation_messages(
     conversation_id: UUID = Path(..., description="会话ID"),
     limit: int = Query(100, ge=1, le=500, description="返回消息数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -161,7 +159,7 @@ async def get_conversation_messages(
     - **offset**: 偏移量（用于分页）
     """
     # 验证会话是否存在且用户有权限访问
-    conversation_service = CandidateConversationService(db)
+    conversation_service = CandidateConversationService()
     conversation = await conversation_service.get_conversation_by_id(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
@@ -173,7 +171,7 @@ async def get_conversation_messages(
         raise HTTPException(status_code=404, detail="会话不存在或无权限访问")
 
     # 获取消息列表
-    chat_history_service = CandidateChatHistoryService(db)
+    chat_history_service = CandidateChatHistoryService()
     messages = await chat_history_service.get_messages_by_conversation(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
@@ -214,7 +212,6 @@ async def get_conversation_messages(
 async def send_candidate_message(
     conversation_id: UUID = Path(..., description="会话ID"),
     request: SendMessageRequest = ...,
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -233,7 +230,7 @@ async def send_candidate_message(
     - **content**: 消息内容
     """
     # 1. 验证会话
-    conversation_service = CandidateConversationService(db)
+    conversation_service = CandidateConversationService()
     conversation = await conversation_service.get_conversation_by_id(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
@@ -249,7 +246,7 @@ async def send_candidate_message(
         raise HTTPException(status_code=400, detail=f"会话已{conversation.status}，无法继续对话")
 
     # 2. 保存候选人消息
-    chat_history_service = CandidateChatHistoryService(db)
+    chat_history_service = CandidateChatHistoryService()
     candidate_message = await chat_history_service.create_message(
         tenant_id=current_user.tenant_id,
         resume_id=conversation.resume_id,
@@ -280,7 +277,7 @@ async def send_candidate_message(
     # 4. 构建ConversationContext
     # 获取职位信息
     from app.services.job_service import JobService
-    job_service = JobService(db)
+    job_service = JobService()
     job = await job_service.get_by_id(
         Job, conversation.job_id, current_user.tenant_id
     )
@@ -303,11 +300,12 @@ async def send_candidate_message(
         conversation_stage=ConversationStage(conversation.stage),
         last_candidate_message=request.content,
         history=history,
-        position_info=position_info
+        position_info=position_info,
+        last_candidate_message_id=candidate_message.id
     )
 
     # 5. 执行对话流程
-    orchestrator = ConversationFlowOrchestrator(db)
+    orchestrator = ConversationFlowOrchestrator()
     flow_result = await orchestrator.execute(context)
 
     # 6. 保存AI回复（如果有）
@@ -323,7 +321,7 @@ async def send_candidate_message(
         )
         if flow_result.execute_node == QuestionHandlerNode.node_name and flow_result.data and flow_result.data.get("question_tracking_id"):
             question_tracking_id = flow_result.data.get("question_tracking_id")
-            tracking_service = ConversationQuestionTrackingService(db)
+            tracking_service = ConversationQuestionTrackingService()
             await tracking_service.update_question_status(
                 tracking_id=question_tracking_id,
                 tenant_id=current_user.tenant_id,
@@ -377,7 +375,7 @@ async def get_conversation_detail(
     - **conversation_id**: 会话ID
     """
     # 获取会话
-    conversation_service = CandidateConversationService(db)
+    conversation_service = CandidateConversationService()
     conversation = await conversation_service.get_conversation_by_id(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,
@@ -389,7 +387,7 @@ async def get_conversation_detail(
         raise HTTPException(status_code=404, detail="会话不存在或无权限访问")
 
     # 获取最新消息
-    chat_history_service = CandidateChatHistoryService(db)
+    chat_history_service = CandidateChatHistoryService()
     latest_messages = await chat_history_service.get_latest_messages(
         conversation_id=conversation_id,
         tenant_id=current_user.tenant_id,

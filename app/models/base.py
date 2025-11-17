@@ -21,12 +21,10 @@ class Base(DeclarativeBase):
     
     # 通用字段
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), 
         nullable=False, 
-        default=datetime.utcnow, 
-        onupdate=datetime.utcnow,
         server_default=func.now(),
         server_onupdate=func.now()
     )

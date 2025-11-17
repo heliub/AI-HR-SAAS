@@ -9,12 +9,13 @@ from sqlalchemy import and_, select, desc, or_
 
 from app.models.candidate_chat_history import CandidateChatHistory
 from app.services.base_service import BaseService
+from app.infrastructure.database.session import get_db_context
 
 
 class CandidateChatHistoryService(BaseService):
     """候选人聊天历史服务类，处理聊天历史相关的数据库操作"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         super().__init__(db)
 
     async def get_messages_by_conversation(
@@ -53,9 +54,9 @@ class CandidateChatHistoryService(BaseService):
 
         # 分页
         query = query.limit(limit).offset(offset)
-
-        result = await self.db.execute(query)
-        return list(result.scalars().all())
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return list(result.scalars().all())
 
     async def get_messages_by_resume(
         self,
@@ -181,8 +182,9 @@ class CandidateChatHistoryService(BaseService):
             .limit(limit)
         )
 
-        result = await self.db.execute(query)
-        return list(result.scalars().all())
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return list(result.scalars().all())
 
     async def get_message_count(
         self,
@@ -207,5 +209,6 @@ class CandidateChatHistoryService(BaseService):
         ]
 
         query = select(func.count(CandidateChatHistory.id)).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar() or 0
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return result.scalar() or 0

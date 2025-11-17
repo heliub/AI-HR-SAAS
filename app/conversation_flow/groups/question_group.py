@@ -13,7 +13,6 @@ import structlog
 from uuid import UUID
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction, ConversationStage
-from app.conversation_flow.nodes.question_stage import question_router
 from app.shared.constants.enums import QuestionType
 from app.conversation_flow.dynamic_executor import DynamicNodeExecutor
 from app.models.job_question import JobQuestion
@@ -22,6 +21,9 @@ from app.conversation_flow.nodes.question_stage.question_handler import Question
 from app.conversation_flow.nodes.question_stage.question_willingness import QuestionWillingnessNode
 from app.conversation_flow.nodes.question_stage.relevance_check import RelevanceCheckNode
 from app.conversation_flow.nodes.question_stage.requirement_match import RequirementMatchNode
+from app.services.job_question_service import JobQuestionService
+from app.services.conversation_question_tracking_service import ConversationQuestionTrackingService
+from app.services.candidate_conversation_service import CandidateConversationService
 
 logger = structlog.get_logger(__name__)
 
@@ -47,35 +49,11 @@ class QuestionGroupExecutor:
         self.executor = executor
         
         # 初始化服务实例，避免重复创建
-        self._job_question_service = None
-        self._tracking_service = None
-        self._conversation_service = None
+        self.job_question_service = JobQuestionService()
+        self.tracking_service = ConversationQuestionTrackingService()
+        self.conversation_service = CandidateConversationService()
     
-    @property
-    def job_question_service(self):
-        """获取职位问题服务实例"""
-        if self._job_question_service is None:
-            from app.services.job_question_service import JobQuestionService
-            self._job_question_service = JobQuestionService(self.executor.factory.db)
-        return self._job_question_service
-    
-    @property
-    def tracking_service(self):
-        """获取会话问题跟踪服务实例"""
-        if self._tracking_service is None:
-            from app.services.conversation_question_tracking_service import (
-                ConversationQuestionTrackingService
-            )
-            self._tracking_service = ConversationQuestionTrackingService(self.executor.factory.db)
-        return self._tracking_service
-    
-    @property
-    def conversation_service(self):
-        """获取会话服务实例"""
-        if self._conversation_service is None:
-            from app.services.candidate_conversation_service import CandidateConversationService
-            self._conversation_service = CandidateConversationService(self.executor.factory.db)
-        return self._conversation_service
+   
     
     async def execute(self, context: ConversationContext) -> NodeResult:
         """

@@ -19,11 +19,10 @@ class KnowledgeAnswerNode(NodeExecutor):
     """基于知识库回复求职者"""
 
     node_name = "answer_based_on_knowledge"
-    def __init__(self, db: AsyncSession):
+    def __init__(self):
         super().__init__(
             scene_name=self.node_name,
             node_name=self.node_name,
-            db=db
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
@@ -31,7 +30,7 @@ class KnowledgeAnswerNode(NodeExecutor):
         from app.services.job_knowledge_service import JobKnowledgeService
 
         # 1. 查询知识库（知识库回复内部搜索，高内聚原则）
-        knowledge_service = JobKnowledgeService(self.db)
+        knowledge_service = JobKnowledgeService()
 
         knowledge_results = await knowledge_service.search_for_conversation(
             job_id=context.job_id,
@@ -56,19 +55,9 @@ class KnowledgeAnswerNode(NodeExecutor):
 
         # 3. 调用LLM生成回复（使用临时context）
         llm_response = await self.call_llm(temp_context)
-
-        # 4. 检查是否为"not_found"
-        # 处理 llm_response 可能是字典或字符串的情况
-        if isinstance(llm_response, dict):
-            # 如果是字典，尝试获取结果字段
-            content = llm_response.get("result", "")
-        else:
-            # 如果是字符串，直接使用
-            content = llm_response
-        
-        content = str(content).strip()
-
-        if content.lower() == "not_found" or "not_found" in content.lower():
+        content = llm_response.get("result", None) if isinstance(llm_response, dict) else None
+        content = str(content).strip() if content is not None else None
+        if content is None or content.lower() == "not_found" or "not_found" in content.lower():
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,

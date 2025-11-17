@@ -48,7 +48,7 @@ class QuestionWillingnessNode(SimpleLLMNode):
         }
         
         # 愿意沟通：继续询问下一个问题
-        if willing == "YES":
+        if willing == "YES" or "YES" in willing:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -58,7 +58,7 @@ class QuestionWillingnessNode(SimpleLLMNode):
             )
         
         # 不愿意沟通：中断流程
-        if willing == "NO":
+        if willing == "NO" or "NO" in willing:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,

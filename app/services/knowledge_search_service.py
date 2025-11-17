@@ -14,6 +14,7 @@ from app.models.knowledge_question_variant import KnowledgeQuestionVariant
 from app.services.knowledge_embedding_service import KnowledgeEmbeddingService
 from app.schemas.job_knowledge import SearchMethod
 import structlog
+from app.infrastructure.database.session import get_db_context
 
 logger = structlog.get_logger(__name__)
 
@@ -21,7 +22,7 @@ logger = structlog.get_logger(__name__)
 class KnowledgeSearchService:
     """知识库检索服务（支持向量、BM25、混合检索）"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         self.db = db
         self.embedding_service = KnowledgeEmbeddingService(db)
 
@@ -499,21 +500,21 @@ class KnowledgeSearchService:
                 .limit(top_k)
             )
 
-            result = await self.db.execute(simple_query)
-            rows = result.fetchall()
-
-            results = []
-            for row in rows:
-                results.append({
-                    "knowledge_id": row.id,
-                    "question": row.question,
-                    "answer": row.answer,
-                    "categories": row.categories or [],
-                    "match_score": 1.0,  # 无打分
-                    "match_method": "simple",
-                    "matched_via": "main_question",
-                    "variant_id": None,
-                })
+            async with get_db_context() as db:
+                result = await db.execute(simple_query)
+                rows = result.fetchall()
+                results = []
+                for row in rows:
+                    results.append({
+                        "knowledge_id": row.id,
+                        "question": row.question,
+                        "answer": row.answer,
+                        "categories": row.categories or [],
+                        "match_score": 1.0,  # 无打分
+                        "match_method": "simple",
+                        "matched_via": "main_question",
+                        "variant_id": None,
+                    })
 
             logger.info("simple_filter_completed", results_count=len(results))
             return results

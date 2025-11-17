@@ -36,23 +36,19 @@ logger = structlog.get_logger(__name__)
 class ConversationFlowOrchestrator:
     """会话流程编排器"""
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self):
         """
         初始化流程编排器
-        
-        Args:
-            db: 数据库会话
         """
-        self.db = db
         
         # 初始化节点工厂和执行器
-        self.factory = NodeFactory(db)
+        self.factory = NodeFactory()
         self.executor = DynamicNodeExecutor(self.factory)
         
         # 初始化组执行器
         self.response_group = ResponseGroupExecutor(self.executor)
         self.question_group = QuestionGroupExecutor(self.executor)
-        self.job_question_service = JobQuestionService(db)
+        self.job_question_service = JobQuestionService()
     
     async def execute(self, context: ConversationContext) -> FlowResult:
         """

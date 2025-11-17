@@ -18,27 +18,25 @@ class HighEQResponseNode(NodeExecutor):
     """高情商回复（结束语）"""
     node_name = "high_eq_response"
 
-    def __init__(self, db: AsyncSession = None):
+    def __init__(self):
         super().__init__(
             scene_name=self.node_name,
             node_name=self.node_name,
-            db=db
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
         """执行节点"""
         # 调用LLM生成高情商结束语
         llm_response = await self.call_llm(context)
+        content = llm_response.get("newReply", None) if isinstance(llm_response, dict) else None
 
-        # 处理 llm_response 可能是字典或字符串的情况
-        # 根据 high_eq_response.md，输出格式为 {"newReply":str}
-        if isinstance(llm_response, dict):
-            # 如果是字典，尝试获取 newReply 字段
-            content = llm_response.get("newReply", "")
-        else:
-            # 如果是字符串，直接使用
-            content = llm_response
-        
+        if content is None:
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.SUSPEND,
+                reason="无法解析有效的高情商回复",
+                data=llm_response
+            )
         content = str(content).strip()
 
         return NodeResult(

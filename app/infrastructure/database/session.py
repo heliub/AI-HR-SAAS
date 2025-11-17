@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
 )
 from sqlalchemy.pool import NullPool
+from contextlib import asynccontextmanager
 
 from app.core.config import settings
 
@@ -73,3 +74,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             await session.close()
 
+@asynccontextmanager
+async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """
+    数据库会话上下文管理器
+    
+    使用示例:
+        async with get_db_context() as db:
+            # 使用db进行数据库操作
+            # 自动处理事务和连接关闭
+    """
+    async with async_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

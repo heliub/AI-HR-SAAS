@@ -26,15 +26,15 @@ class ResumeConversationNode(NodeExecutor):
         """执行节点"""
         # 调用LLM生成复聊语
         llm_response = await self.call_llm(context)
+        content = llm_response.get("result", None) if isinstance(llm_response, dict) else None
 
-        # 处理 llm_response 可能是字典或字符串的情况
-        # 根据 resume_conversation.md，输出格式为 {"result": }
-        if isinstance(llm_response, dict):
-            # 如果是字典，尝试获取 result 字段
-            content = llm_response.get("result", "")
-        else:
-            # 如果是字符串，直接使用
-            content = llm_response
+        if content is None:
+            return NodeResult(
+                node_name=self.node_name,
+                action=NodeAction.SUSPEND,
+                reason="无法解析有效的复聊语",
+                data=llm_response
+            )
         
         content = str(content).strip()
 

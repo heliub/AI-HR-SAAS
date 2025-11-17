@@ -32,7 +32,7 @@ class ContinueConversationNode(SimpleLLMNode):
     ) -> NodeResult:
         """解析LLM响应"""
         # 获取模型返回的沟通意愿
-        willing = llm_response.get("willing") if isinstance(llm_response, dict) else None
+        willing = llm_response if isinstance(llm_response, str) else None
         
         # 如果无法解析有效沟通意愿，返回降级结果
         if willing is None:
@@ -47,7 +47,7 @@ class ContinueConversationNode(SimpleLLMNode):
         }
 
         # 愿意沟通：继续发问检测
-        if willing == "YES":
+        if willing == "YES" or "YES" in willing:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -56,7 +56,7 @@ class ContinueConversationNode(SimpleLLMNode):
             )
         
         # 不愿意沟通：跳转到高情商结束语
-        if willing == "NO":
+        if willing == "NO" or "NO" in willing:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,

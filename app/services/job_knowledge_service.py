@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 class JobKnowledgeService(BaseService):
     """岗位/公司知识库服务"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         super().__init__(db)
         self.embedding_service = KnowledgeEmbeddingService(db)
         self.search_service = KnowledgeSearchService(db)

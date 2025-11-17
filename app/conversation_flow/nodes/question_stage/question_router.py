@@ -25,11 +25,10 @@ class QuestionRouterNode(NodeExecutor):
     """问题询问阶段处理（路由节点，无需LLM）"""
 
     node_name = "information_gathering"
-    def __init__(self, db: AsyncSession):
+    def __init__(self):
         super().__init__(
             scene_name=self.node_name,
-            node_name=self.node_name,
-            db=db
+            node_name=self.node_name
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
@@ -42,7 +41,7 @@ class QuestionRouterNode(NodeExecutor):
         # ========== 1. Stage1处理 ==========
         if context.is_greeting_stage:
             # 查询职位是否有有效的问题
-            job_question_service = JobQuestionService(self.db)
+            job_question_service = JobQuestionService()
             questions = await job_question_service.get_questions_by_job(
                 job_id=context.job_id,
                 tenant_id=context.tenant_id
@@ -71,7 +70,7 @@ class QuestionRouterNode(NodeExecutor):
             logger.debug("question_router_stage2_check_question_type")
 
             # 获取当前正在询问的问题
-            tracking_service = ConversationQuestionTrackingService(self.db)
+            tracking_service = ConversationQuestionTrackingService()
             questions = await tracking_service.get_questions_by_conversation(
                 conversation_id=context.conversation_id,
                 tenant_id=context.tenant_id
@@ -93,17 +92,15 @@ class QuestionRouterNode(NodeExecutor):
 
             # 查询原始问题以判断类型
             from app.services.job_question_service import JobQuestionService
-            job_question_service = JobQuestionService(self.db)
+            job_question_service = JobQuestionService()
 
             # 通过question_id查询原始JobQuestion
-            from sqlalchemy import select
             from app.models.job_question import JobQuestion
-
-            query = select(JobQuestion).where(
-                JobQuestion.id == current_question.question_id
+            job_question = await job_question_service.get_by_id(
+                JobQuestion,
+                current_question.question_id,
+                context.tenant_id
             )
-            result = await self.db.execute(query)
-            job_question = result.scalar()
 
             if not job_question:
                 logger.warning(

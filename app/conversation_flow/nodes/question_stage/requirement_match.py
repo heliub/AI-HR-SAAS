@@ -47,7 +47,7 @@ class RequirementMatchNode(SimpleLLMNode):
         }
 
         # 满足要求：继续询问下一个问题
-        if satisfied == "YES":
+        if satisfied == "YES" or "YES" in satisfied:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -57,7 +57,7 @@ class RequirementMatchNode(SimpleLLMNode):
             )
         
         # 候选人未明确回答问题，尝试知识库回复
-        if satisfied == "QUESTION":
+        if satisfied == "QUESTION" or "QUESTION" in satisfied:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -67,7 +67,7 @@ class RequirementMatchNode(SimpleLLMNode):
             )
         
         # 不满足要求：中断流程
-        if satisfied == "NO":
+        if satisfied == "NO" or "NO" in satisfied:
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,

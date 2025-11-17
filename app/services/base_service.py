@@ -4,16 +4,16 @@ Base service class for database operations
 from typing import Any, Dict, List, Optional, Type
 from uuid import UUID
 
+from sqlalchemy import and_, select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, select, func
-
 from app.models.base import Base
+from app.infrastructure.database.session import get_db_context
 
 
 class BaseService:
     """基础服务类，提供通用的数据库操作方法"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         self.db = db
 
     async def get_by_id(self, model: Type[Base], record_id: UUID, tenant_id: Optional[UUID] = None) -> Optional[Base]:
@@ -22,9 +22,10 @@ class BaseService:
         if tenant_id and hasattr(model, 'tenant_id'):
             conditions.append(model.tenant_id == tenant_id)
 
-        query = select(model).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar()
+        async with get_db_context() as db:
+            query = select(model).where(and_(*conditions))
+            result = await db.execute(query)
+            return result.scalar()
 
     async def get_all(
         self,
@@ -53,37 +54,45 @@ class BaseService:
                 if hasattr(model, key):
                     conditions.append(getattr(model, key) == value)
 
-        query = select(model).where(and_(*conditions)).offset(skip).limit(limit)
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        async with get_db_context() as db:
+            query = select(model).where(and_(*conditions)).offset(skip).limit(limit)
+            result = await db.execute(query)
+            return result.scalars().all()
 
     async def create(self, model: Type[Base], data: Dict[str, Any]) -> Base:
         """创建新记录"""
-        db_obj = model(**data)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        async with get_db_context() as session:
+            db_obj = model(**data)
+            session.add(db_obj)
+            await session.flush()  # 确保对象被分配ID
+            await session.refresh(db_obj)
+            return db_obj
 
     async def update(self, model: Type[Base], record_id: UUID, data: Dict[str, Any], tenant_id: Optional[UUID] = None) -> Optional[Base]:
         """更新记录"""
-        db_obj = await self.get_by_id(model, record_id, tenant_id)
-        if db_obj:
-            for key, value in data.items():
-                if hasattr(db_obj, key):
-                    setattr(db_obj, key, value)
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-        return db_obj
+        
+        conditions = [model.id == record_id]
+        if tenant_id and hasattr(model, 'tenant_id'):
+            conditions.append(model.tenant_id == tenant_id)
+
+        async with get_db_context() as session:
+            # 构建更新语句
+            stmt = update(model).where(and_(*conditions)).values(**data).returning(model)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def delete(self, model: Type[Base], record_id: UUID, tenant_id: Optional[UUID] = None) -> bool:
         """删除记录"""
-        db_obj = await self.get_by_id(model, record_id, tenant_id)
-        if db_obj:
-            self.db.delete(db_obj)
-            await self.db.commit()
-            return True
-        return False
+        
+        conditions = [model.id == record_id]
+        if tenant_id and hasattr(model, 'tenant_id'):
+            conditions.append(model.tenant_id == tenant_id)
+
+        async with get_db_context() as session:
+            # 构建删除语句
+            stmt = delete(model).where(and_(*conditions))
+            result = await session.execute(stmt)
+            return result.rowcount > 0
 
     async def count(self, model: Type[Base], tenant_id: Optional[UUID] = None, user_id: Optional[UUID] = None, filters: Optional[Dict[str, Any]] = None, is_admin: bool = False) -> int:
         """统计记录数量"""
@@ -101,9 +110,10 @@ class BaseService:
                 if hasattr(model, key):
                     conditions.append(getattr(model, key) == value)
 
-        query = select(func.count(model.id)).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar()
+        async with get_db_context() as session:
+            query = select(func.count(model.id)).where(and_(*conditions))
+            result = await session.execute(query)
+            return result.scalar()
 
     async def count_without_tenant_filter(self, model: Type[Base], user_id: Optional[UUID] = None, filters: Optional[Dict[str, Any]] = None, is_admin: bool = False) -> int:
         """统计记录数量（不限制tenant，用于管理员）"""
@@ -118,6 +128,7 @@ class BaseService:
                 if hasattr(model, key):
                     conditions.append(getattr(model, key) == value)
 
-        query = select(func.count(model.id)).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar()
+        async with get_db_context() as session:
+            query = select(func.count(model.id)).where(and_(*conditions))
+            result = await session.execute(query)
+            return result.scalar()

@@ -9,12 +9,13 @@ from sqlalchemy import and_, select, func
 
 from app.models.job_question import JobQuestion
 from app.services.base_service import BaseService
+from app.infrastructure.database.session import get_db_context
 
 
 class JobQuestionService(BaseService):
     """职位问题服务类，处理职位问题相关的数据库操作"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         super().__init__(db)
 
     async def get_questions_by_job(
@@ -36,8 +37,9 @@ class JobQuestionService(BaseService):
             conditions.append(JobQuestion.user_id == user_id)
 
         query = select(JobQuestion).where(and_(*conditions)).order_by(JobQuestion.sort_order)
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            return result.scalars().all()
 
     async def create_question(
         self,

@@ -80,7 +80,7 @@ class LLMCaller:
         max_completion_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         provider: Optional[str] = None,  # 新增provider参数
-        parse_json: bool = True
+        parse_json: Optional[bool] = None
     ) -> Union[Dict[str, Any], str]:
         """
         基于场景名称调用LLM（CLG1通用逻辑）
@@ -117,7 +117,7 @@ class LLMCaller:
         final_top_p = top_p if top_p is not None else scene_config.get("top_p")
         final_system = system_prompt or scene_config.get("system")
         # 修复：确保 parse_json 参数能够正确覆盖场景配置
-        final_json_output = parse_json if parse_json is not None else scene_config.get("json_output", True)
+        final_json_output = parse_json if parse_json is not None else scene_config.get("json_output", False)
         
         try:
             prompt = self.prompt_loader.load_prompt(

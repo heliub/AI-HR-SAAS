@@ -21,11 +21,10 @@ class QuestionHandlerNode(NodeExecutor):
     """获取下一个要询问的问题（无需LLM）"""
 
     node_name = "information_gathering_question"
-    def __init__(self, db: AsyncSession):
+    def __init__(self):
         super().__init__(
             scene_name=self.node_name,
-            node_name=self.node_name,
-            db=db
+            node_name=self.node_name
         )
 
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
@@ -35,7 +34,7 @@ class QuestionHandlerNode(NodeExecutor):
         )
         from app.models.conversation_question_tracking import ConversationQuestionTracking
 
-        tracking_service = ConversationQuestionTrackingService(self.db)
+        tracking_service = ConversationQuestionTrackingService()
 
         # 查询下一个要询问的问题
         # 性能优化：直接在SQL层过滤pending状态并排序，避免查询所有问题

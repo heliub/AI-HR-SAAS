@@ -5,7 +5,7 @@ Knowledge Embedding Service
 """
 import asyncio
 import os
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +27,7 @@ class KnowledgeEmbeddingService:
     EMBEDDING_MODEL = "doubao-embedding-text-240715"
     EMBEDDING_DIMENSION = 2048
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Optional[AsyncSession] = None):
         self.db = db
         # 线程池（用于批量异步生成）
         self.thread_pool = ThreadPoolExecutor(max_workers=4)

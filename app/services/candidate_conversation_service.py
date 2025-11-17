@@ -4,18 +4,19 @@ Candidate Conversation service for handling candidate conversation-related datab
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select, func
 
 from app.models.candidate_conversation import CandidateConversation
 from app.services.base_service import BaseService
-
+from app.infrastructure.database.session import get_db_context
+from sqlalchemy import update
 
 class CandidateConversationService(BaseService):
     """候选人会话服务类，处理候选人会话相关的数据库操作"""
 
-    def __init__(self, db: AsyncSession):
-        super().__init__(db)
+    def __init__(self):
+        """初始化候选人会话服务，不再需要传入db参数"""
+        super().__init__()
 
     async def get_conversation_by_id(
         self,
@@ -34,10 +35,11 @@ class CandidateConversationService(BaseService):
         # 用户过滤 - 只有非管理员时才过滤
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
-
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar()
+            
+        async with get_db_context() as session:
+            query = select(CandidateConversation).where(and_(*conditions))
+            result = await session.execute(query)
+            return result.scalar()
 
     async def get_conversation_by_job_and_resume(
         self,
@@ -59,9 +61,10 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        return result.scalar()
+        async with get_db_context() as session:
+            query = select(CandidateConversation).where(and_(*conditions))
+            result = await session.execute(query)
+            return result.scalar()
 
     async def create_conversation(
         self,
@@ -83,7 +86,12 @@ class CandidateConversationService(BaseService):
             "job_id": job_id
         })
 
-        return await self.create(CandidateConversation, conversation_data)
+        async with get_db_context() as session:
+            db_obj = CandidateConversation(**conversation_data)
+            session.add(db_obj)
+            await session.flush()  # 确保对象被分配ID
+            await session.refresh(db_obj)
+            return db_obj
 
     async def update_conversation_status(
         self,
@@ -94,6 +102,8 @@ class CandidateConversationService(BaseService):
         is_admin: bool = False
     ) -> Optional[CandidateConversation]:
         """更新会话状态"""
+        
+        
         conditions = [
             CandidateConversation.id == conversation_id,
             CandidateConversation.tenant_id == tenant_id,
@@ -104,16 +114,11 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            db_obj.status = status
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-
-        return db_obj
+        async with get_db_context() as session:
+            # 构建更新语句
+            stmt = update(CandidateConversation).where(and_(*conditions)).values(status=status).returning(CandidateConversation)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def update_conversation_stage(
         self,
@@ -124,6 +129,8 @@ class CandidateConversationService(BaseService):
         is_admin: bool = False
     ) -> Optional[CandidateConversation]:
         """更新会话阶段"""
+        
+        
         conditions = [
             CandidateConversation.id == conversation_id,
             CandidateConversation.tenant_id == tenant_id,
@@ -134,16 +141,11 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            db_obj.stage = stage
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-
-        return db_obj
+        async with get_db_context() as session:
+            # 构建更新语句
+            stmt = update(CandidateConversation).where(and_(*conditions)).values(stage=stage).returning(CandidateConversation)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def update_conversation_summary(
         self,
@@ -154,6 +156,8 @@ class CandidateConversationService(BaseService):
         is_admin: bool = False
     ) -> Optional[CandidateConversation]:
         """更新会话摘要"""
+        
+        
         conditions = [
             CandidateConversation.id == conversation_id,
             CandidateConversation.tenant_id == tenant_id,
@@ -164,16 +168,11 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            db_obj.summary = summary
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-
-        return db_obj
+        async with get_db_context() as session:
+            # 构建更新语句
+            stmt = update(CandidateConversation).where(and_(*conditions)).values(summary=summary).returning(CandidateConversation)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def update_conversation(
         self,
@@ -184,6 +183,8 @@ class CandidateConversationService(BaseService):
         is_admin: bool = False
     ) -> Optional[CandidateConversation]:
         """更新会话信息"""
+        
+        
         conditions = [
             CandidateConversation.id == conversation_id,
             CandidateConversation.tenant_id == tenant_id,
@@ -194,18 +195,11 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            for key, value in conversation_data.items():
-                if hasattr(db_obj, key):
-                    setattr(db_obj, key, value)
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-
-        return db_obj
+        async with get_db_context() as session:
+            # 构建更新语句
+            stmt = update(CandidateConversation).where(and_(*conditions)).values(**conversation_data).returning(CandidateConversation)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def delete_conversation(
         self,
@@ -215,6 +209,8 @@ class CandidateConversationService(BaseService):
         is_admin: bool = False
     ) -> bool:
         """删除会话（软删除）"""
+        
+        
         conditions = [
             CandidateConversation.id == conversation_id,
             CandidateConversation.tenant_id == tenant_id
@@ -224,16 +220,11 @@ class CandidateConversationService(BaseService):
         if user_id and not is_admin:
             conditions.append(CandidateConversation.user_id == user_id)
 
-        query = select(CandidateConversation).where(and_(*conditions))
-        result = await self.db.execute(query)
-        db_obj = result.scalar()
-
-        if db_obj:
-            db_obj.status = "deleted"
-            await self.db.commit()
-            return True
-
-        return False
+        async with get_db_context() as session:
+            # 构建更新语句（软删除）
+            stmt = update(CandidateConversation).where(and_(*conditions)).values(status="deleted")
+            result = await session.execute(stmt)
+            return result.rowcount > 0
 
     async def get_conversations(
         self,
@@ -273,22 +264,23 @@ class CandidateConversationService(BaseService):
         if job_id:
             conditions.append(CandidateConversation.job_id == job_id)
 
-        # 构建查询
-        count_query = select(func.count()).select_from(
-            select(CandidateConversation).where(and_(*conditions)).subquery()
-        )
-        count_result = await self.db.execute(count_query)
-        total = count_result.scalar()
+        async with get_db_context() as session:
+            # 构建查询
+            count_query = select(func.count()).select_from(
+                select(CandidateConversation).where(and_(*conditions)).subquery()
+            )
+            count_result = await session.execute(count_query)
+            total = count_result.scalar()
 
-        # 获取分页数据
-        query = (
-            select(CandidateConversation)
-            .where(and_(*conditions))
-            .order_by(CandidateConversation.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        result = await self.db.execute(query)
-        conversations = result.scalars().all()
+            # 获取分页数据
+            query = (
+                select(CandidateConversation)
+                .where(and_(*conditions))
+                .order_by(CandidateConversation.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+            result = await session.execute(query)
+            conversations = result.scalars().all()
 
-        return list(conversations), total
+            return list(conversations), total

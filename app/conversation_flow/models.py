@@ -155,6 +155,7 @@ class ConversationContext:
     position_info: PositionInfo
 
     # 可选字段
+    last_candidate_message_id: Optional[UUID] = None  # 候选人最后一条消息ID
     knowledge_base_results: Optional[List[Dict[str, Any]]] = None  # 知识库检索结果
     current_question_id: Optional[UUID] = None  # 当前正在询问的问题ID
     current_question_content: Optional[str] = None  # 当前问题内容
