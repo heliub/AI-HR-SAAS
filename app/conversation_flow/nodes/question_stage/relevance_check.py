@@ -50,6 +50,7 @@ class RelevanceCheckNode(SimpleLLMNode):
 
         # B：相关且有效，继续满足度检查
         if relevance == "B" or "B" in relevance:
+            data["answer_type"] = "B"
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.NEXT_NODE,
@@ -60,16 +61,19 @@ class RelevanceCheckNode(SimpleLLMNode):
 
         # C：答非所问，继续询问下一个问题
         if relevance == "C" or "C" in relevance:
+            data["answer_type"] = "C"
             return NodeResult(
                 node_name=self.node_name,
-                action=NodeAction.NEXT_NODE,
-                next_node=["information_gathering_question"],
-                reason="候选人答非所问，继续询问下一个问题",
+                action=NodeAction.NONE,
+                # next_node=["information_gathering_question"],
+                next_node=None,
+                reason="候选人答非所问，跳过问题",
                 data=data
             )
 
         # A：候选人拒绝回答
         if relevance == "A" or "A" in relevance:
+            data["answer_type"] = "A"
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
@@ -80,6 +84,7 @@ class RelevanceCheckNode(SimpleLLMNode):
         
         # D：候选人回复异常或包含敏感内容
         if relevance == "D" or "D" in relevance:
+            data["answer_type"] = "D"
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,
@@ -89,6 +94,7 @@ class RelevanceCheckNode(SimpleLLMNode):
         
         # E：无法判断相关性
         if relevance == "E" or "E" in relevance:
+            data["answer_type"] = "E"
             return NodeResult(
                 node_name=self.node_name,
                 action=NodeAction.SUSPEND,

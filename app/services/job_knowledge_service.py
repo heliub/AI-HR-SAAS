@@ -437,9 +437,9 @@ class JobKnowledgeService(BaseService):
 
     async def search_for_conversation(
         self,
-        query: str,
         job_id: UUID,
         tenant_id: UUID,
+        query: Optional[str] = None,
         conversation_id: Optional[UUID] = None,
         method: SearchMethod = SearchMethod.SIMPLE,
         top_k: int = 5

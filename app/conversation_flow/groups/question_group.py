@@ -12,9 +12,9 @@ from typing import Optional, Tuple, List
 import structlog
 from uuid import UUID
 
-from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction, ConversationStage
-from app.shared.constants.enums import QuestionType
-from app.conversation_flow.dynamic_executor import DynamicNodeExecutor
+from app.conversation_flow.models import Message, NodeResult, ConversationContext, NodeAction, ConversationStage
+from app.conversation_flow.nodes.base import NodeExecutor
+from app.shared.constants.enums import QuestionType, CandidateMessageRole
 from app.models.job_question import JobQuestion
 from app.models.conversation_question_tracking import ConversationQuestionTracking
 from app.conversation_flow.nodes.question_stage.question_handler import QuestionHandlerNode
@@ -24,29 +24,26 @@ from app.conversation_flow.nodes.question_stage.requirement_match import Require
 from app.services.job_question_service import JobQuestionService
 from app.services.conversation_question_tracking_service import ConversationQuestionTrackingService
 from app.services.candidate_conversation_service import CandidateConversationService
+from app.services.llm_logging_service import get_llm_logging_service
+from app.shared.utils.datetime import datetime_now
+
 
 logger = structlog.get_logger(__name__)
 
 
-class QuestionGroupExecutor:
+class QuestionGroupExecutor(NodeExecutor):
+    node_name = "question_group"
     """
     问题阶段处理组执行器
-    
-    设计原则：
-    1. 基于节点返回的 action 进行流程编排，不依赖具体数据
-    2. 封装并行执行逻辑，统一处理并行结果
-    3. 清晰的代码结构，优雅的方法命名
-    4. 优化数据库查询，减少重复操作
     """
     
-    def __init__(self, executor: DynamicNodeExecutor):
-        """
-        初始化问题组执行器
-        
-        Args:
-            executor: 动态节点执行器
-        """
-        self.executor = executor
+    def __init__(self):
+        super().__init__(
+            node_name=self.node_name,
+            scene_name=self.node_name,
+        )
+        from app.conversation_flow.dynamic_executor import DynamicNodeExecutor
+        self.executor = DynamicNodeExecutor()
         
         # 初始化服务实例，避免重复创建
         self.job_question_service = JobQuestionService()
@@ -55,7 +52,7 @@ class QuestionGroupExecutor:
     
    
     
-    async def execute(self, context: ConversationContext) -> NodeResult:
+    async def _do_execute(self, context: ConversationContext) -> NodeResult:
         """
         执行问题处理流程
         
@@ -74,14 +71,11 @@ class QuestionGroupExecutor:
             "question_flow_started",
             stage=context.conversation_stage.value
         )
-        
-        # 根据会话阶段执行相应处理
         if context.is_greeting_stage:
             return await self._handle_greeting_stage(context)
-
         if context.is_questioning_stage:
             return await self._handle_questioning_stage(context)
-        return NodeResult(node_name="QuestionGroup", action=NodeAction.NONE, reason=f"非问题处理阶段（当前Stage: {context.conversation_stage.value}）")
+        return NodeResult(node_name="question_group", action=NodeAction.NONE, reason=f"非问题处理阶段（当前Stage: {context.conversation_stage.value}）")
     
     async def _handle_greeting_stage(self, context: ConversationContext) -> NodeResult:
         """
@@ -145,6 +139,19 @@ class QuestionGroupExecutor:
         question_tracking, job_question = await self._get_current_question(context.conversation_id, context.tenant_id)
         if question_tracking is None:
             return await self._execute_question_handler(context)
+        same_question_turns_interval = self.same_question_turns_interval(question_tracking.question, context.history)
+        if same_question_turns_interval is not None:
+            if same_question_turns_interval > 2 and same_question_turns_interval < 5:
+                return NodeResult(node_name="QuestionGroup", action=NodeAction.NONE, reason="候选人未发问，跳过问题")
+            if same_question_turns_interval >= 5:
+                return NodeResult(
+                            node_name="QuestionGroup",
+                            action=NodeAction.SEND_MESSAGE, 
+                            message=question_tracking.question,
+                            data={
+                                "question_tracking_id": str(question_tracking.id)
+                            }
+                        )
         
         context.current_question_id = question_tracking.question_id
         context.current_question_content = question_tracking.question
@@ -157,16 +164,52 @@ class QuestionGroupExecutor:
             # 非判卷问题：执行沟通意愿检查
             node_result = await self.executor.execute(QuestionWillingnessNode.node_name, context)
         
-        # 初始化 match_result 变量
-        match_result = None
-        if node_result.node_name == RequirementMatchNode.node_name:
-            match_result = node_result.data.get("satisfied") == "YES" if node_result.data and isinstance(node_result.data, dict) else None
-        if node_result.action == NodeAction.NEXT_NODE and node_result.next_node[0] == QuestionHandlerNode.node_name:
-            await self._complete_current_question(question_tracking.id, context.tenant_id, match_result)
+        await self.process_question_status(node_result, question_tracking.id, context.tenant_id)
+        
         next_node = node_result
         while (next_node and next_node.action == NodeAction.NEXT_NODE):
             next_node = await self.executor.execute(next_node.next_node[0], context)
         return next_node
+
+    def same_question_turns_interval(self, question: str, history: List[Message]) -> Optional[int]:
+        if not history:
+            return None
+        talk_turns = 0
+        current_role = None
+        last_msg_role = None
+        for msg in reversed(history):
+            if current_role is None:
+                current_role = msg.sender
+                last_msg_role = msg.sender
+                talk_turns += 1
+            if msg.sender != current_role:
+                current_role = msg.sender
+                if msg.sender == last_msg_role:
+                    talk_turns += 1
+            if msg.sender == CandidateMessageRole.HR and question in msg.content:
+                return talk_turns
+            if talk_turns > 5:
+                break
+        return None
+
+
+    async def process_question_status(self, node_result: NodeResult, question_tracking_id: UUID, tenant_id: UUID) -> None:
+        """
+        处理问题状态
+        
+        Args:
+            node_result: 节点执行结果
+            question_tracking_id: 问题跟踪ID
+            tenant_id: 租户ID
+        """
+        if node_result.node_name == QuestionWillingnessNode.node_name:
+            return await self._complete_current_question(question_tracking_id, tenant_id, None)
+            
+        if node_result.node_name == RequirementMatchNode.node_name:
+            match_result = node_result.data.get("is_satisfied", None) if node_result.data and isinstance(node_result.data, dict) else None
+            if match_result is not None:
+                return await self._complete_current_question(question_tracking_id, tenant_id, match_result)
+        return None
 
     async def _execute_parallel_question_checks(self, context: ConversationContext) -> NodeResult:
         """

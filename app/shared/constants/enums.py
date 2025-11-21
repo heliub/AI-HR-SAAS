@@ -152,3 +152,15 @@ class QuestionType(str, Enum):
     INFORMATION = "information"  # 信息采集
     ASSESSMENT = "assessment"   # 考察评估（判卷）
 
+class QuestionStatus(str, Enum):
+    """问题状态"""
+    PENDING = "pending"  # 待处理
+    ONGOING = "ongoing"  # 进行中
+    COMPLETED = "completed"  # 已完成
+    SKIPPED = "skipped"  # 已跳过
+    DELETED = "deleted"  # 已删除
+
+class CandidateMessageRole(str, Enum):
+    """候选人消息角色"""
+    CANDIDATE = "candidate"
+    HR = "hr"

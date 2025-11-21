@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from datetime import datetime
+from pydantic import BaseModel
 
 
 class ConversationStage(str, Enum):
@@ -65,8 +66,8 @@ class Message:
         )
 
 
-@dataclass
-class NodeResult:
+
+class NodeResult(BaseModel):
     """节点执行结果"""
     node_name: str  # 节点名称
     action: NodeAction  # 执行动作
@@ -82,11 +83,6 @@ class NodeResult:
     is_fallback: bool = False  # 是否为降级结果
     fallback_reason: Optional[str] = None  # 降级原因（技术故障）
 
-    def __post_init__(self):
-        """确保枚举类型正确"""
-        if isinstance(self.action, str):
-            self.action = NodeAction(self.action)
-
 
 @dataclass
 class FlowResult:
@@ -97,6 +93,7 @@ class FlowResult:
     message:Optional[str] = None  # 要发送的消息
     reason: Optional[str] = None  # 原因说明
     data: Dict[str, Any] = field(default_factory=dict)
+    exist_question: bool = False  # 是否存在问题消息
 
     def __post_init__(self):
         """确保枚举类型正确"""
@@ -105,7 +102,8 @@ class FlowResult:
 
     @classmethod
     def from_node_result(cls, node_result: NodeResult) -> "FlowResult":
-        """从节点结果创建流程结果"""
+        if node_result is None:
+            return cls(action=NodeAction.NONE)
         return cls(
             execute_node=node_result.node_name,
             action=node_result.action,
@@ -114,6 +112,7 @@ class FlowResult:
             reason=node_result.reason,
             data=node_result.data
         )
+    
 
 @dataclass
 class PositionInfo:

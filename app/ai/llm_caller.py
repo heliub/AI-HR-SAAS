@@ -4,17 +4,18 @@ LLM调用封装
 提供CLG1通用执行逻辑的封装
 """
 import json
-import os
-from typing import Dict, Any, Optional, Union
+from datetime import datetime
+from typing import Dict, Any, Optional, Union, Tuple
 import structlog
 
 from app.ai.llm.factory import get_llm
-from app.ai.llm.types import LLMRequest, UserMessage
+from app.ai.llm.types import LLMRequest, UserMessage, Usage
 from app.ai.llm.errors import LLMError
 from app.ai.prompts.prompt_loader import get_prompt_loader
-from app.ai.prompts.variable_substitution import substitute_variables
 from app.ai.prompts.prompt_config import PROMPT_CONFIG
 from app.utils.json_utils import JsonParser
+from app.services.llm_logging_service import get_llm_logging_service
+from app.shared.utils.datetime import datetime_now
 
 logger = structlog.get_logger(__name__)
 
@@ -133,30 +134,122 @@ class LLMCaller:
             raise
 
         # 5. 调用LLM
-        return await self.call_with_prompt(
-            prompt=prompt,
-            system_prompt=final_system,
-            provider=final_provider,  # 传递provider
-            model=final_model,
-            temperature=final_temperature,
-            max_completion_tokens=final_max_completion_tokens,
-            top_p=final_top_p,
-            parse_json=final_json_output,
-            scene_name=scene_name
-        )
+        started_at = datetime_now()
+        error = None
+        response = None
+        usage = None
+        
+        try:
+            response, usage = await self.call_with_prompt(
+                prompt=prompt,
+                system_prompt=final_system,
+                provider=final_provider,
+                model=final_model,
+                temperature=final_temperature,
+                max_completion_tokens=final_max_completion_tokens,
+                top_p=final_top_p,
+                parse_json=final_json_output,
+                scene_name=scene_name
+            )
+            return response
+        except LLMError as e:
+            error = e
+            raise
+        finally:
+            # 异步记录日志
+            await self._log_llm_execution(
+                scene_name=scene_name,
+                provider=final_provider,
+                model=final_model,
+                temperature=final_temperature,
+                top_p=final_top_p,
+                max_completion_tokens=final_max_completion_tokens,
+                usage=usage,
+                template_variables=template_vars,
+                response=response,
+                started_at=started_at,
+                error=error
+            )
+    
+    async def _log_llm_execution(
+        self,
+        scene_name: str,
+        provider: str,
+        model: str,
+        temperature: float,
+        top_p: Optional[float],
+        max_completion_tokens: Optional[int],
+        usage: Optional[Usage],
+        template_variables: Dict[str, Any],
+        response: Any,
+        started_at: datetime,
+        error: Optional[Exception]
+    ) -> None:
+        """
+        记录LLM执行日志（封装方法，不影响主流程可读性）
+        
+        Args:
+            scene_name: 场景名称
+            provider: LLM提供商
+            model: 模型名称
+            temperature: 温度参数
+            top_p: top_p参数
+            max_completion_tokens: 最大token数
+            template_variables: 模板变量
+            response: LLM响应对象
+            started_at: 开始时间
+            error: 异常对象（如果有）
+        """
+        try:
+            # 提取response数据
+            prompt_tokens = None
+            completion_tokens = None
+            total_tokens = None
+            if usage:
+                prompt_tokens = usage.prompt_tokens
+                completion_tokens = usage.completion_tokens
+                total_tokens = usage.total_tokens
+            
+            # 异步记录日志
+            logging_service = get_llm_logging_service()
+            await logging_service.log_llm_execution(
+                scene_name=scene_name,
+                provider=provider,
+                model=model,
+                temperature=temperature,
+                top_p=top_p,
+                max_completion_tokens=max_completion_tokens,
+                template_variables=template_variables,
+                response_content= json.dumps(response, ensure_ascii=False) if isinstance(response, dict) else response,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                started_at=started_at,
+                is_success=error is None,
+                error_type=type(error).__name__ if error else None,
+                error_message=str(error) if error else None,
+            )
+        except Exception as e:
+            # 日志记录失败不应影响主流程
+            logger.error(
+                "llm_log_failed",
+                scene_name=scene_name,
+                error=str(e),
+                exc_info=True
+            )
 
     async def call_with_prompt(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        provider: Optional[str] = None,  # 新增provider参数
+        provider: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         parse_json: bool = True,
         scene_name: Optional[str] = None
-    ) -> Union[Dict[str, Any], str]:
+    ) -> Tuple[Union[Dict[str, Any], str], Optional[Usage]]:
         """
         直接使用Prompt调用LLM
 
@@ -207,7 +300,6 @@ class LLMCaller:
         try:
             # 调用LLM
             response = await llm_client.chat(request)
-
             content = response.content or ""
 
             logger.info(
@@ -225,7 +317,7 @@ class LLMCaller:
             # 解析JSON
             if parse_json:
                 try:
-                    return JsonParser.parse(content)
+                    return JsonParser.parse(content), response.usage if response.usage else None
                 except Exception as e:
                     logger.error(
                         "parse_llm_response_failed",
@@ -236,10 +328,10 @@ class LLMCaller:
                         content=content,
                         exc_info=True
                     )
-                    return content
+                    return content, response.usage if response.usage else None
             else:
                 # 直接返回原始响应内容
-                return content
+                return content, response.usage if response.usage else None
 
         except LLMError as e:
             logger.error(

@@ -38,7 +38,7 @@ class QuestionHandlerNode(NodeExecutor):
 
         # 查询下一个要询问的问题
         # 性能优化：直接在SQL层过滤pending状态并排序，避免查询所有问题
-        next_question: Optional[ConversationQuestionTracking] = await tracking_service.get_next_pending_question(
+        next_question: Optional[ConversationQuestionTracking] = await tracking_service.get_next_question(
             conversation_id=context.conversation_id,
             tenant_id=context.tenant_id
         )
@@ -52,18 +52,6 @@ class QuestionHandlerNode(NodeExecutor):
                 reason="没有更多问题可询问"
             )
 
-        # # 更新问题状态为ongoing
-        # await tracking_service.update_question_status(
-        #     tracking_id=next_question.id,
-        #     tenant_id=context.tenant_id,
-        #     status="ongoing"
-        # )
-
-        logger.info(
-            "information_gathering_question： next_question_ready",
-            question_tracking_id=str(next_question.id),
-            question=next_question.question
-        )
 
         return NodeResult(
             node_name=self.node_name,

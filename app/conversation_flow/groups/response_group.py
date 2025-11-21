@@ -7,29 +7,31 @@ import asyncio
 import structlog
 
 from app.conversation_flow.models import NodeResult, ConversationContext, NodeAction
-from app.conversation_flow.dynamic_executor import DynamicNodeExecutor
 from app.conversation_flow.nodes.response.continue_conversation import ContinueConversationNode
 from app.conversation_flow.nodes.response.ask_question import AskQuestionNode
-from app.conversation_flow.nodes.response.knowledge_answer import KnowledgeAnswerNode
-from app.conversation_flow.nodes.response.fallback_answer import FallbackAnswerNode
-from app.conversation_flow.nodes.response.casual_chat import CasualChatNode
+from app.shared.utils.datetime import datetime_now
+from app.services.llm_logging_service import get_llm_logging_service
+from app.conversation_flow.nodes.base import NodeExecutor
 
 logger = structlog.get_logger(__name__)
 
 
-class ResponseGroupExecutor:
+class ResponseGroupExecutor(NodeExecutor):
+    node_name = "response_group"
     """对话回复组执行器"""
     
-    def __init__(self, executor: DynamicNodeExecutor):
+    def __init__(self):
         """
         初始化对话回复组执行器
-        
-        Args:
-            executor: 动态节点执行器
         """
-        self.executor = executor
+        super().__init__(
+            node_name=self.node_name,
+            scene_name=self.node_name,
+        )
+        from app.conversation_flow.dynamic_executor import DynamicNodeExecutor
+        self.executor = DynamicNodeExecutor()
     
-    async def execute(self, context: ConversationContext) -> NodeResult:
+    async def _do_execute(self, context: ConversationContext) -> NodeResult:
         """
         执行对话回复链
         
@@ -48,10 +50,6 @@ class ResponseGroupExecutor:
             "response_group_execution_started",
             stage=context.conversation_stage.value
         )
-
-        if context.is_questioning_stage:
-            return NodeResult(node_name="ResponseGroup", action=NodeAction.NONE, reason="跳过沟通意愿判断，直接执行发问检测")
-     
         willingness_task = asyncio.create_task(
             self.executor.execute(ContinueConversationNode.node_name, context)
         )
@@ -64,7 +62,8 @@ class ResponseGroupExecutor:
             next_node = question_detection_result
         else:
             next_node = willingness_result
-         
+        
         while (next_node and next_node.action == NodeAction.NEXT_NODE):
             next_node = await self.executor.execute(next_node.next_node[0], context)
         return next_node
+        

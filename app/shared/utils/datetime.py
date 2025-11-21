@@ -4,6 +4,7 @@ Datetime utilities
 from datetime import datetime, timezone
 from typing import Optional
 import pytz
+from tzlocal import get_localzone
 
 
 def utcnow() -> datetime:
@@ -35,4 +36,8 @@ def convert_timezone(dt: datetime, to_timezone: str = "UTC") -> datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(tz)
+
+def datetime_now() -> datetime:
+    """获取当前时间"""
+    return datetime.now(get_localzone())
 

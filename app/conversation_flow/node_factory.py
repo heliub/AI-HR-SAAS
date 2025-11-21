@@ -34,6 +34,8 @@ from app.conversation_flow.nodes.closing import (
     HighEQResponseNode,
     ResumeConversationNode
 )
+from app.conversation_flow.groups.question_group import QuestionGroupExecutor
+from app.conversation_flow.groups.response_group import ResponseGroupExecutor
 
 logger = structlog.get_logger(__name__)
 
@@ -67,6 +69,9 @@ class NodeFactory:
         # 结束语节点
         "high_eq_response": HighEQResponseNode,
         "resume_conversation": ResumeConversationNode,
+
+        "question_group": QuestionGroupExecutor,
+        "response_group": ResponseGroupExecutor,
     }
     
     def __init__(self):

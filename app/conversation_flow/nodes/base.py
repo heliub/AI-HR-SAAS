@@ -6,6 +6,7 @@
 import time
 import asyncio
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Dict, Any, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -13,7 +14,8 @@ import structlog
 from app.ai.llm.errors import LLMError
 from app.conversation_flow.models import NodeResult, ConversationContext
 from app.ai import get_llm_caller, LLMCaller
-from app.observability.tracing.trace import trace_span
+from app.services.llm_logging_service import get_llm_logging_service
+from app.shared.utils.datetime import datetime_now
 
 logger = structlog.get_logger(__name__)
 
@@ -54,7 +56,9 @@ class NodeExecutor(ABC):
             LLMError: LLM调用失败（超过重试次数）
             Exception: 其他未预期的异常
         """
-        start_time = time.time()
+        started_at = datetime_now()
+        error = None
+        result = None
 
         logger.info(
             "node_execution_started",
@@ -65,67 +69,107 @@ class NodeExecutor(ABC):
 
         # 技术异常重试逻辑
         last_exception = None
-        for attempt in range(self.max_retries):
-            try:
-                result = await self._do_execute(context)
+        
+        try:
+            for attempt in range(self.max_retries):
+                try:
+                    result = await self._do_execute(context)
 
-                # 记录执行耗时
-                execution_time_ms = (time.time() - start_time) * 1000
-                result.execution_time_ms = execution_time_ms
+                    # 记录执行耗时
+                    execution_time_ms = datetime_now().timestamp() - started_at.timestamp()
+                    result.execution_time_ms = execution_time_ms
 
-                logger.info(
-                    "node_execution_completed",
-                    node_name=self.node_name,
-                    action=result.action.value,
-                    execution_time_ms=round(execution_time_ms, 2),
-                    attempt=attempt + 1,
-                    result=result
-
-                )
-
-                return result
-
-            except LLMError as e:
-                last_exception = e
-
-                if attempt < self.max_retries - 1:
-                    # 指数退避
-                    wait_time = 2 ** attempt
-                    logger.warning(
-                        "node_execution_failed_retrying",
+                    logger.info(
+                        "node_execution_completed",
                         node_name=self.node_name,
+                        action=result.action.value,
+                        execution_time_ms=round(execution_time_ms, 2),
                         attempt=attempt + 1,
-                        max_retries=self.max_retries,
-                        wait_time=wait_time,
-                        error=str(e)
+                        result=result
                     )
-                    await asyncio.sleep(wait_time)
-                else:
+
+                    return result
+
+                except LLMError as e:
+                    last_exception = e
+
+                    if attempt < self.max_retries - 1:
+                        # 指数退避
+                        wait_time = 2 ** attempt
+                        logger.warning(
+                            "node_execution_failed_retrying",
+                            node_name=self.node_name,
+                            attempt=attempt + 1,
+                            max_retries=self.max_retries,
+                            wait_time=wait_time,
+                            error=str(e)
+                        )
+                        await asyncio.sleep(wait_time)
+                    else:
+                        logger.error(
+                            "node_execution_failed_max_retries",
+                            node_name=self.node_name,
+                            max_retries=self.max_retries,
+                            error=str(e)
+                        )
+
+                except Exception as e:
+                    # 非LLM异常，记录错误并抛出
+                    error = e
                     logger.error(
-                        "node_execution_failed_max_retries",
+                        "node_execution_failed_unexpected",
                         node_name=self.node_name,
-                        max_retries=self.max_retries,
-                        error=str(e)
+                        error=str(e),
+                        error_type=type(e).__name__,
+                        exc_info=True
                     )
+                    # raise
 
-            except Exception as e:
-                # 非LLM异常，直接抛出
-                logger.error(
-                    "node_execution_failed_unexpected",
-                    node_name=self.node_name,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                    exc_info=True
-                )
-                raise
-
-        # 超过重试次数，返回降级结果
-        # logger.warning(
-        #     "node_execution_fallback",
-        #     node_name=self.node_name,
-        #     reason="max_retries_exceeded"
-        # )
-        return self._fallback_result(context, last_exception)
+            # 超过重试次数，返回降级结果
+            result = self._fallback_result(context, last_exception)
+            return result
+        
+        finally:
+            # 异步记录节点执行日志
+            await self._log_node_execution(context, started_at=started_at, node_result=result, error=error)
+    
+    async def _log_node_execution(
+        self,
+        context: ConversationContext,
+        started_at: datetime,
+        node_result: Optional[NodeResult],
+        error: Optional[Exception]
+    ) -> None:
+        """
+        记录节点执行日志（封装方法，不影响主流程可读性）
+        
+        Args:
+            context: 会话上下文
+            started_at: 开始时间戳
+            node_result: 节点执行结果
+            error: 异常对象（如果有）
+        """
+        try:            
+            # 异步记录日志
+            logging_service = get_llm_logging_service()
+            await logging_service.log_node_execution(
+                tenant_id=str(context.tenant_id),
+                conversation_id=str(context.conversation_id),
+                trigger_message_id=str(context.last_candidate_message_id) if context.last_candidate_message_id else None,
+                node_name=self.node_name,
+                node_result=node_result,
+                started_at=started_at,
+                is_success=error is None,
+                error_message=str(error) if error else None,
+            )
+        except Exception as e:
+            # 日志记录失败不应影响主流程
+            logger.error(
+                "node_log_failed",
+                node_name=self.node_name,
+                error=str(e),
+                exc_info=True
+            )
 
     @abstractmethod
     async def _do_execute(self, context: ConversationContext) -> NodeResult:
@@ -213,7 +257,7 @@ class NodeExecutor(ABC):
         # 返回用户友好的消息（可能展示给候选人）
         return NodeResult(
             node_name=self.node_name,
-            action=NodeAction.SUSPEND,
+            action=NodeAction.NONE,
             reason=None,  # 用户友好
             data=data or {},  # 使用传入的data或空字典
             is_fallback=True,  # 标记为降级结果

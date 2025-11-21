@@ -1,7 +1,7 @@
 -- AI HR SaaS PostgreSQL Database Schema (Multi-Tenant, Optimized)
--- Version: 2.2
+-- Version: 2.3
 -- Created: 2025-01-26
--- Updated: 2025-11-01
+-- Updated: 2025-11-21
 --
 -- 优化说明：
 -- 1. 合并职位要求到职位表（使用TEXT数组）
@@ -10,8 +10,9 @@
 -- 4. 合并AI匹配优势/劣势到匹配结果表（使用JSONB）
 -- 5. 增强聊天消息类型字段，支持多种消息类型
 -- 6. 新增岗位/公司知识库模块（支持混合检索：向量+BM25）
+-- 7. 新增LLM日志模块，用于记录LLM调用和对话流程执行情况
 --
--- 表数量：从33张减少到29张
+-- 表数量：从29张增加到32张
 
 -- ==============================================
 -- 1. 租户管理表
@@ -1066,9 +1067,132 @@ WHERE variant_embedding IS NOT NULL;
 CREATE INDEX idx_hit_logs_tenant_time
 ON knowledge_hit_logs(tenant_id, created_at DESC);
 
+-- ==============================================
+-- 11. LLM日志模块表
+-- ==============================================
+
+-- LLM提示模板表
+CREATE TABLE llm_prompt_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id VARCHAR(36),
+    scene_name VARCHAR(100),
+    version INTEGER DEFAULT 1,
+    template_hash VARCHAR(64),
+    template_content TEXT,
+    system_prompt TEXT,
+    provider VARCHAR(50),
+    model VARCHAR(100),
+    temperature FLOAT,
+    top_p FLOAT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE llm_prompt_templates IS 'LLM提示模板表';
+COMMENT ON COLUMN llm_prompt_templates.id IS '模板ID（主键）';
+COMMENT ON COLUMN llm_prompt_templates.tenant_id IS '租户ID';
+COMMENT ON COLUMN llm_prompt_templates.scene_name IS '场景名称';
+COMMENT ON COLUMN llm_prompt_templates.version IS '模板版本号';
+COMMENT ON COLUMN llm_prompt_templates.template_hash IS 'SHA256哈希值';
+COMMENT ON COLUMN llm_prompt_templates.template_content IS 'Prompt模板内容';
+COMMENT ON COLUMN llm_prompt_templates.system_prompt IS '系统提示词';
+COMMENT ON COLUMN llm_prompt_templates.provider IS 'LLM提供商';
+COMMENT ON COLUMN llm_prompt_templates.model IS '模型名称';
+COMMENT ON COLUMN llm_prompt_templates.temperature IS '温度参数';
+COMMENT ON COLUMN llm_prompt_templates.top_p IS 'top_p参数';
+COMMENT ON COLUMN llm_prompt_templates.created_at IS '创建时间';
+COMMENT ON COLUMN llm_prompt_templates.updated_at IS '更新时间';
+
+-- LLM执行日志表
+CREATE TABLE llm_execution_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id VARCHAR(36),
+    trace_id VARCHAR(36),
+    template_id VARCHAR(36),
+    scene_name VARCHAR(100),
+    provider VARCHAR(50),
+    model VARCHAR(100),
+    temperature FLOAT,
+    top_p FLOAT,
+    max_completion_tokens INTEGER,
+    template_variables TEXT,
+    response_content TEXT,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    total_tokens INTEGER,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    execution_time_ms FLOAT,
+    is_success BOOLEAN DEFAULT TRUE,
+    error_type VARCHAR(100),
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE llm_execution_logs IS 'LLM执行日志表';
+COMMENT ON COLUMN llm_execution_logs.id IS '日志ID（主键）';
+COMMENT ON COLUMN llm_execution_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN llm_execution_logs.trace_id IS '流程追踪ID';
+COMMENT ON COLUMN llm_execution_logs.template_id IS '关联的Prompt模板ID';
+COMMENT ON COLUMN llm_execution_logs.scene_name IS '场景名称';
+COMMENT ON COLUMN llm_execution_logs.provider IS 'LLM提供商';
+COMMENT ON COLUMN llm_execution_logs.model IS '模型名称';
+COMMENT ON COLUMN llm_execution_logs.temperature IS '温度参数';
+COMMENT ON COLUMN llm_execution_logs.top_p IS 'top_p参数';
+COMMENT ON COLUMN llm_execution_logs.max_completion_tokens IS '最大完成token数';
+COMMENT ON COLUMN llm_execution_logs.template_variables IS '模板变量值（JSON字符串）';
+COMMENT ON COLUMN llm_execution_logs.response_content IS '响应内容';
+COMMENT ON COLUMN llm_execution_logs.prompt_tokens IS 'Prompt token数';
+COMMENT ON COLUMN llm_execution_logs.completion_tokens IS '完成token数';
+COMMENT ON COLUMN llm_execution_logs.total_tokens IS '总token数';
+COMMENT ON COLUMN llm_execution_logs.started_at IS 'LLM调用开始时间';
+COMMENT ON COLUMN llm_execution_logs.completed_at IS 'LLM调用完成时间';
+COMMENT ON COLUMN llm_execution_logs.execution_time_ms IS '执行耗时（毫秒）';
+COMMENT ON COLUMN llm_execution_logs.is_success IS '是否成功';
+COMMENT ON COLUMN llm_execution_logs.error_type IS '错误类型';
+COMMENT ON COLUMN llm_execution_logs.error_message IS '错误信息';
+COMMENT ON COLUMN llm_execution_logs.created_at IS '创建时间';
+COMMENT ON COLUMN llm_execution_logs.updated_at IS '更新时间';
+
+-- 对话流程节点执行日志表
+CREATE TABLE conversation_flow_node_execution_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id VARCHAR(36),
+    trace_id VARCHAR(36),
+    conversation_id VARCHAR(36),
+    trigger_message_id VARCHAR(36),
+    node_name VARCHAR(50),
+    node_result TEXT,
+    llm_execution_id VARCHAR(36),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    execution_time_ms FLOAT,
+    is_success BOOLEAN DEFAULT TRUE,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE conversation_flow_node_execution_logs IS '对话流程节点执行日志表';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.id IS '日志ID（主键）';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.trace_id IS '流程追踪ID';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.conversation_id IS '会话ID';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.trigger_message_id IS '触发的用户消息ID';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.node_name IS '节点名称';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.node_result IS '节点执行结果（JSON字符串）';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.llm_execution_id IS '关联的LLM执行日志ID';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.started_at IS '节点开始执行时间';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.completed_at IS '节点完成执行时间';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.execution_time_ms IS '执行耗时（毫秒）';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.is_success IS '是否成功执行';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.error_message IS '程序异常信息';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.created_at IS '创建时间';
+COMMENT ON COLUMN conversation_flow_node_execution_logs.updated_at IS '更新时间';
 
 -- ==============================================
--- 11. 初始化数据（示例）
+-- 12. 初始化数据（示例）
 -- ==============================================
 
 
@@ -1078,7 +1202,7 @@ ON knowledge_hit_logs(tenant_id, created_at DESC);
 -- 3. 根据实际情况调整配置参数
 
 -- ==============================================
--- 12. 数据示例和使用说明
+-- 13. 数据示例和使用说明
 -- ==============================================
 
 -- 示例1：插入职位（包含要求、偏好学校数组和新字段）
@@ -1193,3 +1317,20 @@ ON knowledge_hit_logs(tenant_id, created_at DESC);
 -- GROUP BY knowledge_id
 -- ORDER BY hit_count DESC
 -- LIMIT 10;
+
+-- ==============================================
+-- 12. LLM日志模块索引
+-- ==============================================
+
+
+-- LLM执行日志表索引
+CREATE INDEX idx_llm_logs_scene ON llm_execution_logs(scene_name, created_at DESC);
+CREATE INDEX idx_llm_logs_model ON llm_execution_logs(provider, model, created_at DESC);
+CREATE INDEX idx_llm_logs_trace ON llm_execution_logs(trace_id);
+
+
+-- 对话流程节点执行日志表索引
+CREATE INDEX idx_node_logs_trace ON conversation_flow_node_execution_logs(trace_id, started_at);
+CREATE INDEX idx_node_logs_conversation ON conversation_flow_node_execution_logs(conversation_id, created_at DESC);
+CREATE INDEX idx_node_logs_trigger_msg ON conversation_flow_node_execution_logs(trigger_message_id);
+

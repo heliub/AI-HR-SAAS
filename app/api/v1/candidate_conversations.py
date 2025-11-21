@@ -307,19 +307,21 @@ async def send_candidate_message(
     # 5. 执行对话流程
     orchestrator = ConversationFlowOrchestrator()
     flow_result = await orchestrator.execute(context)
-
+    print(f"flow_result: {flow_result}")
     # 6. 保存AI回复（如果有）
-    ai_message = None
-    if flow_result and flow_result.action == NodeAction.SEND_MESSAGE and flow_result.message:
-        ai_message = await chat_history_service.create_message(
-            tenant_id=current_user.tenant_id,
-            resume_id=conversation.resume_id,
-            conversation_id=conversation_id,
-            sender="ai",
-            message=flow_result.message,
-            message_type="text"
-        )
-        if flow_result.execute_node == QuestionHandlerNode.node_name and flow_result.data and flow_result.data.get("question_tracking_id"):
+    messages = []
+    if flow_result and flow_result.action == NodeAction.SEND_MESSAGE and flow_result.messages:
+        for message in flow_result.messages:
+            ai_message = await chat_history_service.create_message(
+                tenant_id=current_user.tenant_id,
+                resume_id=conversation.resume_id,
+                conversation_id=conversation_id,
+                sender="ai",
+                message=message,
+                message_type="text"
+            )
+            messages.append(message)
+        if flow_result.exist_question and flow_result.data and flow_result.data.get("question_tracking_id"):
             question_tracking_id = flow_result.data.get("question_tracking_id")
             tracking_service = ConversationQuestionTrackingService()
             await tracking_service.update_question_status(
@@ -347,7 +349,7 @@ async def send_candidate_message(
 
     # 8. 返回响应
     response_data = {
-        "aiMessage": ai_message.message if ai_message else None,
+        "aiMessage": messages if messages else None,
         "conversationStatus": conversation.status,
         "conversationStage": conversation.stage
     }

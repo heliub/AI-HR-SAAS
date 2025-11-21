@@ -216,9 +216,9 @@ PROMPT_CONFIG = {
     },
     "job_candidate_match.job_candidate_match_for_sales": {
         "module": "job_candidate_match",
-        "provider": "openai",
+        "provider": "volcengine",
         # "model": "deepseek-v3",
-        "model": "gpt-5",
+        "model": "doubao-seed-1-6-251015",
         "temperature": 0.01,
         # "top_p": 0.01,
         "max_completion_tokens": None,
@@ -228,8 +228,8 @@ PROMPT_CONFIG = {
     },
     "job_candidate_match.job_candidate_match_for_strong_skills": {
         "module": "job_candidate_match",
-        "provider": "openai",
-        "model": "gpt-5",
+        "provider": "volcengine",
+        "model": "doubao-seed-1-6-251015",
         "temperature": 0.01,
         # "top_p": 0.01,
         "max_completion_tokens": None,
@@ -240,8 +240,8 @@ PROMPT_CONFIG = {
     },
     "job_candidate_match.job_candidate_match_common": {
         "module": "job_candidate_match",
-        "provider": "openai",
-        "model": "gpt-5",
+        "provider": "volcengine",
+        "model": "doubao-seed-1-6-251015",
         "temperature": 0.01,
         "max_completion_tokens": 20000,
         "prompt": "job_candidate_match_common.md",
