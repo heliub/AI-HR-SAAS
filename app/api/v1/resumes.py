@@ -181,6 +181,12 @@ async def get_resume(
         "is_match": resume_data["resume"].is_match,
         "match_conclusion": resume_data["resume"].match_conclusion,
         "submitted_at": resume_data["resume"].submitted_at,
+        # 新增字段
+        "birth_date": resume_data["resume"].birth_date,
+        "birth_place": resume_data["resume"].birth_place,
+        "marital_status": resume_data["resume"].marital_status,
+        "job_search_status": resume_data["resume"].job_search_status,
+        "self_introduction": resume_data["resume"].self_introduction,
 
         # 关联数据 - 使用数据库原始数据
         "work_experiences": [

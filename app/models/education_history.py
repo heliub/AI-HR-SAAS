@@ -1,7 +1,7 @@
 """
 Education History model
 """
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -19,6 +19,8 @@ class EducationHistory(Base):
     major = Column(String(200), comment="专业")
     start_date = Column(String(20), comment="开始日期")
     end_date = Column(String(20), comment="结束日期")
+    # 新增字段
+    description = Column(Text, comment="教育经历描述")
     sort_order = Column(Integer, default=0, comment="显示排序（越小越靠前）")
     
     

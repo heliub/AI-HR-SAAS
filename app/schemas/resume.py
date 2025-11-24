@@ -17,6 +17,10 @@ class WorkExperienceBase(BaseModel):
     startDate: Optional[str] = Field(None, alias="start_date")
     endDate: Optional[str] = Field(None, alias="end_date")
     description: Optional[str] = None
+    # 新增字段
+    employmentType: Optional[str] = Field(None, alias="employment_type")
+    workCity: Optional[str] = Field(None, alias="work_city")
+    responsibilities: Optional[str] = Field(None, alias="responsibilities")
 
     model_config = {
         "from_attributes": True,
@@ -46,6 +50,8 @@ class EducationHistoryBase(BaseModel):
     major: Optional[str] = None
     startDate: Optional[str] = Field(None, alias="start_date")
     endDate: Optional[str] = Field(None, alias="end_date")
+    # 新增字段
+    description: Optional[str] = None
 
     model_config = {
         "from_attributes": True,
@@ -120,6 +126,12 @@ class ResumeBase(BaseModel):
     skills: Optional[str] = None
     isMatch: Optional[bool] = Field(None, alias="is_match")
     matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
+    # 新增字段
+    birthDate: Optional[date] = Field(None, alias="birth_date")
+    birthPlace: Optional[str] = Field(None, alias="birth_place")
+    maritalStatus: Optional[str] = Field(None, alias="marital_status")
+    jobSearchStatus: Optional[str] = Field(None, alias="job_search_status")
+    selfIntroduction: Optional[str] = Field(None, alias="self_introduction")
 
 
 class ResumeCreate(ResumeBase):
@@ -150,11 +162,24 @@ class ResumeResponse(ResumeBase, IDSchema, TimestampSchema):
     conversationSummary: Optional[str] = Field(alias="conversation_summary")
     isMatch: Optional[bool] = Field(None, alias="is_match")
     matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
+    # 新增字段
+    birthDate: Optional[date] = Field(None, alias="birth_date")
+    birthPlace: Optional[str] = Field(None, alias="birth_place")
+    maritalStatus: Optional[str] = Field(None, alias="marital_status")
+    jobSearchStatus: Optional[str] = Field(None, alias="job_search_status")
+    selfIntroduction: Optional[str] = Field(None, alias="self_introduction")
 
     @field_serializer('submittedAt')
     def serialize_submitted_at(self, value: Optional[datetime]) -> Optional[str]:
         """格式化提交时间为可读格式"""
         return format_datetime(value)
+    
+    @field_serializer('birthDate')
+    def serialize_birth_date(self, value: Optional[date]) -> Optional[str]:
+        """格式化出生日期为可读格式"""
+        if value is None:
+            return None
+        return value.strftime("%Y-%m-%d")
 
     model_config = {
         "from_attributes": True,  # 可以直接从模型实例创建
@@ -174,6 +199,12 @@ class ResumeDetailResponse(ResumeResponse):
     conversationSummary: Optional[str] = Field(alias="conversation_summary")
     isMatch: Optional[bool] = Field(None, alias="is_match")
     matchConclusion: Optional[str] = Field(None, alias="match_conclusion")
+    # 新增字段
+    birthDate: Optional[date] = Field(None, alias="birth_date")
+    birthPlace: Optional[str] = Field(None, alias="birth_place")
+    maritalStatus: Optional[str] = Field(None, alias="marital_status")
+    jobSearchStatus: Optional[str] = Field(None, alias="job_search_status")
+    selfIntroduction: Optional[str] = Field(None, alias="self_introduction")
 
     # 关联数据的alias映射
     workHistory: Optional[List[WorkExperienceBase]] = Field(default=[], alias="work_experiences")
@@ -184,6 +215,13 @@ class ResumeDetailResponse(ResumeResponse):
     chatHistory: Optional[List[CandidateChatHistoryBase]] = Field(default=[], alias="chat_histories")
     interviews: Optional[List[InterviewResponse]] = Field(default=[])
     emails: Optional[List[EmailLogResponse]] = Field(default=[], alias="email_logs")
+    
+    @field_serializer('birthDate')
+    def serialize_birth_date(self, value: Optional[date]) -> Optional[str]:
+        """格式化出生日期为可读格式"""
+        if value is None:
+            return None
+        return value.strftime("%Y-%m-%d")
 
     model_config = {
         "from_attributes": False,  # 因为现在传递的是字典而不是模型实例

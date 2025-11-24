@@ -300,7 +300,13 @@ CREATE TABLE resumes (
     match_conclusion TEXT,
     submitted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    -- 新增字段
+    birth_date DATE,  -- 出生日期
+    birth_place VARCHAR(100),  -- 出生地
+    marital_status VARCHAR(20),  -- 婚姻状况
+    job_search_status VARCHAR(50),  -- 求职状态
+    self_introduction TEXT  -- 自我介绍
 );
 
 COMMENT ON TABLE resumes IS '简历表（已合并技能列表）';
@@ -330,6 +336,12 @@ COMMENT ON COLUMN resumes.match_conclusion IS '匹配结论（基于AI分析结�
 COMMENT ON COLUMN resumes.submitted_at IS '简历投递时间';
 COMMENT ON COLUMN resumes.created_at IS '创建时间';
 COMMENT ON COLUMN resumes.updated_at IS '更新时间';
+-- 新增字段注释
+COMMENT ON COLUMN resumes.birth_date IS '出生日期';
+COMMENT ON COLUMN resumes.birth_place IS '出生地';
+COMMENT ON COLUMN resumes.marital_status IS '婚姻状况: single-单身, married-已婚, divorced-离异, widowed-丧偶, unknown-未知';
+COMMENT ON COLUMN resumes.job_search_status IS '求职状态: actively_looking-积极求职, open_to_opportunities-开放机会, not_looking-不求职, unknown-未知';
+COMMENT ON COLUMN resumes.self_introduction IS '自我介绍';
 
 -- 工作经历表
 CREATE TABLE work_experiences (
@@ -341,6 +353,9 @@ CREATE TABLE work_experiences (
     start_date VARCHAR(20),
     end_date VARCHAR(20),
     description TEXT,
+    employment_type VARCHAR(50),  -- 工作类型：Full-time, Intern, Part-time, Contract, Temporary, Freelance, Supervisor, Manager, Consultant, Project Lead
+    work_city VARCHAR(100),  -- 工作城市
+    responsibilities TEXT,  -- 职责
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -355,6 +370,9 @@ COMMENT ON COLUMN work_experiences.position IS '职位';
 COMMENT ON COLUMN work_experiences.start_date IS '开始日期，如：2021-03';
 COMMENT ON COLUMN work_experiences.end_date IS '结束日期，如：至今、2024-12';
 COMMENT ON COLUMN work_experiences.description IS '工作描述';
+COMMENT ON COLUMN work_experiences.employment_type IS '工作类型：Full-time-全职, Intern-实习, Part-time-兼职, Contract-合同, Temporary-临时工, Freelance-自由职业, Supervisor-主管, Manager-经理, Consultant-顾问, Project Lead-项目负责人';
+COMMENT ON COLUMN work_experiences.work_city IS '工作城市';
+COMMENT ON COLUMN work_experiences.responsibilities IS '工作职责';
 COMMENT ON COLUMN work_experiences.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN work_experiences.created_at IS '创建时间';
 COMMENT ON COLUMN work_experiences.updated_at IS '更新时间';
@@ -397,6 +415,7 @@ CREATE TABLE education_histories (
     major VARCHAR(200),
     start_date VARCHAR(20),
     end_date VARCHAR(20),
+    description TEXT,  -- 教育经历描述
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -411,9 +430,10 @@ COMMENT ON COLUMN education_histories.degree IS '学位，如：本科、硕士�
 COMMENT ON COLUMN education_histories.major IS '专业';
 COMMENT ON COLUMN education_histories.start_date IS '开始日期';
 COMMENT ON COLUMN education_histories.end_date IS '结束日期';
+COMMENT ON COLUMN education_histories.description IS '教育经历描述';
 COMMENT ON COLUMN education_histories.sort_order IS '显示排序（越小越靠前）';
 COMMENT ON COLUMN education_histories.created_at IS '创建时间';
-COMMENT ON COLUMN education_histories.updated_at IS '更新时间'; 
+COMMENT ON COLUMN education_histories.updated_at IS '更新时间';
 -- 求职意向表（优化：合并期望地点）
 CREATE TABLE job_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

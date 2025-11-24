@@ -1,7 +1,7 @@
 """
 Resume model
 """
-from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, Date
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
@@ -36,6 +36,12 @@ class Resume(Base):
     is_match = Column(Boolean, comment="是否匹配（基于AI分析结果）")
     match_conclusion = Column(Text, comment="匹配结论（基于AI分析结果）")
     submitted_at = Column(DateTime(timezone=True), comment="简历投递时间")
+    # 新增字段
+    birth_date = Column(Date, comment="出生日期")
+    birth_place = Column(String(100), comment="出生地")
+    marital_status = Column(String(20), comment="婚姻状况: single-单身, married-已婚, divorced-离异, widowed-丧偶, unknown-未知")
+    job_search_status = Column(String(50), comment="求职状态: actively_looking-积极求职, open_to_opportunities-开放机会, not_looking-不求职, unknown-未知")
+    self_introduction = Column(Text, comment="自我介绍")
     
         
     def __repr__(self) -> str:

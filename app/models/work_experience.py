@@ -19,6 +19,10 @@ class WorkExperience(Base):
     start_date = Column(String(20), comment="开始日期，如：2021-03")
     end_date = Column(String(20), comment="结束日期，如：至今、2024-12")
     description = Column(Text, comment="工作描述")
+    # 新增字段
+    employment_type = Column(String(50), comment="工作类型：Full-time-全职, Intern-实习, Part-time-兼职, Contract-合同, Temporary-临时工, Freelance-自由职业, Supervisor-主管, Manager-经理, Consultant-顾问, Project Lead-项目负责人")
+    work_city = Column(String(100), comment="工作城市")
+    responsibilities = Column(Text, comment="工作职责")
     sort_order = Column(Integer, default=0, comment="显示排序（越小越靠前）")
     
     
