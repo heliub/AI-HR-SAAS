@@ -2,7 +2,7 @@
 Resume service for handling resume-related database operations
 简单明了，只保留核心功能
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -383,38 +383,91 @@ class ResumeService(BaseService):
         result = await self.db.execute(stmt)
         return result.scalar()
 
-    async def get_resume_statistics(self, tenant_id: UUID, job_id: Optional[UUID] = None) -> Dict:
+    async def get_resume_statistics(
+        self,
+        tenant_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        job_id: Optional[UUID] = None,
+        is_admin: bool = False
+    ) -> Dict:
         """
-        获取简历统计信息
+        获取简历统计信息（使用 GROUP BY 一次性查询所有状态）
 
         Args:
-            tenant_id: 租户ID
+            tenant_id: 租户ID（可选，admin可以不传）
+            user_id: 用户ID（可选，用于HR只看自己的简历）
+            keyword: 搜索关键词（搜索姓名、邮箱、职位）
+            status: 简历状态过滤
             job_id: 职位ID（可选）
+            is_admin: 是否为管理员
 
         Returns:
             统计信息字典
         """
-        conditions = [Resume.tenant_id == tenant_id]
+        conditions = []
+        
+        # 租户过滤 - admin不需要tenant_id过滤
+        if not is_admin and tenant_id:
+            conditions.append(Resume.tenant_id == tenant_id)
+        
+        # 用户过滤 - 只有非管理员才过滤user_id
+        if user_id and not is_admin:
+            conditions.append(Resume.user_id == user_id)
+        
         if job_id:
             conditions.append(Resume.job_id == job_id)
+        
+        if status:
+            conditions.append(Resume.status == status)
+        
+        if keyword:
+            conditions.append(
+                or_(
+                    Resume.candidate_name.ilike(f"%{keyword}%"),
+                    Resume.email.ilike(f"%{keyword}%"),
+                    Resume.position.ilike(f"%{keyword}%")
+                )
+            )
 
-        # 获取总数
-        total_query = select(func.count(Resume.id)).where(and_(*conditions))
-        total_result = await self.db.execute(total_query)
-        total = total_result.scalar()
-
-        # 获取各状态统计
-        status_stats = {}
-        for status in ['pending', 'reviewing', 'interview', 'offered', 'rejected']:
-            status_conditions = conditions + [Resume.status == status]
-            status_query = select(func.count(Resume.id)).where(and_(*status_conditions))
-            status_result = await self.db.execute(status_query)
-            status_count = status_result.scalar()
-            status_stats[status] = status_count
+        # 使用 GROUP BY 一次性查询所有状态的统计
+        if conditions:
+            stats_query = select(
+                Resume.status,
+                func.count(Resume.id).label('count')
+            ).where(and_(*conditions)).group_by(Resume.status)
+        else:
+            stats_query = select(
+                Resume.status,
+                func.count(Resume.id).label('count')
+            ).group_by(Resume.status)
+        
+        stats_result = await self.db.execute(stats_query)
+        status_counts = stats_result.all()
+        
+        # 构建状态统计字典
+        status_stats = {
+            'pending': 0,
+            'reviewing': 0,
+            'interview': 0,
+            'offered': 0,
+            'rejected': 0
+        }
+        
+        total = 0
+        for status_name, count in status_counts:
+            total += count
+            if status_name in status_stats:
+                status_stats[status_name] = count
 
         return {
             "total": total,
-            "by_status": status_stats
+            "pending": status_stats['pending'],
+            "reviewing": status_stats['reviewing'],
+            "interview": status_stats['interview'],
+            "offered": status_stats['offered'],
+            "rejected": status_stats['rejected']
         }
 
     async def create_resume(self, tenant_id: UUID, resume_data: Dict) -> Resume:
@@ -430,6 +483,62 @@ class ResumeService(BaseService):
         """
         resume_data["tenant_id"] = tenant_id
         return await self.create(Resume, resume_data)
+
+    async def create_resume_with_details(
+        self, 
+        tenant_id: UUID, 
+        user_id: UUID,
+        resume_data: Dict[str, Any],
+        work_experiences: Optional[List[Dict[str, Any]]] = None,
+        education_histories: Optional[List[Dict[str, Any]]] = None,
+        job_preference: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        创建完整简历，包括基础信息、工作经历、教育经历和求职意向
+        
+        Args:
+            tenant_id: 租户ID
+            user_id: 用户ID
+            resume_data: 简历基础数据
+            job_id: 职位ID（可选）
+            work_experiences: 工作经历列表
+            education_histories: 教育经历列表
+            job_preference: 求职意向
+            
+        Returns:
+            创建的简历数据字典
+        """
+        # 添加租户ID和用户ID
+        resume_data["tenant_id"] = tenant_id
+        resume_data["user_id"] = user_id
+        
+        # 创建简历基础信息
+        resume = await self.create(Resume, resume_data)
+        
+        # 创建工作经历
+        if work_experiences:
+            for i, exp_data in enumerate(work_experiences):
+                exp_data["tenant_id"] = tenant_id
+                exp_data["resume_id"] = resume.id
+                exp_data["sort_order"] = i  # 使用索引作为排序
+                await self.create(WorkExperience, exp_data)
+        
+        # 创建教育经历
+        if education_histories:
+            for i, edu_data in enumerate(education_histories):
+                edu_data["tenant_id"] = tenant_id
+                edu_data["resume_id"] = resume.id
+                edu_data["sort_order"] = i  # 使用索引作为排序
+                await self.create(EducationHistory, edu_data)
+        
+        # 创建求职意向
+        if job_preference:
+            job_preference["tenant_id"] = tenant_id
+            job_preference["resume_id"] = resume.id
+            await self.create(JobPreference, job_preference)
+        
+        # 返回创建的完整简历数据
+        return await self.get_resume_full_details(resume.id, tenant_id)
 
     async def _get_work_experiences(self, resume_id: UUID, tenant_id: UUID):
         """获取工作经历"""

@@ -107,7 +107,8 @@ class BaseService:
 
         if filters:
             for key, value in filters.items():
-                if hasattr(model, key):
+                # 只添加非 None 的过滤条件
+                if hasattr(model, key) and value is not None:
                     conditions.append(getattr(model, key) == value)
 
         async with get_db_context() as session:
@@ -125,7 +126,8 @@ class BaseService:
 
         if filters:
             for key, value in filters.items():
-                if hasattr(model, key):
+                # 只添加非 None 的过滤条件
+                if hasattr(model, key) and value is not None:
                     conditions.append(getattr(model, key) == value)
 
         async with get_db_context() as session:

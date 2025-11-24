@@ -14,6 +14,7 @@ from app.schemas.resume import (
     ResumeResponse, ResumeDetailResponse, AIMatchRequest, SendEmailRequest
 )
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.stats import ResumeStats
 from app.services.resume_service import ResumeService
 from app.models.user import User
 from app.models.resume import Resume
@@ -64,15 +65,19 @@ async def get_resumes(
         )
 
     # 获取总数
+    # 构建过滤条件，只包含非 None 的值
+    count_filters = {}
+    if status:
+        count_filters["status"] = status
+    if jobId:
+        count_filters["job_id"] = jobId
+    
     if is_admin:
         # 管理员统计所有简历数量
         total = await resume_service.count_without_tenant_filter(
             Resume,
             user_id=current_user.id if not is_admin else None,
-            filters={
-                "status": status,
-                "job_id": jobId
-            } if status or jobId else None,
+            filters=count_filters if count_filters else None,
             is_admin=is_admin
         )
     else:
@@ -81,10 +86,7 @@ async def get_resumes(
             Resume,
             current_user.tenant_id,
             current_user.id,
-            {
-                "status": status,
-                "job_id": jobId
-            } if status or jobId else None,
+            count_filters if count_filters else None,
             is_admin=is_admin
         )
 
@@ -101,6 +103,39 @@ async def get_resumes(
         code=200,
         message="成功",
         data=paginated_data.model_dump()
+    )
+
+
+@router.get("/stats", response_model=APIResponse)
+async def get_resume_stats(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    jobId: Optional[UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """获取简历状态统计"""
+    resume_service = ResumeService(db)
+    
+    is_admin = current_user.role == "admin"
+    
+    # 获取统计数据 - 参数与列表查询保持一致
+    stats = await resume_service.get_resume_statistics(
+        tenant_id=current_user.tenant_id if not is_admin else None,
+        user_id=current_user.id if not is_admin else None,
+        keyword=search,
+        status=status,
+        job_id=jobId,
+        is_admin=is_admin
+    )
+    
+    # 使用 ResumeStats schema 验证并格式化数据
+    resume_stats = ResumeStats(**stats)
+    
+    return APIResponse(
+        code=200,
+        message="成功",
+        data=resume_stats.model_dump()
     )
 
 
