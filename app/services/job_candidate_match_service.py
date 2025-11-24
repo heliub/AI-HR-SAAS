@@ -282,8 +282,7 @@ class JobCandidateMatchService(BaseService):
         # 统一不进行JSON解析，直接返回原始结果
         result = await self.llm_caller.call_with_scene(
             scene_name=match_strategy,
-            template_vars=template_vars,
-            parse_json=False  # 统一不解析为JSON，保留原始返回结果
+            template_vars=template_vars
         )
         
         # 直接返回原始结果，不做任何处理

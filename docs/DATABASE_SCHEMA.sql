@@ -767,34 +767,18 @@ COMMENT ON COLUMN conversation_question_tracking.updated_at IS '更新时间';
 CREATE TABLE job_knowledge_base (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
-    user_id UUID,  -- 创建者HR用户ID
-
-    -- 作用域
-    scope_type VARCHAR(20) NOT NULL,  -- 'company', 'job'
+    user_id UUID, 
+    scope_type VARCHAR(20) NOT NULL, 
     scope_id UUID NOT NULL,
-
-    -- 分类（支持多标签）
-    categories VARCHAR(2000),  -- 逗号分隔的字符串，如：'salary,benefits,culture'
-
-    -- 问答内容
+    categories VARCHAR(2000),
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
-
-    -- 检索字段
-    keywords TEXT,  -- BM25关键词（逗号分隔）
-    question_embedding VECTOR(2048),  -- 问题向量（允许NULL）
-
-    -- 扩展字段
-    meta_data JSONB,  -- 扩展元数据，如：{"source": "hr_manual", "reference_url": "..."}
-
-    -- 状态
-    status VARCHAR(20) DEFAULT 'active',  -- 'active', 'archived', 'deleted'
-
-    -- 时间戳
+    keywords TEXT,
+    question_embedding VECTOR(2048),
+    meta_data JSONB,
+    status VARCHAR(20) DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-
-    -- 审计字段
     created_by UUID,
     updated_by UUID
 );
@@ -822,23 +806,13 @@ CREATE TABLE knowledge_question_variants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
     knowledge_id UUID NOT NULL,
-
-    -- 冗余scope字段（查询性能优化，避免JOIN）
     scope_type VARCHAR(20) NOT NULL,
     scope_id UUID NOT NULL,
-
-    -- 变体内容
     variant_question TEXT NOT NULL,
-    variant_embedding VECTOR(2048),  -- 变体问题向量（允许NULL）
-
-    -- 来源标记
-    source VARCHAR(20) DEFAULT 'manual',  -- 'manual', 'ai_generated', 'user_feedback'
-    confidence_score DECIMAL(3,2),  -- AI生成时的置信度（0.00-1.00，允许NULL）
-
-    -- 状态
-    status VARCHAR(20) DEFAULT 'active',  -- 'active', 'deleted'
-
-    -- 时间戳
+    variant_embedding VECTOR(2048),
+    source VARCHAR(20) DEFAULT 'manual',
+    confidence_score DECIMAL(3,2),
+    status VARCHAR(20) DEFAULT 'active', 
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -861,21 +835,13 @@ COMMENT ON COLUMN knowledge_question_variants.updated_at IS '更新时间';
 CREATE TABLE knowledge_hit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
-
-    -- 关联信息
-    knowledge_id UUID NOT NULL,  -- 命中的知识库条目ID
-    variant_id UUID,  -- 如果是通过变体命中，记录变体ID（允许NULL）
-    conversation_id UUID,  -- 关联的会话ID
-
-    -- 检索信息
-    user_question TEXT,  -- 候选人原始问题
-
-    -- 匹配信息
-    match_method VARCHAR(20),  -- 'vector', 'bm25', 'hybrid'
-    match_score DECIMAL(5,4),  -- 匹配分数（0.0000-1.0000）
-    rank_position INTEGER,  -- 在检索结果列表中的排名（1,2,3...）
-
-    -- 时间戳
+    knowledge_id UUID NOT NULL,
+    variant_id UUID,
+    conversation_id UUID,
+    user_question TEXT,
+    match_method VARCHAR(20),
+    match_score DECIMAL(5,4),
+    rank_position INTEGER,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
