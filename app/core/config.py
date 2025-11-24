@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     
     # 服务配置
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    PORT: int = 8080
     
     # 数据库配置
     DATABASE_URL: str
@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     # 多语言配置
     SUPPORTED_LANGUAGES: str = "en,zh,id"
     DEFAULT_LANGUAGE: str = "en"
+
+    VOLCENGINE_API_KEY: str
+    OPENAI_API_KEY: str
     
     @validator("SUPPORTED_LANGUAGES")
     def parse_languages(cls, v):

@@ -27,6 +27,8 @@ async def lifespan(app: FastAPI):
 
 def create_application() -> FastAPI:
     """创建FastAPI应用"""
+    os.environ["VOLCENGINE_API_KEY"] = settings.VOLCENGINE_API_KEY
+    os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.VERSION,
