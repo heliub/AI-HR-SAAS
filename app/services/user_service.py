@@ -12,6 +12,7 @@ from app.models.user import User
 from app.services.base import BaseService
 from app.core.security import security_manager
 from app.core.exceptions import NotFoundException, BadRequestException
+from app.infrastructure.database.session import get_db_context
 
 
 class UserService(BaseService[User]):
@@ -222,33 +223,28 @@ class UserService(BaseService[User]):
 
     async def get_user_settings(
         self,
-        db: AsyncSession,
         user_id: UUID
     ):
         """获取用户设置"""
         from app.models.user_setting import UserSetting
         from sqlalchemy import select
 
-        user = await self.get(db, user_id)
-        if not user:
-            raise NotFoundException("User not found")
-
         # 查找用户设置
         query = select(UserSetting).where(UserSetting.user_id == user_id)
-        result = await db.execute(query)
-        user_setting = result.scalar_one_or_none()
+        async with get_db_context() as session:
+            result = await session.execute(query)
+            user_setting = result.scalar_one_or_none()
+            if not user_setting:
+                # 返回默认设置
+                return {
+                    "language": None,
+                    "emailNotifications": False,
+                    "taskReminders": False
+                }
 
-        if not user_setting:
-            # 返回默认设置
             return {
-                "language": "zh",
-                "emailNotifications": False,
-                "taskReminders": False
+                "language": user_setting.language,
+                "emailNotifications": user_setting.email_notifications,
+                "taskReminders": user_setting.task_reminders
             }
-
-        return {
-            "language": user_setting.language,
-            "emailNotifications": user_setting.email_notifications,
-            "taskReminders": user_setting.task_reminders
-        }
 

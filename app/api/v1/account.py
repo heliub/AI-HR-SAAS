@@ -202,7 +202,6 @@ async def update_user_settings(
 
 @router.get("/settings", response_model=APIResponse)
 async def get_user_settings(
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """获取用户设置"""
@@ -211,7 +210,6 @@ async def get_user_settings(
     try:
         # 获取用户设置
         result = await user_service.get_user_settings(
-            db=db,
             user_id=current_user.id
         )
 

@@ -119,7 +119,7 @@ class LLMCaller:
         final_system = system_prompt or scene_config.get("system")
         # 修复：确保 parse_json 参数能够正确覆盖场景配置
         final_json_output = parse_json if parse_json is not None else scene_config.get("json_output", False)
-        
+        final_additional_params = scene_config.get("additional_params", None)
         try:
             prompt = self.prompt_loader.load_prompt(
                 scene_name=scene_name,
@@ -149,7 +149,8 @@ class LLMCaller:
                 max_completion_tokens=final_max_completion_tokens,
                 top_p=final_top_p,
                 parse_json=final_json_output,
-                scene_name=scene_name
+                scene_name=scene_name,
+                additional_params=final_additional_params
             )
             return response
         except LLMError as e:
@@ -248,7 +249,8 @@ class LLMCaller:
         max_completion_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         parse_json: bool = True,
-        scene_name: Optional[str] = None
+        scene_name: Optional[str] = None,
+        additional_params: Optional[Dict[str, Any]] = None
     ) -> Tuple[Union[Dict[str, Any], str], Optional[Usage]]:
         """
         直接使用Prompt调用LLM
@@ -284,7 +286,8 @@ class LLMCaller:
             system=system_prompt,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
-            top_p=top_p
+            top_p=top_p,
+            additional_params=additional_params
         )
 
         logger.info(

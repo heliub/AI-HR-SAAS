@@ -6,6 +6,18 @@ PROMPT_CONFIG = {
         "max_completion_tokens": None,
         "prompt": "matching.md"
     },
+    "text_translate": {
+        "module": "common",
+        "provider": "volcengine",
+        "model": "doubao-seed-1-6-lite-251015",
+        "temperature": 0.1,
+        "max_completion_tokens": 3000,
+        "prompt": "text_translate.md",
+        "json_output": True,
+        "additional_params": {
+            "reasoning_effort": "minimal"
+        }
+    },
     "transfer_human_intent": {
         "module": "conversation_flow",
         "provider": "volcengine",
