@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
-from app.schemas.user import ProfileUpdateRequest, PasswordUpdateRequest, NotificationSettingsRequest
+from app.schemas.user import ProfileUpdateRequest, PasswordUpdateRequest, UserSettingRequest, UserSettingResponse
 from app.schemas.base import APIResponse
 from app.services.user_service import UserService
 from app.models.user import User
@@ -169,32 +169,60 @@ async def upload_avatar(
         )
 
 
-@router.put("/notifications", response_model=APIResponse)
-async def update_notifications(
-    settings_data: NotificationSettingsRequest,
+@router.post("/settings", response_model=APIResponse)
+async def update_user_settings(
+    settings_data: UserSettingRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """更新通知设置"""
+    """更新用户设置"""
     user_service = UserService()
-
+    print("settings_data", settings_data)
     try:
-        # 更新通知设置
-        result = await user_service.update_notification_settings(
+        # 更新用户设置
+        result = await user_service.update_user_settings(
             db=db,
             user_id=current_user.id,
+            language=settings_data.language,
             email_notifications=settings_data.emailNotifications,
             task_reminders=settings_data.taskReminders
         )
 
         return APIResponse(
             code=200,
-            message="通知设置更新成功",
+            message="用户设置更新成功",
             data=result
         )
     except Exception as e:
         return APIResponse(
             code=400,
             message=f"更新失败: {str(e)}"
+        )
+
+
+@router.get("/settings", response_model=APIResponse)
+async def get_user_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """获取用户设置"""
+    user_service = UserService()
+
+    try:
+        # 获取用户设置
+        result = await user_service.get_user_settings(
+            db=db,
+            user_id=current_user.id
+        )
+
+        return APIResponse(
+            code=200,
+            message="获取用户设置成功",
+            data=result
+        )
+    except Exception as e:
+        return APIResponse(
+            code=400,
+            message=f"获取失败: {str(e)}"
         )
 

@@ -171,14 +171,15 @@ class UserService(BaseService[User]):
 
         return user
 
-    async def update_notification_settings(
+    async def update_user_settings(
         self,
         db: AsyncSession,
         user_id: UUID,
-        email_notifications: bool,
-        task_reminders: bool
+        language: Optional[str] = None,
+        email_notifications: Optional[bool] = None,
+        task_reminders: Optional[bool] = None
     ):
-        """更新通知设置"""
+        """更新用户设置"""
         from app.models.user_setting import UserSetting
         from sqlalchemy import select
 
@@ -196,16 +197,58 @@ class UserService(BaseService[User]):
             user_setting = UserSetting(
                 tenant_id=user.tenant_id,
                 user_id=user_id,
-                email_notifications=email_notifications,
-                task_reminders=task_reminders
+                language=language or 'zh',
+                email_notifications=email_notifications if email_notifications is not None else True,
+                task_reminders=task_reminders if task_reminders is not None else True
             )
             db.add(user_setting)
         else:
             # 更新现有设置
-            user_setting.email_notifications = email_notifications
-            user_setting.task_reminders = task_reminders
+            if language is not None:
+                user_setting.language = language
+            if email_notifications is not None:
+                user_setting.email_notifications = email_notifications
+            if task_reminders is not None:
+                user_setting.task_reminders = task_reminders
 
         await db.commit()
+        await db.refresh(user_setting)
 
-        return {"email_notifications": email_notifications, "task_reminders": task_reminders}
+        return {
+            "language": user_setting.language,
+            "emailNotifications": user_setting.email_notifications,
+            "taskReminders": user_setting.task_reminders
+        }
+
+    async def get_user_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID
+    ):
+        """获取用户设置"""
+        from app.models.user_setting import UserSetting
+        from sqlalchemy import select
+
+        user = await self.get(db, user_id)
+        if not user:
+            raise NotFoundException("User not found")
+
+        # 查找用户设置
+        query = select(UserSetting).where(UserSetting.user_id == user_id)
+        result = await db.execute(query)
+        user_setting = result.scalar_one_or_none()
+
+        if not user_setting:
+            # 返回默认设置
+            return {
+                "language": "zh",
+                "emailNotifications": False,
+                "taskReminders": False
+            }
+
+        return {
+            "language": user_setting.language,
+            "emailNotifications": user_setting.email_notifications,
+            "taskReminders": user_setting.task_reminders
+        }
 

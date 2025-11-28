@@ -4,7 +4,7 @@ User schemas
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_serializer
+from pydantic import BaseModel, EmailStr, Field, field_serializer, ConfigDict
 from app.schemas.base import BaseSchema, TimestampSchema, IDSchema
 from app.utils.datetime_formatter import format_datetime
 
@@ -56,9 +56,20 @@ class PasswordUpdateRequest(BaseModel):
     currentPassword: str
     newPassword: str = Field(..., min_length=8)
 
+class UserSettingRequest(BaseModel):
+    """用户设置请求"""
+    language: Optional[str] = Field(None, pattern="^(zh|en|id)$")
+    emailNotifications: Optional[bool] = Field(None, alias="email_notifications")
+    taskReminders: Optional[bool] = Field(None, alias="task_reminders")
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-class NotificationSettingsRequest(BaseModel):
-    """通知设置请求"""
-    emailNotifications: bool
-    taskReminders: bool
+
+class UserSettingResponse(BaseModel):
+    """用户设置响应"""
+    language: str
+    emailNotifications: bool = Field(alias="email_notifications")
+    taskReminders: bool = Field(alias="task_reminders")
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, by_alias=True)
 
