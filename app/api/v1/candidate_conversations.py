@@ -3,6 +3,7 @@ Candidate Conversation endpoints - 候选人会话相关API
 """
 from typing import Optional
 from uuid import UUID
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,8 @@ from app.schemas.candidate_conversation import (
 )
 from app.services.candidate_chat_history_service import CandidateChatHistoryService
 from app.services.candidate_conversation_service import CandidateConversationService
+from app.services.translation_service import translate_service
+from app.services.job_service import JobService
 from app.conversation_flow.orchestrator import ConversationFlowOrchestrator
 from app.conversation_flow.nodes.question_stage.question_handler import QuestionHandlerNode
 from app.conversation_flow.models import (
@@ -276,7 +279,6 @@ async def send_candidate_message(
 
     # 4. 构建ConversationContext
     # 获取职位信息
-    from app.services.job_service import JobService
     job_service = JobService()
     job = await job_service.get_by_id(
         Job, conversation.job_id, current_user.tenant_id
@@ -311,7 +313,16 @@ async def send_candidate_message(
     # 6. 保存AI回复（如果有）
     messages = []
     if flow_result and flow_result.action == NodeAction.SEND_MESSAGE and flow_result.messages:
-        for message in flow_result.messages:
+        # 并行翻译所有消息
+        translated_messages = await asyncio.gather(*[
+            translate_service.translate_content(
+                content=message,
+                user_id=current_user.id
+            ) for message in flow_result.messages
+        ])
+        
+        # 保存翻译后的消息
+        for message in translated_messages:
             ai_message = await chat_history_service.create_message(
                 tenant_id=current_user.tenant_id,
                 resume_id=conversation.resume_id,
@@ -320,7 +331,7 @@ async def send_candidate_message(
                 message=message,
                 message_type="text"
             )
-            messages.append(message)
+            messages.append(message)  # 保存翻译后的内容用于响应
         if flow_result.exist_question and flow_result.data and flow_result.data.get("question_tracking_id"):
             question_tracking_id = flow_result.data.get("question_tracking_id")
             tracking_service = ConversationQuestionTrackingService()

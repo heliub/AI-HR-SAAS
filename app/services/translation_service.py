@@ -87,7 +87,9 @@ class TranslationService():
             # 确保返回的是字符串
             if isinstance(result, dict):
                 # 如果返回的是字典，尝试获取内容
-                return result.get("translated_text", str(result))
+                translated_content = result.get("translated_text", str(result))
+                if translated_content:
+                    return translated_content
             return content
         except Exception as e:
             logger.error(
@@ -114,3 +116,4 @@ class TranslationService():
                 error=str(e)
             )
             return False
+translate_service = TranslationService()

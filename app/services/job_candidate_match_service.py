@@ -18,6 +18,7 @@ from app.services.job_service import JobService
 from app.services.resume_service import ResumeService
 from app.ai.llm_caller import get_llm_caller
 import structlog
+from app.services.translation_service import translate_service
 
 logger = structlog.get_logger(__name__)
 
@@ -111,10 +112,15 @@ class JobCandidateMatchService(BaseService):
         # 解析匹配结果
         parsed_match_result = self._parse_match_result(match_result, match_strategy)
 
+        # 初始化匹配结果变量
+        ai_match_result = None
+
         # 更新简历表
         # 只有当 is_match 不为 None 时才更新简历匹配信息
         is_match = parsed_match_result["is_match"]
         if is_match is not None:
+            reason = await translate_service.translate_content(parsed_match_result["reason"], user_id)
+            parsed_match_result["reason"] = reason
              # 保存匹配结果
             ai_match_result = await self._save_match_result(
                 job_id=job_id,
@@ -534,6 +540,8 @@ class JobCandidateMatchService(BaseService):
             - error: 解析错误信息（如果有）或 None
         """
         try:
+            if isinstance(match_result, list) and len(match_result) > 0:
+                match_result = match_result[0]
             # 处理字典类型的输入
             if isinstance(match_result, dict):
                 # 从字典中提取过滤结果和总体说明

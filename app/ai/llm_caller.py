@@ -221,7 +221,7 @@ class LLMCaller:
                 top_p=top_p,
                 max_completion_tokens=max_completion_tokens,
                 template_variables=template_variables,
-                response_content= json.dumps(response, ensure_ascii=False) if isinstance(response, dict) else response,
+                response_content= json.dumps(response, ensure_ascii=False) if isinstance(response, (dict, list)) else response,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=total_tokens,
