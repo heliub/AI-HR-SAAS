@@ -9,5 +9,5 @@ logs/
 tests/
 docs/
 deploy/
-*.md
+!README.md
 
