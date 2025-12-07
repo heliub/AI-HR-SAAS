@@ -24,7 +24,8 @@ RUN uv sync --frozen --no-dev
 
 # DATABASE_URL placeholder
 # 生产环境建议通过 Google Secret Manager 注入，而不是写在这里
-ENV DATABASE_URL="postgresql://hr_saas:hr_saas_7f59c26c_\$@/hr_saas?host=/cloudsql/recruiterai-479514:us-west2:recruiterai"
+# 关键修复：显式使用 postgresql+asyncpg:// 协议头，强制使用 asyncpg 驱动
+ENV DATABASE_URL="postgresql+asyncpg://hr_saas:hr_saas_7f59c26c_\$@/hr_saas?host=/cloudsql/recruiterai-479514:us-west2:recruiterai"
 
 # Default port for Cloud Run
 ENV PORT=8080
