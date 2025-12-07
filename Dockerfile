@@ -26,7 +26,7 @@ RUN uv sync --frozen --no-dev
 # 生产环境建议通过 Google Secret Manager 注入，而不是写在这里
 # 关键修复：显式使用 postgresql+asyncpg:// 协议头，强制使用 asyncpg 驱动
 # 使用 Cloud SQL Private IP (PSA) 连接
-ENV DATABASE_URL="postgresql+asyncpg://hr_saas:hr_saas_7f59c26c_\$@10.4.48.3:5432/hr_saas"
+ENV DATABASE_URL="postgresql+asyncpg://hr_saas:hr_saas_7f59c26c_\$@10.40.176.3:5432/hr_saas"
 
 # Default port for Cloud Run
 ENV PORT=8080
